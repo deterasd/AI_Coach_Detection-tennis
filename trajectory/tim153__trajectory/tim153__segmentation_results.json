@@ -1,0 +1,211 @@
+{
+  "side_segments": [
+    {
+      "segment_number": 1,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__1_side_segment.mp4",
+      "start_time": 8.433333333333334,
+      "end_time": 10.333333333333332,
+      "duration": 1.8999999999999986,
+      "entry_time": 8.933333333333334,
+      "exit_time": 10.233333333333333
+    },
+    {
+      "segment_number": 2,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__2_side_segment.mp4",
+      "start_time": 12.466666666666667,
+      "end_time": 14.433333333333334,
+      "duration": 1.9666666666666668,
+      "entry_time": 12.966666666666667,
+      "exit_time": 14.333333333333334
+    },
+    {
+      "segment_number": 3,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__3_side_segment.mp4",
+      "start_time": 16.3,
+      "end_time": 20.7,
+      "duration": 4.399999999999999,
+      "entry_time": 16.8,
+      "exit_time": 20.599999999999998
+    },
+    {
+      "segment_number": 4,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__4_side_segment.mp4",
+      "start_time": 20.2,
+      "end_time": 22.8,
+      "duration": 2.6000000000000014,
+      "entry_time": 20.7,
+      "exit_time": 22.7
+    }
+  ],
+  "deg45_segments": [
+    {
+      "segment_number": 1,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__1_45_segment.mp4",
+      "start_time": 9.366666666666667,
+      "end_time": 13.933333333333334,
+      "duration": 4.566666666666666,
+      "entry_time": 9.866666666666667,
+      "exit_time": 13.833333333333334
+    },
+    {
+      "segment_number": 2,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__2_45_segment.mp4",
+      "start_time": 13.433333333333334,
+      "end_time": 17.833333333333332,
+      "duration": 4.399999999999999,
+      "entry_time": 13.933333333333334,
+      "exit_time": 17.73333333333333
+    },
+    {
+      "segment_number": 3,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__3_45_segment.mp4",
+      "start_time": 17.333333333333332,
+      "end_time": 21.466666666666665,
+      "duration": 4.133333333333333,
+      "entry_time": 17.833333333333332,
+      "exit_time": 21.366666666666664
+    },
+    {
+      "segment_number": 4,
+      "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__4_45_segment.mp4",
+      "start_time": 20.966666666666665,
+      "end_time": 23.566666666666666,
+      "duration": 2.6000000000000014,
+      "entry_time": 21.466666666666665,
+      "exit_time": 23.466666666666665
+    }
+  ],
+  "ball_pairs": [
+    {
+      "ball_number": 1,
+      "side_data": {
+        "entry_time": 8.933333333333334,
+        "exit_time": 10.233333333333333,
+        "segment": {
+          "segment_number": 1,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__1_side_segment.mp4",
+          "start_time": 8.433333333333334,
+          "end_time": 10.333333333333332,
+          "duration": 1.8999999999999986,
+          "entry_time": 8.933333333333334,
+          "exit_time": 10.233333333333333
+        }
+      },
+      "deg45_data": {
+        "entry_time": 9.866666666666667,
+        "exit_time": 13.833333333333334,
+        "segment": {
+          "segment_number": 1,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__1_45_segment.mp4",
+          "start_time": 9.366666666666667,
+          "end_time": 13.933333333333334,
+          "duration": 4.566666666666666,
+          "entry_time": 9.866666666666667,
+          "exit_time": 13.833333333333334
+        }
+      },
+      "time_difference": 0.9333333333333336,
+      "status": "paired"
+    },
+    {
+      "ball_number": 2,
+      "side_data": {
+        "entry_time": 12.966666666666667,
+        "exit_time": 14.333333333333334,
+        "segment": {
+          "segment_number": 2,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__2_side_segment.mp4",
+          "start_time": 12.466666666666667,
+          "end_time": 14.433333333333334,
+          "duration": 1.9666666666666668,
+          "entry_time": 12.966666666666667,
+          "exit_time": 14.333333333333334
+        }
+      },
+      "deg45_data": {
+        "entry_time": 13.933333333333334,
+        "exit_time": 17.73333333333333,
+        "segment": {
+          "segment_number": 2,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__2_45_segment.mp4",
+          "start_time": 13.433333333333334,
+          "end_time": 17.833333333333332,
+          "duration": 4.399999999999999,
+          "entry_time": 13.933333333333334,
+          "exit_time": 17.73333333333333
+        }
+      },
+      "time_difference": 0.9666666666666668,
+      "status": "paired"
+    },
+    {
+      "ball_number": 3,
+      "side_data": {
+        "entry_time": 16.8,
+        "exit_time": 20.599999999999998,
+        "segment": {
+          "segment_number": 3,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__3_side_segment.mp4",
+          "start_time": 16.3,
+          "end_time": 20.7,
+          "duration": 4.399999999999999,
+          "entry_time": 16.8,
+          "exit_time": 20.599999999999998
+        }
+      },
+      "deg45_data": {
+        "entry_time": 17.833333333333332,
+        "exit_time": 21.366666666666664,
+        "segment": {
+          "segment_number": 3,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__3_45_segment.mp4",
+          "start_time": 17.333333333333332,
+          "end_time": 21.466666666666665,
+          "duration": 4.133333333333333,
+          "entry_time": 17.833333333333332,
+          "exit_time": 21.366666666666664
+        }
+      },
+      "time_difference": 1.0333333333333314,
+      "status": "paired"
+    },
+    {
+      "ball_number": 4,
+      "side_data": {
+        "entry_time": 20.7,
+        "exit_time": 22.7,
+        "segment": {
+          "segment_number": 4,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__4_side_segment.mp4",
+          "start_time": 20.2,
+          "end_time": 22.8,
+          "duration": 2.6000000000000014,
+          "entry_time": 20.7,
+          "exit_time": 22.7
+        }
+      },
+      "deg45_data": {
+        "entry_time": 21.466666666666665,
+        "exit_time": 23.466666666666665,
+        "segment": {
+          "segment_number": 4,
+          "file_path": "trajectory\\tim153__trajectory\\segments\\tim153__4_45_segment.mp4",
+          "start_time": 20.966666666666665,
+          "end_time": 23.566666666666666,
+          "duration": 2.6000000000000014,
+          "entry_time": 21.466666666666665,
+          "exit_time": 23.466666666666665
+        }
+      },
+      "time_difference": 0.7666666666666657,
+      "status": "paired"
+    }
+  ],
+  "parameters": {
+    "detection_area": "right_upper_two_thirds",
+    "enable_exit_detection": true,
+    "exit_timeout": 1.5,
+    "confidence_threshold": 0.5,
+    "ball_entry_direction": "right"
+  }
+}

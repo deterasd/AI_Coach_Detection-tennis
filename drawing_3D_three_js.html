@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>3D Pose Visualization</title>
+  
+  <!-- 基本重置與佈局 -->
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at 20% 20%, #1f2937 0%, #020617 65%);
+    }
+    #overallBox {
+      margin-top: -1px;
+    }
+  </style>
+  
+  <!-- 控制面板 (右下) 樣式 -->
+  <style>
+    #controlPanel {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      padding-top: 20px;
+    }
+    #controlPanel.expanded {
+      transform: translateX(0);
+    }
+      .toggle-language-btn {
+      font-size: 16px;
+      width: 30px; /* 建議設定一個可見寬度，取代 width: 0% */
+      height: 30px;
+      background: transparent; /* 預設透明 */
+      border: none; /* 若不需要邊框 */
+      color: white; /* 文字顏色，根據你的背景調整 */
+      cursor: pointer; /* 滑鼠指針 */
+      transition: background 0.3s ease; /* 平滑過渡效果 */
+    }
+
+    .toggle-language-btn:hover {
+      background: #4CAF50; /* 滑鼠懸停時藍色 */
+    }
+    #controlPanelToggle {
+      position: fixed;    /* 固定在螢幕上 */
+      bottom: -10px;       /* 距離底部 20px，可根據需要調整 */
+      right: 420px;       /* 距離右側 420px（依你 controlPanel 的寬度調整） */
+      transform: translateX(140%);
+      width: 200px;
+      height: 3px;
+      background: rgba(76, 175, 80, 0.05);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 2100;      /* 確保在上層顯示 */
+    }
+    #controlPanelToggle:hover {
+      background: rgba(76, 175, 80, 0.5);
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
+    }
+    #controlPanelToggle::before {
+      content: none;
+    }
+    #controlPanel.expanded #controlPanelToggle::before {
+      transform: rotate(180deg);
+    }
+    .control-container {
+      z-index: 2000;
+      background: rgba(30, 30, 30, 0.95);
+      border-radius: 15px;
+      padding: 20px;
+      width: 400px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+  
+  <!-- 控制元件與表單樣式 -->
+  <style>
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .control-input {
+      padding: 8px;
+      font-size: 20px;
+      background: rgba(42, 42, 42, 0.7);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      outline: none;
+    }
+    .control-input[type="number"]::-webkit-inner-spin-button,
+    .control-input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .input-row .control-input {
+      width: calc(50% - 5px);
+    }
+    select.control-input {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .control-button {
+      background: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-weight: 500;
+      font-size: 25px;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .left-right-button {
+      background: #4CAF50;
+      color: white;
+      width: 100%;
+      height: 35px;
+      font-size: 50px;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      display: flex;          /* 使用 flexbox 實現垂直居中 */
+      align-items: center;    /* 垂直居中 */
+      justify-content: center; /* 水平居中 */
+      line-height: 1;         /* 重設行高 */
+      padding: 0;             /* 移除內邊距 */
+      border: none;           /* 確保沒有邊框 */
+      border-radius: 8px;     /* 保持圓角 */
+      cursor: pointer;        /* 保持滑鼠指針樣式 */
+      margin-bottom: 10px;    /* 保持底部邊距 */
+      margin-top: -12px;
+    }
+    .control-button:hover {
+      background: #45a049;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .api-form {
+      margin-bottom: 10px;
+    }
+  </style>
+  
+  <!-- 通知訊息樣式 -->
+  <style>
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      border-radius: 5px;
+      color: white;
+      z-index: 9000;
+      animation: slideIn 0.3s ease;
+    }
+    .notification.success {
+      background-color: rgba(76, 175, 80, 0.9);
+    }
+    .notification.error {
+      background-color: rgba(244, 67, 54, 0.9);
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateX(-50%) translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+  </style>
+  
+  <!-- Feedback 區塊樣式 -->
+  <style>
+    #feedbackGroup {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 3000;
+      transform: translateX(565px);
+      transition: transform 0.3s ease;
+      padding-bottom: 20px;
+    }
+    #feedbackGroup.expanded {
+      transform: translateX(0);
+    }
+    #feedbackToggle {
+      position: fixed;      /* 改成固定定位 */
+      top: 14%;             /* 垂直置中 */
+      right: 0;             /* 固定在右邊 */
+      transform: translateY(-50%);
+      width: 20px !important;
+      padding: 0 !important;
+      border: none !important;
+      min-width: 0 !important;
+      height: 200px;
+      background: rgba(76,175,80,0.05);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 3001;        /* 確保顯示在最上層 */
+    }
+
+    #feedbackToggle:hover {
+      background: rgba(76,175,80,0.5);
+      box-shadow: 0 0 8px rgba(76,175,80,0.3);
+    }
+    #feedbackToggle::before {
+      content: none;
+    }
+    #feedbackGroup.expanded #feedbackToggle::before {
+      transform: rotate(180deg);
+    }
+    .feedback-container {
+      width: 550px;
+      background: rgba(30,30,30,0.95);
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      max-height: 90vh;
+      overflow-y: auto;     /* 垂直（上下）滾動 */
+      overflow-x: hidden;   /* 禁用水平（左右）滾動 */
+      scrollbar-width: thin;
+      scrollbar-color: #4CAF50 rgba(30,30,30,0.95);
+    }
+
+    /* 新增 Webkit 瀏覽器的滾動條樣式 */
+    .feedback-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .feedback-container::-webkit-scrollbar-track {
+      background: rgba(30,30,30,0.95);
+      border-radius: 4px;
+    }
+
+    .feedback-container::-webkit-scrollbar-thumb {
+      background: #4CAF50;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+
+    .feedback-container::-webkit-scrollbar-thumb:hover {
+      background: #45a049;
+    }
+    #feedbackBox,
+    #overallBox {
+      position: static;
+      width: 95%;
+      padding: 20px;
+      background: none;
+      box-shadow: none;
+    }
+    #overallBox {
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .feedback-content {
+      color: #fff;
+      font-size: 30px;
+    }
+  </style>
+  
+  <!-- Controls 面板 (左側) 樣式 -->
+  <style>
+    #toggleControls {
+      z-index: 1001;
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0px;
+      width: 20px;
+      height: 200px;
+      background: rgba(76,175,80,0.05);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    #toggleControls:hover {
+      background: rgba(76,175,80,0.5);
+      box-shadow: 0 0 8px rgba(76,175,80,0.2);
+    }
+    #toggleControls::before {
+      content: none;
+    }
+    #toggleControls.expanded::before {
+      transform: none;
+    }
+    #controls {
+      transform: translateX(-600px); /* 調整進入的距離 */
+      transition: transform 0.3s ease;
+      z-index: 2000;
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(30,30,30,0.95);
+      padding: 20px;
+      border-radius: 15px;
+      width: 400px;
+      color: white;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+      max-height: 90vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #4CAF50 rgba(30,30,30,0.95);
+    }
+    #controls.expanded {
+      transform: translateX(0);
+    }
+    #controls::-webkit-scrollbar {
+      width: 8px;
+    }
+    #controls::-webkit-scrollbar-track {
+      background: rgba(30,30,30,0.95);
+      border-radius: 4px;
+    }
+    #controls::-webkit-scrollbar-thumb {
+      background: #4CAF50;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+    #controls::-webkit-scrollbar-thumb:hover {
+      background: #45a049;
+    }
+    .select-container {
+      margin-top: 10px;
+      width: 100%;
+    }
+    .select-container select {
+      width: 100%;
+      padding: 8px;
+      background: rgba(42,42,42,0.7);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      outline: none;
+    }
+    .select-container select option {
+      background: #1a1a1a;
+      color: white;
+      padding: 8px;
+    }
+    .multiselect-container {
+      margin-top: 10px;
+    }
+    .multiselect-container select {
+      width: 100%;
+      padding: 8px;
+      background: rgba(42,42,42,0.7);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      outline: none;
+      height: 100px;
+    }
+    .control-group {
+      margin: 15px 0;
+      padding: 15px;
+      font-size: 20px;
+      background: rgba(42,42,42,0.7);
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .control-header {
+      text-align: center;
+      font-size: 25px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #4CAF50;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .control-header_error {
+      font-size: 25px;
+      font-weight: bold;
+      width: 90%;
+      text-align: center;
+      margin-bottom: 10px;
+      color: #4CAF50;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .collapsible {
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+    .collapsible:after {
+      content: '\25BC';
+      float: right;
+    }
+    .collapsible.collapsed:after {
+      content: '\25B6';
+    }
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(1,1fr);
+      gap: 5px;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease-out;
+    }
+    .checkbox-grid.expanded {
+      max-height: 500px;
+      margin-top: 10px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      font-size: 20px;
+      letter-spacing: 1px;
+    }
+    button:hover {
+      background: #45a049;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+  </style>
+  
+  <!-- 其他樣式：檔案列表、軌跡、滑桿等 -->
+  <style>
+    .file-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 10px;
+      padding: 5px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      margin: 4px 0;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      transition: background 0.2s ease;
+    }
+    .file-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .file-checkbox {
+      margin-right: 10px;
+    }
+    .file-label {
+      flex: 1;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .trajectory-label {
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .trajectory-dropdown {
+      margin-top: 10px;
+      position: relative;
+    }
+    .trajectory-button {
+      width: 100%;
+      padding: 8px;
+      background: rgba(42,42,42,0.7);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .trajectory-dropdown-content {
+      display: none;
+      position: absolute;
+      width: 100%;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(30,30,30,0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      z-index: 1001;
+    }
+    .trajectory-dropdown-content.show {
+      display: block;
+    }
+    .trajectory-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 5px;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease-out;
+    }
+    .trajectory-grid.expanded {
+      max-height: 500px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    .trajectory-item {
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+    }
+    .trajectory-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .trajectory-checkbox {
+      margin: 0;
+    }
+    .slider {
+      width: 100%;
+      margin: 10px 0;
+    }
+    .marker-label {
+      z-index: 9999 !important;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 1px 2px;
+      font-family: monospace;
+      font-size: 8px;
+      line-height: 1.1;
+      border-radius: 2px;
+      white-space: pre-line;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .trajectory-point {
+      z-index: 1999 !important;
+      pointer-events: none;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      pointer-events: all;
+      cursor: pointer;
+    }
+    .trajectory-point:hover + .marker-label {
+      opacity: 1;
+    }
+    .warning-box {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: rgba(255,0,0,0.1);
+      border: 2px solid #f00;
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      max-width: 250px;
+      font-size: 14px;
+      z-index: 1000;
+    }
+  </style>
+  
+  <!-- 載入 Three.js 與相關套件 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/"
+      }
+    }
+  </script>
+  
+</head>
+<body>
+  <!-- 控制面板 (左側) -->
+  <div id="toggleControls"></div>
+  <div id="controls" class="expanded">
+    <div class="control-group">
+      <button id="playButton">play</button>
+      <button id="showFullTrajectoryButton">Show full trajectory</button>
+      <div id="frameInfo">frame: 0</div>
+      <input type="range" id="slider" class="slider" value="0">
+      <div>speed: <span id="speedValue">1x</span></div>
+      <input type="range" id="speedControl" class="slider" min="0.1" max="2" step="0.1" value="1">
+    </div>
+    <div id="jointControls" class="checkbox-grid"></div>
+  </div>
+  
+  <!-- Feedback 區塊 (右側) -->
+  <button id="feedbackToggle"></button>
+  <div id="feedbackGroup" class="expanded">
+    <div class="feedback-container">
+      <div id="feedbackBox" class="feedback-box">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div class="control-header_error">Feedback</div>
+          <button id="toggleLanguage" class="toggle-language-btn"></button>
+        </div>
+        <div id="feedbackContent" class="feedback-content"></div>
+      </div>      
+      <div id="overallBox" class="feedback-box">
+        <div class="control-header">Overall Suggestion</div>
+        <div id="overallContent" class="feedback-content"></div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button id="trajectoryAnalysis" style="flex: 9.5; font-size: 25px;">Trajectory Analysis</button>
+          <button id="resetOverallContent" style="flex: 0.5; font-size: 25px;">↺</button>
+        </div>
+      </div>      
+    </div>
+  </div>
+  
+  <!-- 控制面板 (右下) -->
+  <button id="controlPanelToggle"></button>
+  <div id="controlPanel">
+    <div class="control-container">
+      <div class="control-content">
+        <!-- 顯示當前時間 -->
+        <div id="currentTime" style="position: fixed; bottom: 4px; left: 22px; color: #4CAF50; font-size: 15px; z-index: 2100;"></div>
+        <div class="control-group">
+          <div class="control-header">Personal Info</div>
+          <form class="api-form" data-endpoint="/input_data">
+            <div class="input-row">
+              <input type="text" name="name" placeholder="Name" class="control-input" required>
+              <input type="number" name="height" placeholder="Height" class="control-input" required>
+            </div>
+            <select name="dominant_hand" class="control-input">
+              <option value="0">Right Hand</option>
+              <option value="1">Left Hand</option>
+            </select>
+            <button type="submit" class="control-button">Submit Info</button>
+          </form>
+        </div>
+        <div class="control-group">
+          <div class="control-header">Recording Control</div>
+          <!-- Auto 按鈕 -->
+          <form class="api-form" data-endpoint="">
+            <button id="auto" type="submit" class="control-button">auto</button>
+          </form>
+          <!-- Queue Status 按鈕 -->
+          <form class="api-form" data-endpoint="">
+            <button id="queueStatusButton" type="submit" class="control-button">Check Queue Status</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- JavaScript 區段 -->
+  <script type="module">
+    const BASE_API = `http://${window.location.hostname}:8000`; // 配置IP位置
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { Line2 } from 'three/addons/lines/Line2.js';
+    import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+    import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+    
+    // 全域變數宣告
+    let scene, camera, renderer, labelRenderer, controls;
+    let trajectoryData = [], currentFrame = 0, isPlaying = false;
+    let playbackSpeed = 1, frameInterval, showingFullTrajectory = false;
+    let globalCenter = { x: 0, z: 0 }, globalMinY = 0;
+    let originalFeedbackContent = '';
+    let originalOverallContent = ''; 
+    let isTranslated = false;
+    
+    const SCALE_FACTOR = 0.002;
+    const skeletonConnections = [
+      ['nose','left_eye'], ['nose','right_eye'], ['left_eye','left_ear'],
+      ['right_eye','right_ear'], ['left_ear','left_shoulder'],
+      ['right_ear','right_shoulder'], ['left_shoulder','right_shoulder'],
+      ['left_shoulder','left_hip'], ['right_shoulder','right_hip'],
+      ['left_hip','right_hip'], ['left_shoulder','left_elbow'],
+      ['left_elbow','left_wrist'], ['right_shoulder','right_elbow'],
+      ['right_elbow','right_wrist'], ['left_hip','left_knee'],
+      ['left_knee','left_ankle'], ['right_hip','right_knee'],
+      ['right_knee','right_ankle'],
+      ['paddle_top','paddle_right'], ['paddle_right','paddle_bottom'],
+      ['paddle_bottom','paddle_left'], ['paddle_left','paddle_top'],
+      ['paddle_top','paddle_bottom'], ['paddle_left','paddle_right']
+    ];
+    const joints = {
+      tennis_ball: { color: '#FF6B6B', size: 0.05 },
+      nose: { color: '#4ECDC4', size: 0.015 },
+      left_eye: { color: '#45B7D1', size: 0.012 },
+      right_eye: { color: '#45B7D1', size: 0.012 },
+      left_ear: { color: '#96CEB4', size: 0.012 },
+      right_ear: { color: '#96CEB4', size: 0.012 },
+      left_shoulder: { color: '#FF8C42', size: 0.02 },
+      right_shoulder: { color: '#FF8C42', size: 0.02 },
+      left_elbow: { color: '#FF8C42', size: 0.018 },
+      right_elbow: { color: '#FF8C42', size: 0.018 },
+      left_wrist: { color: '#FF8C42', size: 0.015 },
+      right_wrist: { color: '#FF8C42', size: 0.015 },
+      left_hip: { color: '#6C5B7B', size: 0.02 },
+      right_hip: { color: '#6C5B7B', size: 0.02 },
+      left_knee: { color: '#6C5B7B', size: 0.018 },
+      right_knee: { color: '#6C5B7B', size: 0.018 },
+      left_ankle: { color: '#6C5B7B', size: 0.015 },
+      right_ankle: { color: '#6C5B7B', size: 0.015 },
+      paddle_top: { color: '#00FF00', size: 0.02 },
+      paddle_right: { color: '#00FF00', size: 0.02 },
+      paddle_bottom: { color: '#00FF00', size: 0.02 },
+      paddle_left: { color: '#00FF00', size: 0.02 },
+      paddle_center: { color: '#FFFF00', size: 0.025 }
+    };
+  let joints3D = {}, lines = [], boneMeshes = [], visibilityState = {};
+  const mannequinSegments = [];
+  let mannequinTorso = null, mannequinPelvis = null, mannequinHead = null;
+    const boneUpVector = new THREE.Vector3(0, 1, 0);
+    const boneGeometry = new THREE.CylinderGeometry(0.012, 0.012, 1, 14, 1, true);
+    const boneMaterialCache = new Map();
+  const tempVecA = new THREE.Vector3();
+  const tempVecB = new THREE.Vector3();
+  const tempVecC = new THREE.Vector3();
+  const tempQuat = new THREE.Quaternion();
+
+    function getBoneCategory(start, end) {
+      const torsoJoints = new Set(['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']);
+      const armJoints = new Set(['left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist']);
+      const legJoints = new Set(['left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle', 'right_ankle']);
+
+      if (torsoJoints.has(start) && torsoJoints.has(end)) {
+        return 'torso';
+      }
+      if (armJoints.has(start) && armJoints.has(end)) {
+        return 'arm';
+      }
+      if (legJoints.has(start) && legJoints.has(end)) {
+        return 'leg';
+      }
+      return 'other';
+    }
+
+    function getBoneMaterial(category) {
+      if (boneMaterialCache.has(category)) {
+        return boneMaterialCache.get(category);
+      }
+      const palette = {
+        torso: 0x3b82f6,
+        arm: 0xff8a4c,
+        leg: 0x8b5cf6,
+        other: 0x22d3ee
+      };
+      const mat = new THREE.MeshStandardMaterial({
+        color: palette[category] || palette.other,
+        roughness: 0.35,
+        metalness: 0.2,
+        emissive: new THREE.Color(palette[category] || palette.other).multiplyScalar(0.15),
+        emissiveIntensity: 0.6
+      });
+      boneMaterialCache.set(category, mat);
+      return mat;
+    }
+    
+    // 單檔案軌跡設定
+    const trajectorySystem = {
+      right_wrist: {
+        color: '#ffff00', points: [],
+        line: new THREE.Line(
+          new THREE.BufferGeometry(),
+          new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2, transparent: true, opacity: 0.5 })
+        )
+      },
+      tennis_ball: {
+        color: '#00ff00', points: [],
+        line: new THREE.Line(
+          new THREE.BufferGeometry(),
+          new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2, transparent: true, opacity: 0.5 })
+        )
+      }
+    };
+    
+    // 多檔案軌跡管理物件
+    const multiFileTrajectories = {
+      lines: new Map(),
+      labels: new Map(),
+      selectedFiles: [],
+      visible: false
+    };
+    const sphereGeometryCache = new Map();
+    const jointMaterialCache = new Map();
+
+    function getJointGeometry(size) {
+      if (!sphereGeometryCache.has(size)) {
+        sphereGeometryCache.set(size, new THREE.SphereGeometry(size, 24, 24));
+      }
+      return sphereGeometryCache.get(size);
+    }
+
+    function getJointMaterial(colorHex) {
+      if (!jointMaterialCache.has(colorHex)) {
+        const baseColor = new THREE.Color(colorHex);
+        jointMaterialCache.set(colorHex, new THREE.MeshStandardMaterial({
+          color: baseColor,
+          metalness: 0.25,
+          roughness: 0.35,
+          emissive: baseColor.clone().multiplyScalar(0.18),
+          emissiveIntensity: 0.8
+        }));
+      }
+      return jointMaterialCache.get(colorHex);
+    }
+
+    function createJointMesh(props) {
+      const group = new THREE.Group();
+      const geometry = getJointGeometry(props.size);
+      const core = new THREE.Mesh(geometry, getJointMaterial(props.color));
+      core.castShadow = true;
+      core.receiveShadow = true;
+      group.add(core);
+
+      const halo = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({
+          color: props.color,
+          transparent: true,
+          opacity: 0.12,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      );
+      halo.scale.set(1.5, 1.5, 1.5);
+      group.add(halo);
+
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geometry),
+        new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18 })
+      );
+      edges.material.depthWrite = false;
+      group.add(edges);
+
+      return group;
+    }
+
+    function createLimbMaterial(colorHex) {
+      return new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.35,
+        metalness: 0.2,
+        emissive: new THREE.Color(colorHex).multiplyScalar(0.18),
+        emissiveIntensity: 0.5
+      });
+    }
+
+    function createMannequinSegment(name, startJoint, endJoint, thickness, colorHex) {
+      const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 10, 1, true);
+      const mesh = new THREE.Mesh(geometry, createLimbMaterial(colorHex));
+      mesh.name = name;
+      mesh.visible = false;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.thickness = thickness;
+      scene.add(mesh);
+      mannequinSegments.push({ startJoint, endJoint, mesh });
+    }
+
+    function createMannequin() {
+      // Upper body
+      createMannequinSegment('leftUpperArm', 'left_shoulder', 'left_elbow', 0.06, 0xffb454);
+      createMannequinSegment('leftForearm', 'left_elbow', 'left_wrist', 0.05, 0xff9f68);
+      createMannequinSegment('rightUpperArm', 'right_shoulder', 'right_elbow', 0.06, 0xffb454);
+      createMannequinSegment('rightForearm', 'right_elbow', 'right_wrist', 0.05, 0xff9f68);
+
+      // Lower body
+      createMannequinSegment('leftThigh', 'left_hip', 'left_knee', 0.07, 0x7dd3fc);
+      createMannequinSegment('leftShin', 'left_knee', 'left_ankle', 0.055, 0x60a5fa);
+      createMannequinSegment('rightThigh', 'right_hip', 'right_knee', 0.07, 0x7dd3fc);
+      createMannequinSegment('rightShin', 'right_knee', 'right_ankle', 0.055, 0x60a5fa);
+
+      // Torso and pelvis blocks
+      mannequinTorso = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({
+          color: 0x3b82f6,
+          roughness: 0.4,
+          metalness: 0.15,
+          emissive: new THREE.Color(0x3b82f6).multiplyScalar(0.12),
+          emissiveIntensity: 0.4
+        })
+      );
+      mannequinTorso.visible = false;
+      mannequinTorso.castShadow = true;
+      mannequinTorso.receiveShadow = true;
+      scene.add(mannequinTorso);
+
+      mannequinPelvis = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({
+          color: 0x2563eb,
+          roughness: 0.45,
+          metalness: 0.15,
+          emissive: new THREE.Color(0x2563eb).multiplyScalar(0.1),
+          emissiveIntensity: 0.35
+        })
+      );
+      mannequinPelvis.visible = false;
+      mannequinPelvis.castShadow = true;
+      mannequinPelvis.receiveShadow = true;
+      scene.add(mannequinPelvis);
+
+      mannequinHead = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 22, 18),
+        new THREE.MeshStandardMaterial({
+          color: 0xfcd34d,
+          roughness: 0.3,
+          metalness: 0.1,
+          emissive: new THREE.Color(0xf59e0b).multiplyScalar(0.08),
+          emissiveIntensity: 0.3
+        })
+      );
+      mannequinHead.visible = false;
+      mannequinHead.castShadow = true;
+      mannequinHead.receiveShadow = true;
+      scene.add(mannequinHead);
+    }
+
+    function updateMannequinSegments() {
+      mannequinSegments.forEach(({ startJoint, endJoint, mesh }) => {
+        const start = joints3D[startJoint];
+        const end = joints3D[endJoint];
+        if (!start || !end || !start.visible || !end.visible) {
+          mesh.visible = false;
+          return;
+        }
+
+        tempVecA.copy(start.position);
+        tempVecB.copy(end.position);
+        tempVecC.subVectors(tempVecB, tempVecA);
+        const length = tempVecC.length();
+
+        if (length < 1e-4) {
+          mesh.visible = false;
+          return;
+        }
+
+        mesh.visible = true;
+        mesh.position.copy(tempVecA).addScaledVector(tempVecC, 0.5);
+        tempQuat.setFromUnitVectors(boneUpVector, tempVecC.normalize());
+        mesh.quaternion.copy(tempQuat);
+        const thickness = mesh.userData.thickness || 0.05;
+        const radiusScale = thickness * 2;
+        mesh.scale.set(radiusScale, length, radiusScale);
+      });
+    }
+
+    function updateMannequinTorso() {
+      const leftShoulder = joints3D.left_shoulder;
+      const rightShoulder = joints3D.right_shoulder;
+      const leftHip = joints3D.left_hip;
+      const rightHip = joints3D.right_hip;
+
+      if (!mannequinTorso || !leftShoulder || !rightShoulder || !leftHip || !rightHip) {
+        if (mannequinTorso) mannequinTorso.visible = false;
+        return;
+      }
+
+      if (!leftShoulder.visible || !rightShoulder.visible || !leftHip.visible || !rightHip.visible) {
+        mannequinTorso.visible = false;
+        return;
+      }
+
+      const shoulderMid = tempVecA.addVectors(leftShoulder.position, rightShoulder.position).multiplyScalar(0.5);
+      const hipMid = tempVecB.addVectors(leftHip.position, rightHip.position).multiplyScalar(0.5);
+      tempVecC.subVectors(shoulderMid, hipMid);
+      const torsoHeight = tempVecC.length();
+
+      if (torsoHeight < 1e-4) {
+        mannequinTorso.visible = false;
+        return;
+      }
+
+      const shoulderWidth = leftShoulder.position.distanceTo(rightShoulder.position) * 1.1;
+      const depth = Math.max(shoulderWidth * 0.35, 0.05);
+
+      mannequinTorso.visible = true;
+      mannequinTorso.position.copy(hipMid).addScaledVector(tempVecC, 0.5);
+      tempQuat.setFromUnitVectors(boneUpVector, tempVecC.normalize());
+      mannequinTorso.quaternion.copy(tempQuat);
+      mannequinTorso.scale.set(shoulderWidth, torsoHeight, depth);
+    }
+
+    function updateMannequinPelvis() {
+      const leftHip = joints3D.left_hip;
+      const rightHip = joints3D.right_hip;
+      const leftKnee = joints3D.left_knee;
+      const rightKnee = joints3D.right_knee;
+
+      if (!mannequinPelvis || !leftHip || !rightHip || !leftKnee || !rightKnee) {
+        if (mannequinPelvis) mannequinPelvis.visible = false;
+        return;
+      }
+
+      if (!leftHip.visible || !rightHip.visible) {
+        mannequinPelvis.visible = false;
+        return;
+      }
+
+      const hipMid = tempVecA.addVectors(leftHip.position, rightHip.position).multiplyScalar(0.5);
+      const haveKnees = leftKnee && rightKnee && leftKnee.visible && rightKnee.visible;
+      if (haveKnees) {
+        tempVecB.addVectors(leftKnee.position, rightKnee.position).multiplyScalar(0.5);
+      } else {
+        tempVecB.copy(hipMid).addScaledVector(boneUpVector, -0.25);
+      }
+
+      tempVecC.subVectors(hipMid, tempVecB);
+      const pelvisVectorLength = tempVecC.length();
+      if (pelvisVectorLength < 1e-4) {
+        mannequinPelvis.visible = false;
+        return;
+      }
+      const pelvisHeight = Math.max(pelvisVectorLength, 0.05);
+      const hipWidth = leftHip.position.distanceTo(rightHip.position) * 1.15;
+      const depth = Math.max(hipWidth * 0.35, 0.05);
+
+      mannequinPelvis.visible = true;
+      mannequinPelvis.position.copy(tempVecB).addScaledVector(tempVecC, 0.5);
+      tempQuat.setFromUnitVectors(boneUpVector, tempVecC.normalize());
+      mannequinPelvis.quaternion.copy(tempQuat);
+      mannequinPelvis.scale.set(hipWidth, pelvisHeight, depth);
+    }
+
+    function updateMannequinHead() {
+      if (!mannequinHead) return;
+      const nose = joints3D.nose;
+      const leftEar = joints3D.left_ear;
+      const rightEar = joints3D.right_ear;
+      const leftEye = joints3D.left_eye;
+      const rightEye = joints3D.right_eye;
+
+      if (!nose || !nose.visible) {
+        mannequinHead.visible = false;
+        return;
+      }
+
+      mannequinHead.visible = true;
+      tempVecA.copy(nose.position);
+      if (leftEye && rightEye && leftEye.visible && rightEye.visible) {
+        tempVecB.addVectors(leftEye.position, rightEye.position).multiplyScalar(0.5);
+        tempVecA.lerp(tempVecB, 0.3);
+      }
+
+      const earDistance = (leftEar && rightEar && leftEar.visible && rightEar.visible)
+        ? leftEar.position.distanceTo(rightEar.position)
+        : 0.18;
+      const radius = Math.max(earDistance * 0.45, 0.06);
+
+      tempVecB.set(0, radius * 0.4, 0);
+      mannequinHead.position.copy(tempVecA).add(tempVecB);
+      const headScale = radius / 0.5;
+      mannequinHead.scale.set(headScale, headScale, headScale);
+    }
+
+    function updateMannequin() {
+      updateMannequinSegments();
+      updateMannequinTorso();
+      updateMannequinPelvis();
+      updateMannequinHead();
+    }
+    
+    // 初始化函式：建立場景、相機、控制器、燈光等，並呼叫各種設定函式
+    function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0f172a);
+  scene.fog = new THREE.Fog(0x0f172a, 12, 45);
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 1000);
+      camera.position.set(4, 4, 8);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if ('outputColorSpace' in renderer) {
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+      } else {
+        renderer.outputEncoding = THREE.sRGBEncoding;
+      }
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+      
+      labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.domElement.style.position = 'absolute';
+      labelRenderer.domElement.style.top = '0';
+      document.body.appendChild(labelRenderer.domElement);
+      
+      // 設定控制器與燈光
+      controls = new OrbitControls(camera, labelRenderer.domElement);
+      controls.enableDamping = true;
+      controls.target.set(0, 4, 0);
+
+      const hemiLight = new THREE.HemisphereLight(0x8ac6ff, 0x060608, 0.85);
+      scene.add(hemiLight);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+      keyLight.position.set(6, 10, 6);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.set(1024, 1024);
+      keyLight.shadow.camera.near = 1;
+      keyLight.shadow.camera.far = 50;
+      keyLight.shadow.camera.left = -12;
+      keyLight.shadow.camera.right = 12;
+      keyLight.shadow.camera.top = 12;
+      keyLight.shadow.camera.bottom = -12;
+      scene.add(keyLight);
+
+      const rimLight = new THREE.PointLight(0x3a9cfc, 0.45, 35);
+      rimLight.position.set(-6, 6, -4);
+      scene.add(rimLight);
+
+      const warmFill = new THREE.PointLight(0xff7b5f, 0.35, 30);
+      warmFill.position.set(5, 3, -6);
+      scene.add(warmFill);
+
+      const grid = new THREE.GridHelper(12, 48, 0x2c3f63, 0x162236);
+      grid.material.opacity = 0.25;
+      grid.material.transparent = true;
+      scene.add(grid);
+
+      // Provide a subtle platform so the avatar feels visually grounded.
+      const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(11, 64),
+        new THREE.MeshStandardMaterial({
+          color: 0x101c2e,
+          metalness: 0.1,
+          roughness: 0.9,
+          transparent: true,
+          opacity: 0.9
+        })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -0.02;
+      floor.receiveShadow = true;
+      scene.add(floor);
+      
+      // 建立關節模型與骨架線
+      Object.entries(joints).forEach(([name, props]) => {
+        const mesh = createJointMesh(props);
+        joints3D[name] = mesh;
+        scene.add(mesh);
+      });
+      const baseSkeletonMaterial = new LineMaterial({
+        color: 0x3a9cfc,
+        linewidth: 3,
+        transparent: true,
+        opacity: 0.85,
+        depthTest: false,
+        depthWrite: false
+      });
+      baseSkeletonMaterial.resolution.set(window.innerWidth, window.innerHeight);
+      skeletonConnections.forEach(connection => {
+        const geo = new LineGeometry();
+        geo.setPositions([0, 0, 0, 0, 0, 0]);
+        const mat = baseSkeletonMaterial.clone();
+        mat.resolution.set(window.innerWidth, window.innerHeight);
+        const line = new Line2(geo, mat);
+        line.frustumCulled = false;
+        line.computeLineDistances();
+        lines.push(line);
+        scene.add(line);
+
+        const category = getBoneCategory(connection[0], connection[1]);
+        const boneMesh = new THREE.Mesh(boneGeometry.clone(), getBoneMaterial(category));
+        boneMesh.castShadow = true;
+        boneMesh.receiveShadow = true;
+        boneMesh.visible = false;
+        scene.add(boneMesh);
+        boneMeshes.push(boneMesh);
+      });
+
+      createMannequin();
+      
+      // 將軌跡線加入場景
+      Object.values(trajectorySystem).forEach(t => scene.add(t.line));
+
+      document.getElementById('resetOverallContent').addEventListener('click', () => {
+        const overallContent = document.getElementById('overallContent');
+        overallContent.textContent = '';
+        originalOverallContent = '';
+        if (isTranslated) {
+            isTranslated = false;
+            document.getElementById('toggleLanguage').textContent = 'ENG';
+        }
+    });
+      
+      // 呼叫各功能設定
+      createJointControls();
+      setupFileControls();
+      setupEventListeners();
+      setupFeedbackToggle();
+      setupControlPanelToggle();
+      setupToggleControls();
+      setupApiHandlers();
+      setupAutoButton();
+      updateCurrentTime();
+      
+      animate();
+    }
+    
+    // 每秒更新當前時間顯示
+    function updateCurrentTime() {
+      const ct = document.getElementById("currentTime");
+      if (ct) {
+        ct.textContent = new Date().toLocaleString();
+      }
+    }
+    setInterval(updateCurrentTime, 1000);
+    
+    // 建立關節勾選控制項
+    function createJointControls() {
+      // 創建控制組容器
+      const jointControlGroup = document.createElement('div');
+      jointControlGroup.className = 'control-group';
+      
+      // 創建標題按鈕 (可收合)
+      const toggleBtn = document.createElement('button');
+      toggleBtn.textContent = 'Joint Controls';
+      toggleBtn.className = 'collapsible collapsed';
+      toggleBtn.style.marginBottom = '10px';
+      jointControlGroup.appendChild(toggleBtn);
+      
+      // 創建內容容器 (預設收合)
+      const container = document.createElement('div');
+      container.id = 'jointControls';
+      container.className = 'checkbox-grid';
+      jointControlGroup.appendChild(container);
+      
+      // 添加全選選項
+      const selectAllDiv = document.createElement('div');
+      const selectAllCheckbox = document.createElement('input');
+      selectAllCheckbox.type = 'checkbox';
+      selectAllCheckbox.id = 'selectAllJoints';
+      selectAllCheckbox.checked = true;
+      const selectAllLabel = document.createElement('label');
+      selectAllLabel.htmlFor = 'selectAllJoints';
+      selectAllLabel.textContent = 'Select All Joints';
+      selectAllDiv.appendChild(selectAllCheckbox);
+      selectAllDiv.appendChild(selectAllLabel);
+      container.appendChild(selectAllDiv);
+      
+      // 為所有關節添加勾選框
+      Object.keys(joints).forEach(name => {
+          const div = document.createElement('div');
+          const ck = document.createElement('input');
+          ck.type = 'checkbox';
+          ck.id = `show_${name}`;
+          ck.checked = true;
+          ck.addEventListener('change', () => {
+              visibilityState[name] = ck.checked;
+              updateFrame();
+              
+              // 檢查是否所有關節都選中
+              const allCk = container.querySelectorAll('input[type="checkbox"]:not(#selectAllJoints)');
+              selectAllCheckbox.checked = Array.from(allCk).every(c => c.checked);
+          });
+          div.appendChild(ck);
+          div.appendChild(document.createTextNode(name));
+          container.appendChild(div);
+          visibilityState[name] = true;
+      });
+      
+      // 全選/取消全選功能
+      selectAllCheckbox.addEventListener('change', () => {
+          const cks = container.querySelectorAll('input[type="checkbox"]:not(#selectAllJoints)');
+          cks.forEach(c => {
+              c.checked = selectAllCheckbox.checked;
+              visibilityState[c.id.replace('show_', '')] = selectAllCheckbox.checked;
+          });
+          updateFrame();
+      });
+      
+      // 收合功能
+      toggleBtn.addEventListener('click', () => {
+          container.classList.toggle('expanded');
+          toggleBtn.classList.toggle('collapsed');
+      });
+      
+      // 將控制組添加到 controls 面板中 - 放在 trajGroup 之後
+      const controls = document.getElementById('controls');
+      const trajGroup = Array.from(controls.querySelectorAll('.control-group')).find(
+          g => g.querySelector('button')?.textContent === 'Trajectory Selection'
+      );
+      
+      if (trajGroup) {
+          controls.insertBefore(jointControlGroup, trajGroup.nextSibling);
+      } else {
+          // 如果找不到 trajGroup，則添加到底部
+          controls.appendChild(jointControlGroup);
+      }
+  }
+    
+    // 檔案選取與載入 JSON 檔案
+    function setupFileControls() {
+      const fileControlGroup = document.createElement('div');
+      fileControlGroup.className = 'control-group';
+      document.getElementById('controls').prepend(fileControlGroup);
+      
+      const dirInput = document.createElement('input');
+      dirInput.type = 'file';
+      dirInput.id = 'dirInput';
+      dirInput.webkitdirectory = true;
+      dirInput.style.display = 'none';
+      
+      const dirButton = document.createElement('button');
+      dirButton.textContent = 'Select Directory';
+      dirButton.onclick = () => dirInput.click();
+      fileControlGroup.appendChild(dirButton);
+      
+      const selectContainer = document.createElement('div');
+      selectContainer.className = 'select-container';
+      const fileSelect = document.createElement('select');
+      fileSelect.id = 'fileSelect';
+
+      const navButtonsContainer = document.createElement('div');
+      navButtonsContainer.className = 'input-row';
+      navButtonsContainer.style.marginTop = '10px';
+
+      // 創建往前按鈕
+      const prevButton = document.createElement('button');
+      prevButton.textContent = '⬅';
+      prevButton.className = 'left-right-button';
+      prevButton.onclick = () => {
+        const select = document.getElementById('fileSelect');
+        if (select.selectedIndex > 0) {
+          select.selectedIndex -= 1;
+          // 觸發 change 事件以載入前一個檔案
+          const event = new Event('change');
+          select.dispatchEvent(event);
+        }
+      };
+
+      // 創建往後按鈕
+      const nextButton = document.createElement('button');
+      nextButton.textContent = '⮕';
+      nextButton.className = 'left-right-button';
+      nextButton.onclick = () => {
+        const select = document.getElementById('fileSelect');
+        if (select.selectedIndex < select.options.length - 1) {
+          select.selectedIndex += 1;
+          // 觸發 change 事件以載入下一個檔案
+          const event = new Event('change');
+          select.dispatchEvent(event);
+        }
+      };
+
+      // 將按鈕添加到容器中
+      navButtonsContainer.appendChild(prevButton);
+      navButtonsContainer.appendChild(nextButton);
+
+      // 將導航按鈕插入到選擇容器之後
+      fileControlGroup.appendChild(navButtonsContainer);
+
+      selectContainer.appendChild(fileSelect);
+      fileControlGroup.appendChild(selectContainer);
+      
+      // 多檔案軌跡控制 UI
+      const trajGroup = document.createElement('div');
+      trajGroup.className = 'control-group';
+      const toggleBtn = document.createElement('button');
+      toggleBtn.textContent = 'Trajectory Selection';
+      toggleBtn.className = 'collapsible collapsed';
+      toggleBtn.style.marginBottom = '10px';
+      trajGroup.appendChild(toggleBtn);
+      
+      const dropdownContent = document.createElement('div');
+      dropdownContent.className = 'trajectory-grid';
+      trajGroup.appendChild(dropdownContent);
+      
+      // 全選選項
+      const selectAllDiv = document.createElement('div');
+      const selectAllCheckbox = document.createElement('input');
+      selectAllCheckbox.type = 'checkbox';
+      selectAllCheckbox.id = 'selectAll';
+      const selectAllLabel = document.createElement('label');
+      selectAllLabel.htmlFor = 'selectAll';
+      selectAllLabel.textContent = 'Select All';
+      selectAllDiv.appendChild(selectAllCheckbox);
+      selectAllDiv.appendChild(selectAllLabel);
+      dropdownContent.appendChild(selectAllDiv);
+      selectAllCheckbox.addEventListener('change', () => {
+        const cks = dropdownContent.querySelectorAll('input[type="checkbox"]:not(#selectAll)');
+        cks.forEach(c => c.checked = selectAllCheckbox.checked);
+      });
+      
+      // 摺疊按鈕功能
+      toggleBtn.addEventListener('click', () => {
+        dropdownContent.classList.toggle('expanded');
+        toggleBtn.classList.toggle('collapsed');
+      });
+      
+      // 顯示/隱藏多檔案軌跡
+      const showMultiButton = document.createElement('button');
+      showMultiButton.textContent = 'Show Selected Trajectories';
+      showMultiButton.onclick = () => {
+        multiFileTrajectories.visible = !multiFileTrajectories.visible;
+        showMultiButton.textContent = multiFileTrajectories.visible ? 'Hide Trajectories' : 'Show Selected Trajectories';
+        showMultiButton.style.background = multiFileTrajectories.visible ? '#f44336' : '#4CAF50';
+        const checkedBoxes = dropdownContent.querySelectorAll('input[type="checkbox"]:checked:not(#selectAll)');
+        multiFileTrajectories.selectedFiles = Array.from(checkedBoxes).map(cb => cb.value);
+        updateMultiTrajectories();
+      };
+      trajGroup.appendChild(showMultiButton);
+      
+      // 將軌跡控制面板插入 controls
+      document.getElementById('controls').insertBefore(trajGroup, fileControlGroup.nextSibling);
+      
+      // 檔案目錄選擇與載入 JSON
+      dirInput.addEventListener('change', async e => {
+        const files = Array.from(e.target.files).filter(f => f.name.includes('(3D_trajectory_smoothed).json'))
+          .sort((a, b) => {
+            const na = parseInt(a.name.match(/\d+/)[0]);
+            const nb = parseInt(b.name.match(/\d+/)[0]);
+            return na - nb;
+          });
+        if (!files.length) {
+          alert('No matching JSON found');
+          return;
+        }
+        fileSelect.innerHTML = '';
+        dropdownContent.innerHTML = '';
+        dropdownContent.appendChild(selectAllDiv);
+        files.forEach((file, idx) => {
+          const opt = document.createElement('option');
+          opt.value = file.name;
+          opt.textContent = file.name;
+          opt.selected = (idx === 0);
+          fileSelect.appendChild(opt);
+          
+          const div = document.createElement('div');
+          const ck = document.createElement('input');
+          ck.type = 'checkbox';
+          ck.className = 'trajectory-checkbox';
+          ck.value = file.name;
+          ck.id = `traj_${file.name}`;
+          ck.addEventListener('change', () => {
+            const allCk = dropdownContent.querySelectorAll('input[type="checkbox"]:not(#selectAll)');
+            selectAllCheckbox.checked = Array.from(allCk).every(c => c.checked);
+          });
+          const label = document.createElement('label');
+          label.htmlFor = ck.id;
+          label.textContent = file.name;
+          div.appendChild(ck);
+          div.appendChild(label);
+          dropdownContent.appendChild(div);
+        });
+        fileSelect.addEventListener('change', async () => {
+          const sel = files.find(f => f.name === fileSelect.value);
+          if (sel) {
+              resetAllStates();
+              await loadJSONFile(sel);
+              const feedbackContent = document.getElementById('feedbackContent');
+              const overallContent = document.getElementById('overallContent');
+              feedbackContent.textContent = originalFeedbackContent;
+              if (isTranslated) {
+                  overallContent.textContent = originalOverallContent;
+              }
+              isTranslated = false;
+              document.getElementById('toggleLanguage').textContent = 'ENG';
+          }
+      });
+        await loadJSONFile(files[0]);
+      });
+      fileControlGroup.appendChild(dirInput);
+    }
+    
+    // 載入 JSON 檔案
+    function loadJSONFile(file) {
+      return file.text().then(txt => {
+          resetAllStates();
+          trajectoryData = JSON.parse(txt.replace(/^\uFEFF/, '').replace(/:\s*NaN/g, ': null').trim());
+          if (!Array.isArray(trajectoryData)) trajectoryData = [trajectoryData];
+
+          window.hitFrames = [];
+          trajectoryData.forEach((frame, index) => {
+              if (frame.tennis_ball_hit === true) {
+                  window.hitFrames.push(index);
+              }
+          });
+          console.log("找到的擊球 frames:", window.hitFrames);
+
+          computeGlobalCenterAndMinY();
+          document.getElementById('slider').max = trajectoryData.length - 1;
+          updateFrame();
+
+          showingFullTrajectory = true;
+          const btn = document.getElementById('showFullTrajectoryButton');
+          btn.textContent = 'hide trajectory';
+          btn.style.background = '#f44336';
+          calculateFullTrajectory();
+
+          // 載入並更新 feedback，但不動 overallContent
+          return loadFeedbackFile(file.name).then(() => {
+              const feedbackContent = document.getElementById('feedbackContent');
+              const overallContent = document.getElementById('overallContent');
+              feedbackContent.textContent = originalFeedbackContent;
+              if (isTranslated) {
+                  overallContent.textContent = originalOverallContent;
+              }
+              isTranslated = false;
+              document.getElementById('toggleLanguage').textContent = 'ENG';
+          });
+      }).catch(e => {
+          console.error(e);
+          alert('Error: ' + e.message);
+      });
+  }
+    
+    // 載入 Feedback 檔案
+    function loadFeedbackFile(mainFileName) {
+      const feedbackFileName = mainFileName.replace('(3D_trajectory_smoothed)', '_gpt_feedback');
+      const fi = document.getElementById('dirInput');
+      if (!fi) return Promise.resolve();
+
+      const fFile = Array.from(fi.files).find(f => f.name === feedbackFileName);
+      const feedbackContent = document.getElementById('feedbackContent');
+      // 不動 overallContent，除非明確重置
+      const overallContent = document.getElementById('overallContent');
+
+      if (!fFile) {
+          feedbackContent.textContent = 'No feedback file found';
+          originalFeedbackContent = 'No feedback file found';
+          // 不更新 originalOverallContent，除非是首次載入或重置
+          if (!originalOverallContent) {
+              originalOverallContent = 'No overall suggestion available';
+          }
+          isTranslated = false;
+          document.getElementById('toggleLanguage').textContent = 'ENG';
+          window.problemFrameRange = null;
+          return Promise.resolve();
+      }
+
+      return fFile.text().then(txt => {
+          console.log("读取的 feedback 文件为：" + fFile.name);
+          try {
+              const data = JSON.parse(txt.replace(/:\s*NaN/g, ': null'));
+              // 只更新 feedbackContent 和 originalFeedbackContent
+              originalFeedbackContent = data.suggestion || 'No feedback available';
+              feedbackContent.textContent = originalFeedbackContent;
+              // 僅在首次載入或 overallContent 為空時更新 originalOverallContent
+              if (!originalOverallContent) {
+                  originalOverallContent = data.overall_suggestion || 'No overall suggestion available';
+                  overallContent.textContent = originalOverallContent;
+              }
+              // 如果之前已翻譯，恢復為原始中文
+              if (isTranslated) {
+                  overallContent.textContent = originalOverallContent;
+                  feedbackContent.textContent = originalFeedbackContent;
+              }
+              isTranslated = false;
+              document.getElementById('toggleLanguage').textContent = 'ENG';
+
+              // 確保 problem_frame 被正確解析
+              if (data.problem_frame && typeof data.problem_frame === 'string') {
+                  const frameRangeStr = data.problem_frame;
+                  const match = frameRangeStr.match(/(\d+)(?:[-~]|到|to)(\d+)/);
+                  if (match) {
+                      window.problemFrameRange = [parseInt(match[1]), parseInt(match[2])];
+                  } else {
+                      const singleFrame = parseInt(frameRangeStr);
+                      if (!isNaN(singleFrame)) {
+                          window.problemFrameRange = [singleFrame, singleFrame];
+                      }
+                  }
+                  console.log("设置的 problemFrameRange:", window.problemFrameRange);
+                  if (showingFullTrajectory) {
+                      calculateFullTrajectory();
+                  }
+              } else {
+                  window.problemFrameRange = null;
+              }
+          } catch (e) {
+              console.error("解析 feedback 文件时出错:", e);
+              feedbackContent.textContent = 'No feedback available';
+              originalFeedbackContent = 'No feedback available';
+              if (!originalOverallContent) {
+                  originalOverallContent = 'No overall suggestion available';
+                  overallContent.textContent = originalOverallContent;
+              }
+              if (isTranslated) {
+                  overallContent.textContent = originalOverallContent;
+                  feedbackContent.textContent = originalFeedbackContent;
+              }
+              isTranslated = false;
+              document.getElementById('toggleLanguage').textContent = 'ENG';
+              window.problemFrameRange = null;
+          }
+      }).catch(err => {
+          console.error(err);
+          feedbackContent.textContent = 'No feedback available';
+          originalFeedbackContent = 'No feedback available';
+          if (!originalOverallContent) {
+              originalOverallContent = 'No overall suggestion available';
+              overallContent.textContent = originalOverallContent;
+          }
+          if (isTranslated) {
+              overallContent.textContent = originalOverallContent;
+              feedbackContent.textContent = originalFeedbackContent;
+          }
+          isTranslated = false;
+          document.getElementById('toggleLanguage').textContent = 'ENG';
+          window.problemFrameRange = null;
+      });
+  }
+    
+    // 計算全域中心與最小 Y 值
+    function computeGlobalCenterAndMinY() {
+      let footPositions = [];
+      trajectoryData.forEach(f => {
+        if (validPoint(f.left_ankle)) footPositions.push(f.left_ankle);
+        if (validPoint(f.right_ankle)) footPositions.push(f.right_ankle);
+      });
+      if (!footPositions.length) {
+        globalCenter = { x: 0, z: 0 };
+        globalMinY = 0;
+        return;
+      }
+      let sx = 0, sz = 0;
+      footPositions.forEach(p => { sx += p.x; sz += p.z; });
+      globalCenter.x = sx / footPositions.length;
+      globalCenter.z = sz / footPositions.length;
+      globalMinY = Math.min(...footPositions.map(p => p.y));
+    }
+    
+    // 簡單驗證點資料是否有效
+    function validPoint(p) {
+      return p && p.x != null && p.y != null && p.z != null && !isNaN(p.x + p.y + p.z);
+    }
+    
+    // 重置所有狀態
+    function resetAllStates() {
+      isPlaying = false;
+      clearInterval(frameInterval);
+      document.getElementById('playButton').textContent = 'play';
+      document.getElementById('playButton').style.background = '#4CAF50';
+      multiFileTrajectories.visible = false;
+      multiFileTrajectories.selectedFiles = [];
+      document.querySelectorAll('.trajectory-grid input[type="checkbox"]').forEach(c => c.checked = false);
+      const smt = [...document.getElementsByTagName('button')].find(b => b.textContent.includes('Show Selected Trajectories') || b.textContent.includes('Hide Trajectories'));
+      if (smt) {
+        smt.textContent = 'Show Selected Trajectories';
+        smt.style.background = '#4CAF50';
+      }
+      showingFullTrajectory = false;
+      const sftb = document.getElementById('showFullTrajectoryButton');
+      sftb.textContent = 'Show full trajectory';
+      sftb.style.background = '#4CAF50';
+      clearTrajectories();
+      multiFileTrajectories.lines.forEach(l => scene.remove(l));
+      multiFileTrajectories.lines.clear();
+      multiFileTrajectories.labels.forEach(lb => {
+        scene.remove(lb);
+        lb.element && lb.element.remove();
+      });
+      multiFileTrajectories.labels.clear();
+      playbackSpeed = 1;
+      document.getElementById('speedControl').value = 1;
+      document.getElementById('speedValue').textContent = '1x';
+      currentFrame = 0;
+      document.getElementById('slider').value = 0;
+      Object.keys(joints).forEach(n => {
+        const ck = document.getElementById(`show_${n}`);
+        if (ck) { ck.checked = true; visibilityState[n] = true; }
+      });
+      camera.position.set(4, 4, 8);
+      controls.target.set(0, 4, 0);
+      controls.update();
+    }
+    
+    // 清除軌跡
+    function clearTrajectories() {
+      Object.values(trajectorySystem).forEach(sys => {
+        sys.points.forEach(pt => {
+          pt.traverse(c => c.element && c.element.remove());
+          scene.remove(pt);
+        });
+        sys.points = [];
+        sys.line.geometry.setFromPoints([]);
+        sys.line.visible = false;
+        if (sys.lines) {
+          sys.lines.forEach(l => scene.remove(l));
+          sys.lines = [];
+        }
+      });
+    }
+    
+    // 創建軌跡標記 (含小點與文字標籤)
+    function createMarkerPoint(pos, text, color) {
+      const group = new THREE.Group();
+      const pointDiv = document.createElement('div');
+      pointDiv.className = 'trajectory-point';
+      pointDiv.style.background = color;
+      const point = new CSS2DObject(pointDiv);
+      point.position.copy(pos);
+      const labelDiv = document.createElement('div');
+      labelDiv.className = 'marker-label';
+      labelDiv.textContent = text;
+      const label = new CSS2DObject(labelDiv);
+      label.position.copy(pos);
+      group.add(point, label);
+      return group;
+    }
+    
+    // 計算並顯示全軌跡
+    function calculateFullTrajectory() {
+      console.log("目前 problemFrameRange:", window.problemFrameRange);
+      console.log("击球 frames:", window.hitFrames);
+      
+      clearTrajectories();
+      if (!showingFullTrajectory) return;
+      
+      ['right_wrist', 'tennis_ball'].forEach(name => {
+          const sys = trajectorySystem[name], arr = [];
+          let hitPointCount = 0; // 计算击球点的数量
+          
+          trajectoryData.forEach((f, i) => {
+              const p = f[name];
+              if (validPoint(p)) {
+                  const v = new THREE.Vector3((p.x - globalCenter.x) * SCALE_FACTOR, (p.y - globalMinY) * SCALE_FACTOR, -(p.z - globalCenter.z) * SCALE_FACTOR);
+                  arr.push(v);
+                  
+                  let c = sys.color;
+                  // 判断是否是问题范围内的 frame
+                  if (name === 'right_wrist' && window.problemFrameRange) {
+                      const [st, ed] = window.problemFrameRange;
+                      if (i >= st && i <= ed) {
+                          c = '#FF0000'; // 使用红色标记问题区域
+                          console.log(`标记为问题区域: Frame ${i}`); // 调试输出
+                      }
+                  }
+                  
+                  // 判断是否是击球的 frame
+                  if (name === 'right_wrist' && window.hitFrames && window.hitFrames.includes(i)) {
+                      c = '#00FFFF'; // 使用青色标记击球 frame
+                      hitPointCount++;
+                  }
+                  
+                  let frameInfo = `Frame: ${i}\nX:${p.x.toFixed(1)}\nY:${p.y.toFixed(1)}\nZ:${p.z.toFixed(1)}`;
+                  // 如果是击球 frame，添加标记
+                  if (window.hitFrames && window.hitFrames.includes(i)) {
+                      frameInfo += "\n[HIT]";
+                  }
+                  // 如果是问题区域，添加标记
+                  if (window.problemFrameRange) {
+                      const [st, ed] = window.problemFrameRange;
+                      if (i >= st && i <= ed) {
+                          frameInfo += "\n[PROBLEM]";
+                      }
+                  }
+                  
+                  const mk = createMarkerPoint(v, frameInfo, c);
+                  scene.add(mk);
+                  sys.points.push(mk);
+              }
+          });
+          
+          console.log(`${name} 轨迹总点数: ${arr.length}, 击球点数: ${hitPointCount}`);
+          
+          if (!arr.length) return;
+          
+          if (name === 'right_wrist') {
+              // 为右手腕轨迹建立彩色线段
+              const colors = [];
+              const positions = [];
+              
+              arr.forEach((v, i) => {
+                  positions.push(v.x, v.y, v.z);
+                  
+                  if (window.problemFrameRange) {
+                      const [st, ed] = window.problemFrameRange;
+                      if (i >= st && i <= ed) {
+                          colors.push(1, 0, 0); // 红色 - 问题区域
+                      } else if (window.hitFrames && window.hitFrames.includes(i)) {
+                          colors.push(0, 1, 1); // 青色 - 击球点
+                      } else {
+                          colors.push(1, 1, 0); // 黄色 - 正常轨迹
+                      }
+                  } else if (window.hitFrames && window.hitFrames.includes(i)) {
+                      colors.push(0, 1, 1); // 青色 - 击球点
+                  } else {
+                      colors.push(1, 1, 0); // 黄色 - 正常轨迹
+                  }
+              });
+              
+              const geo = new THREE.BufferGeometry();
+              geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+              geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+              
+              const mat = new THREE.LineBasicMaterial({ 
+                  vertexColors: true, 
+                  linewidth: 2, 
+                  transparent: true, 
+                  opacity: 0.8 
+              });
+              
+              const cLine = new THREE.Line(geo, mat);
+              scene.add(cLine);
+              sys.lines = sys.lines || [];
+              sys.lines.push(cLine);
+          } else {
+              sys.line.geometry.setFromPoints(arr);
+              sys.line.visible = true;
+          }
+      });
+  }
+    
+    // 更新指定影格下的關節與骨架連線位置
+    function updatePose(idx) {
+      if (!trajectoryData[idx]) return;
+      const frame = trajectoryData[idx];
+      Object.entries(joints3D).forEach(([n, m]) => {
+        let p;
+        // 處理 paddle 的巢狀結構
+        if (n.startsWith('paddle_')) {
+          const paddlePoint = n.split('_')[1]; // top, right, bottom, left, center
+          p = frame.paddle && frame.paddle[paddlePoint];
+        } else {
+          p = frame[n];
+        }
+        if (validPoint(p) && visibilityState[n]) {
+          m.position.set((p.x - globalCenter.x) * SCALE_FACTOR, (p.y - globalMinY) * SCALE_FACTOR, -(p.z - globalCenter.z) * SCALE_FACTOR);
+          m.visible = true;
+        } else {
+          m.visible = false;
+        }
+      });
+      skeletonConnections.forEach((c, i) => {
+        const [s, e] = c;
+        let sp, ep;
+        // 處理起點
+        if (s.startsWith('paddle_')) {
+          const paddlePoint = s.split('_')[1];
+          sp = frame.paddle && frame.paddle[paddlePoint];
+        } else {
+          sp = frame[s];
+        }
+        // 處理終點
+        if (e.startsWith('paddle_')) {
+          const paddlePoint = e.split('_')[1];
+          ep = frame.paddle && frame.paddle[paddlePoint];
+        } else {
+          ep = frame[e];
+        }
+        if (validPoint(sp) && validPoint(ep) && visibilityState[s] && visibilityState[e]) {
+          const positions = [
+            (sp.x - globalCenter.x) * SCALE_FACTOR,
+            (sp.y - globalMinY) * SCALE_FACTOR,
+            -(sp.z - globalCenter.z) * SCALE_FACTOR,
+            (ep.x - globalCenter.x) * SCALE_FACTOR,
+            (ep.y - globalMinY) * SCALE_FACTOR,
+            -(ep.z - globalCenter.z) * SCALE_FACTOR
+          ];
+          lines[i].geometry.setPositions(positions);
+          if (typeof lines[i].computeLineDistances === 'function') {
+            lines[i].computeLineDistances();
+          }
+          lines[i].visible = true;
+
+          const bone = boneMeshes[i];
+          if (bone) {
+            const startVec = new THREE.Vector3(positions[0], positions[1], positions[2]);
+            const endVec = new THREE.Vector3(positions[3], positions[4], positions[5]);
+            const dir = new THREE.Vector3().subVectors(endVec, startVec);
+            const length = dir.length();
+            if (length > 1e-4) {
+              const midPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
+              bone.visible = true;
+              bone.position.copy(midPoint);
+              bone.scale.set(1, length, 1);
+              bone.quaternion.setFromUnitVectors(boneUpVector, dir.normalize());
+            } else {
+              bone.visible = false;
+            }
+          }
+        } else {
+          lines[i].visible = false;
+          if (boneMeshes[i]) {
+            boneMeshes[i].visible = false;
+          }
+        }
+      });
+
+      updateMannequin();
+    }
+    
+    // 更新目前影格數據與顯示資訊
+    function updateFrame() {
+      document.getElementById('slider').value = currentFrame;
+
+      let frameInfoText = `frame: ${currentFrame}`;
+      if (window.hitFrames && window.hitFrames.includes(currentFrame)) {
+          frameInfoText += " [HIT]";
+          document.getElementById('frameInfo').style.color = '#00FFFF';
+      } else {
+          document.getElementById('frameInfo').style.color = 'white';
+      }
+      document.getElementById('frameInfo').textContent = frameInfoText;
+
+      updatePose(currentFrame);
+      const fb = document.getElementById('feedbackContent');
+      if (fb && fb.textContent.includes('Frame')) {
+          const rg = fb.textContent.match(/Frame (\d+)-(\d+)/);
+          if (rg) {
+              const [st, ed] = [parseInt(rg[1]), parseInt(rg[2])];
+              fb.style.background = (currentFrame >= st && currentFrame <= ed)
+                  ? 'rgba(255,0,0,0.3)' : 'rgba(42,42,42,0.7)';
+          }
+      }
+  }
+    
+    // 更新多檔案軌跡
+    function updateMultiTrajectories() {
+      multiFileTrajectories.lines.forEach(l => scene.remove(l));
+      multiFileTrajectories.lines.clear();
+      multiFileTrajectories.labels.forEach(lb => {
+        scene.remove(lb);
+        lb.element && lb.element.remove();
+      });
+      multiFileTrajectories.labels.clear();
+      if (!multiFileTrajectories.visible) return;
+      const fi = document.getElementById('dirInput');
+      if (!fi) return;
+      const all = Array.from(fi.files).filter(f => f.name.includes('(3D_trajectory_smoothed).json'))
+        .filter(f => !multiFileTrajectories.selectedFiles || multiFileTrajectories.selectedFiles.includes(f.name));
+      all.forEach(async (file, idx) => {
+        try {
+          const txt = await file.text();
+          const data = JSON.parse(txt.replace(/^\uFEFF/, '').replace(/:\s*NaN/g, ': null').trim());
+          const arr = (Array.isArray(data) ? data : [data]).map(fr => {
+            const p = fr.right_wrist;
+            if (!validPoint(p)) return null;
+            return new THREE.Vector3((p.x - globalCenter.x) * SCALE_FACTOR, (p.y - globalMinY) * SCALE_FACTOR, -(p.z - globalCenter.z) * SCALE_FACTOR);
+          }).filter(Boolean);
+          if (!arr.length) return;
+          const positions = [];
+          arr.forEach(v => positions.push(v.x, v.y, v.z));
+          const geo = new LineGeometry();
+          geo.setPositions(positions);
+          const mat = new LineMaterial({
+            color: generateColor(idx),
+            linewidth: 5,
+            transparent: true,
+            opacity: 1.0,
+            resolution: new THREE.Vector2(window.innerWidth, window.innerHeight)
+          });
+          const line = new Line2(geo, mat);
+          line.computeLineDistances();
+          scene.add(line);
+          multiFileTrajectories.lines.set(file.name, line);
+          const lastPoint = arr[arr.length - 1];
+          const div = document.createElement('div');
+          div.className = 'trajectory-label';
+          const num = file.name.match(/\d+/);
+          div.textContent = num ? num[0] : '';
+          div.style.color = generateColor(idx);
+          const lb = new CSS2DObject(div);
+          lb.position.copy(lastPoint);
+          scene.add(lb);
+          multiFileTrajectories.labels.set(file.name, lb);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    }
+    
+    // 隨機顏色產生器
+    function generateColor(i) {
+      const c = ['#39FF14', '#FF1493', '#00FFFF', '#FFD700', '#FF4500',
+        '#FF00FF', '#00FF00', '#FF69B4', '#1E90FF', '#32CD32',
+        '#FF6347', '#7B68EE'
+      ];
+      return c[i % c.length];
+    }
+    
+    // 事件監聽設定
+    function setupEventListeners() {
+      document.getElementById('slider').addEventListener('input', e => {
+        currentFrame = parseInt(e.target.value);
+        updateFrame();
+      });
+      document.getElementById('playButton').addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        const b = document.getElementById('playButton');
+        b.textContent = isPlaying ? 'stop' : 'play';
+        b.style.background = isPlaying ? '#f44336' : '#4CAF50';
+        if (isPlaying) {
+          clearInterval(frameInterval);
+          frameInterval = setInterval(() => {
+            currentFrame = (currentFrame + 1) % trajectoryData.length;
+            updateFrame();
+          }, 1000 / (30 * playbackSpeed));
+        } else {
+          clearInterval(frameInterval);
+        }
+      });
+
+        document.getElementById('toggleLanguage').addEventListener('click', async () => {
+          const feedbackContent = document.getElementById('feedbackContent');
+          const overallContent = document.getElementById('overallContent');
+          const toggleButton = document.getElementById('toggleLanguage');
+
+          if (!originalFeedbackContent || !originalOverallContent) {
+              // 第一次點擊時儲存兩個元素的原始內容
+              originalFeedbackContent = feedbackContent.textContent.trim();
+              originalOverallContent = overallContent.textContent.trim();
+          }
+
+          if (isTranslated) {
+              // 如果已翻譯，恢復原始內容
+              feedbackContent.textContent = originalFeedbackContent;
+              overallContent.textContent = originalOverallContent;
+              toggleButton.textContent = 'ENG'; // 按鈕顯示 "ENG"
+              isTranslated = false;
+          } else {
+              // 如果未翻譯，呼叫 API 進行翻譯
+              try {
+                  // 分別發送兩個內容的翻譯請求
+                  const [feedbackResponse, overallResponse] = await Promise.all([
+                      fetch(`${BASE_API}/translate?text=${encodeURIComponent(originalFeedbackContent)}`, {
+                          method: 'GET',
+                          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                          mode: 'cors'
+                      }),
+                      fetch(`${BASE_API}/translate?text=${encodeURIComponent(originalOverallContent)}`, {
+                          method: 'GET',
+                          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                          mode: 'cors'
+                      })
+                  ]);
+
+                  const feedbackData = await feedbackResponse.json();
+                  const overallData = await overallResponse.json();
+
+                  if (feedbackResponse.ok && feedbackData.status === 'success' &&
+                      overallResponse.ok && overallData.status === 'success') {
+                      feedbackContent.textContent = feedbackData.translated_text;
+                      overallContent.textContent = overallData.translated_text;
+                      toggleButton.textContent = ''; // 按鈕顯示 "原" 表示可恢復原狀
+                      isTranslated = true;
+                  } else {
+                      throw new Error('翻譯失敗');
+                  }
+              } catch (err) {
+                  showMsg('翻譯請求錯誤: ' + err.message, 'error');
+              }
+          }
+      });
+      document.getElementById('showFullTrajectoryButton').addEventListener('click', () => {
+        showingFullTrajectory = !showingFullTrajectory;
+        const btn = document.getElementById('showFullTrajectoryButton');
+        btn.textContent = showingFullTrajectory ? 'hide trajectory' : 'Show full trajectory';
+        btn.style.background = showingFullTrajectory ? '#f44336' : '#4CAF50';
+        if (showingFullTrajectory) calculateFullTrajectory();
+        else clearTrajectories();
+        updateFrame();
+      });
+      document.getElementById('speedControl').addEventListener('input', e => {
+        playbackSpeed = parseFloat(e.target.value);
+        document.getElementById('speedValue').textContent = playbackSpeed.toFixed(1) + 'x';
+        if (isPlaying) {
+          clearInterval(frameInterval);
+          frameInterval = setInterval(() => {
+            currentFrame = (currentFrame + 1) % trajectoryData.length;
+            updateFrame();
+          }, 1000 / (30 * playbackSpeed));
+        }
+      });
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        lines.forEach(l => {
+          if (l.material && l.material.resolution) {
+            l.material.resolution.set(window.innerWidth, window.innerHeight);
+          }
+        });
+        Object.values(trajectorySystem).forEach(t => {
+          if (t.line && t.line.material && t.line.material.resolution) {
+            t.line.material.resolution.set(window.innerWidth, window.innerHeight);
+          }
+        });
+        multiFileTrajectories.lines.forEach(l => {
+          if (l.material && l.material.resolution) {
+            l.material.resolution.set(window.innerWidth, window.innerHeight);
+          }
+        });
+      });
+    }
+    
+    // Feedback 區塊 Toggle 設定
+    function setupFeedbackToggle() {
+      const t = document.getElementById('feedbackToggle'),
+            g = document.getElementById('feedbackGroup');
+      t.addEventListener('click', () => g.classList.toggle('expanded'));
+    }
+    
+    // Control Panel Toggle 設定
+    function setupControlPanelToggle() {
+      const t = document.getElementById('controlPanelToggle'),
+            p = document.getElementById('controlPanel');
+      t.addEventListener('click', () => p.classList.toggle('expanded'));
+    }
+    
+    // 左側 Controls 面板 Toggle 設定
+    function setupToggleControls() {
+      const t = document.getElementById('toggleControls'),
+            c = document.getElementById('controls');
+      t.addEventListener('click', () => {
+        c.classList.toggle('expanded');
+        t.classList.toggle('expanded');
+      });
+    }
+    
+    // API 呼叫事件設定 (所有 api-form 表單共用)
+    function setupApiHandlers() {
+      const base = BASE_API;
+      document.querySelectorAll('.api-form').forEach(f => {
+        f.addEventListener('submit', async e => {
+            e.preventDefault();
+            // 清除該表單內的先前提示資訊
+            const form = e.target.closest('form');
+            form.querySelectorAll('.api-info').forEach(el => el.remove());
+            
+            const ep = f.dataset.endpoint;
+            const formData = new FormData(f);
+            const params = new URLSearchParams();
+            for (const [k, v] of formData.entries()) {
+              params.append(k, v);
+            }
+            const url = `${base}${ep}?${params}`;
+            
+            try {
+              const r = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                mode: 'cors'
+              });
+              const d = await r.json();
+              if (r.status === 200) {
+                showMsg('Success!', 'success');
+              } else {
+                throw new Error(d.detail || 'Request failed');
+              }
+              // 新增提示文字
+              const info = document.createElement("div");
+              info.className = "api-info";
+              info.style.color = "white";
+              info.style.fontSize = "10px";
+              info.textContent = `Input: ${JSON.stringify(Object.fromEntries(formData))} | Code: ${r.status} | Time: ${new Date().toLocaleTimeString()}`;
+              form.appendChild(info);
+            } catch (err) {
+              showMsg(err.message, 'error');
+            }
+        });
+      });
+    }
+    
+    // Auto 按鈕事件設定：依序呼叫三個 API
+    function setupAutoButton() {
+      document.getElementById("auto").addEventListener("click", async function(e) {
+        e.preventDefault();
+        // 清除該表單內的提示資訊
+        const form = this.parentElement;
+        form.querySelectorAll(".api-info").forEach(el => el.remove());
+        
+        try {
+          // 呼叫 start_recording
+          let response = await fetch(`${BASE_API}/start_recording`, {
+            method: "GET",
+            headers: { "Accept": "application/json", "Content-Type": "application/json" },
+            mode: "cors"
+          });
+          if (!response.ok) throw new Error("start_recording failed");
+          showMsg("start_recording success", "success");
+          let info = document.createElement("div");
+          info.className = "api-info";
+          info.style.fontSize = "10px";
+          info.style.color = "#4CAF50";
+          info.textContent = `Time: ${new Date().toLocaleTimeString()} | Code: ${response.status}`;
+          form.appendChild(info);
+          
+          // 等待 2秒
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // 呼叫 stop_recording
+          response = await fetch(`${BASE_API}/stop_recording`, {
+            method: "GET",
+            headers: { "Accept": "application/json", "Content-Type": "application/json" },
+            mode: "cors"
+          });
+          if (!response.ok) throw new Error("stop_recording failed");
+          showMsg("stop_recording success", "success");
+          info = document.createElement("div");
+          info.className = "api-info";
+          info.style.color = "#4CAF50";
+          info.style.fontSize = "10px";
+          info.textContent = `Time: ${new Date().toLocaleTimeString()} | Code: ${response.status}`;
+          form.appendChild(info);
+          
+          // 等待 1秒
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // 呼叫 download
+          response = await await fetch(`${BASE_API}/download`, {
+            method: "GET",
+            headers: { "Accept": "application/json", "Content-Type": "application/json" },
+            mode: "cors"
+          });
+          if (!response.ok) throw new Error("download failed");
+          showMsg("download success", "success");
+          info = document.createElement("div");
+          info.className = "api-info";
+          info.style.color = "#4CAF50";
+          info.style.fontSize = "10px";
+          info.textContent = `Time: ${new Date().toLocaleTimeString()} | Code: ${response.status}`;
+          form.appendChild(info);
+          
+        } catch (err) {
+          showMsg(err.message, "error");
+        }
+      });
+    }
+    
+    // Trajectory Analysis 按鈕事件設定：出現 confirm 視窗，按下是後執行 API 呼叫並在按鈕下方顯示 status code
+    document.getElementById("trajectoryAnalysis").addEventListener("click", async function(e) {
+        const container = this.parentElement;
+        container.querySelectorAll(".api-info").forEach(el => el.remove());
+
+        const proceed = confirm("analyze all track contents?");
+        if (!proceed) return;
+
+        const button = this;
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.textContent = "Processing...";
+
+        try {
+            const response = await fetch(`${BASE_API}/gpt_response`);
+            const data = await response.json();
+
+            const info = document.createElement("div");
+            info.className = "api-info";
+            info.style.fontSize = "10px";
+            info.style.color = "#4CAF50";
+            info.textContent = `Status code: ${response.status}`;
+            container.appendChild(info);
+
+            if (data.status === "success") {
+                overallContent.textContent = data.conclusion;
+                originalOverallContent = data.conclusion; // 更新原始內容
+                if (isTranslated) {
+                    isTranslated = false;
+                    document.getElementById('toggleLanguage').textContent = 'ENG';
+                }
+            } else {
+                overallContent.textContent = "分析失敗，請稍後再試。";
+            }
+        } catch (error) {
+            document.getElementById("overallContent").textContent = "Error: " + error;
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    });
+    
+    // Queue Status 按鈕事件設定
+    document.getElementById("queueStatusButton").addEventListener("click", async function(e) {
+      e.preventDefault();
+      const form = e.target.closest('form');
+      form.querySelectorAll(".api-info").forEach(el => el.remove());
+      
+      try {
+        const response = await fetch(`${BASE_API}/queue_status`, {
+          method: "GET",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          mode: "cors"
+        });
+        const data = await response.json();
+        // 若 status 為 200，則使用 error 類別 (紅色)；否則使用 success (綠色)
+        const type = response.status === 200 ? "success" : "error";
+        showMsg("Queue Status:\n" + JSON.stringify(data, null, 2), type);
+        
+        const info = document.createElement("div");
+        info.className = "api-info";
+        info.style.color = "#4CAF50";
+        info.style.fontSize = "10px";
+        info.textContent = `Time: ${new Date().toLocaleTimeString()} | Code: ${response.status}`;
+        form.appendChild(info);
+      } catch (err) {
+        showMsg("Error: " + err.message, "error");
+      }
+    });
+    
+    // 通知訊息函式：顯示全局提示
+    function showMsg(msg, type) {
+      const old = document.querySelector('.notification');
+      old && old.remove();
+      const div = document.createElement('div');
+      div.className = `notification ${type}`;
+      div.textContent = msg;
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 3000);
+    }
+    
+    // 動畫迴圈：持續更新渲染畫面
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    }
+    
+    // 初始化：建立場景、控制器與各種設定
+    init();
+  </script>
+</body>
+</html>

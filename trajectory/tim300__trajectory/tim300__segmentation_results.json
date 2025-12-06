@@ -1,0 +1,64 @@
+{
+  "side_segments": [
+    {
+      "segment_number": 1,
+      "file_path": "trajectory\\tim300__trajectory\\segments\\tim300__1_side_segment.mp4",
+      "start_time": 0.9014,
+      "end_time": 2.5858166666666667,
+      "duration": 1.6844166666666667,
+      "entry_time": 1.4014,
+      "exit_time": 2.4858166666666666
+    }
+  ],
+  "deg45_segments": [
+    {
+      "segment_number": 1,
+      "file_path": "trajectory\\tim300__trajectory\\segments\\tim300__1_45_segment.mp4",
+      "start_time": 0.9848166666666667,
+      "end_time": 2.6191833333333334,
+      "duration": 1.6343666666666667,
+      "entry_time": 1.4848166666666667,
+      "exit_time": 2.5191833333333333
+    }
+  ],
+  "ball_pairs": [
+    {
+      "ball_number": 1,
+      "side_data": {
+        "entry_time": 1.4014,
+        "exit_time": 2.4858166666666666,
+        "segment": {
+          "segment_number": 1,
+          "file_path": "trajectory\\tim300__trajectory\\segments\\tim300__1_side_segment.mp4",
+          "start_time": 0.9014,
+          "end_time": 2.5858166666666667,
+          "duration": 1.6844166666666667,
+          "entry_time": 1.4014,
+          "exit_time": 2.4858166666666666
+        }
+      },
+      "deg45_data": {
+        "entry_time": 1.4848166666666667,
+        "exit_time": 2.5191833333333333,
+        "segment": {
+          "segment_number": 1,
+          "file_path": "trajectory\\tim300__trajectory\\segments\\tim300__1_45_segment.mp4",
+          "start_time": 0.9848166666666667,
+          "end_time": 2.6191833333333334,
+          "duration": 1.6343666666666667,
+          "entry_time": 1.4848166666666667,
+          "exit_time": 2.5191833333333333
+        }
+      },
+      "time_difference": 0.0834166666666667,
+      "status": "paired"
+    }
+  ],
+  "parameters": {
+    "detection_area": "right_upper_two_thirds",
+    "enable_exit_detection": true,
+    "exit_timeout": 1.5,
+    "confidence_threshold": 0.5,
+    "ball_entry_direction": "right"
+  }
+}

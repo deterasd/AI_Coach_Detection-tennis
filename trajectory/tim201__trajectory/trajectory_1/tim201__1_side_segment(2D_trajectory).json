@@ -1,0 +1,2627 @@
+[
+  {
+    "frame": 0,
+    "tennis_ball": {
+      "x": 1620,
+      "y": 1258
+    },
+    "nose": {
+      "x": 381,
+      "y": 959
+    },
+    "left_eye": {
+      "x": 402,
+      "y": 942
+    },
+    "right_eye": {
+      "x": 368,
+      "y": 942
+    },
+    "left_ear": {
+      "x": 435,
+      "y": 966
+    },
+    "right_ear": {
+      "x": 352,
+      "y": 967
+    },
+    "left_shoulder": {
+      "x": 503,
+      "y": 1071
+    },
+    "right_shoulder": {
+      "x": 271,
+      "y": 1101
+    },
+    "left_elbow": {
+      "x": 536,
+      "y": 1100
+    },
+    "right_elbow": {
+      "x": 134,
+      "y": 1192
+    },
+    "left_wrist": {
+      "x": 417,
+      "y": 963
+    },
+    "right_wrist": {
+      "x": 80,
+      "y": 1093
+    },
+    "left_hip": {
+      "x": 487,
+      "y": 1424
+    },
+    "right_hip": {
+      "x": 333,
+      "y": 1437
+    },
+    "left_knee": {
+      "x": 523,
+      "y": 1659
+    },
+    "right_knee": {
+      "x": 348,
+      "y": 1684
+    },
+    "left_ankle": {
+      "x": 516,
+      "y": 1869
+    },
+    "right_ankle": {
+      "x": 366,
+      "y": 1920
+    }
+  },
+  {
+    "frame": 1,
+    "tennis_ball": {
+      "x": 1542,
+      "y": 1235
+    },
+    "nose": {
+      "x": 382,
+      "y": 962
+    },
+    "left_eye": {
+      "x": 403,
+      "y": 945
+    },
+    "right_eye": {
+      "x": 368,
+      "y": 945
+    },
+    "left_ear": {
+      "x": 437,
+      "y": 968
+    },
+    "right_ear": {
+      "x": 351,
+      "y": 969
+    },
+    "left_shoulder": {
+      "x": 503,
+      "y": 1077
+    },
+    "right_shoulder": {
+      "x": 275,
+      "y": 1106
+    },
+    "left_elbow": {
+      "x": 545,
+      "y": 1106
+    },
+    "right_elbow": {
+      "x": 141,
+      "y": 1198
+    },
+    "left_wrist": {
+      "x": 431,
+      "y": 977
+    },
+    "right_wrist": {
+      "x": 77,
+      "y": 1113
+    },
+    "left_hip": {
+      "x": 489,
+      "y": 1426
+    },
+    "right_hip": {
+      "x": 338,
+      "y": 1440
+    },
+    "left_knee": {
+      "x": 528,
+      "y": 1659
+    },
+    "right_knee": {
+      "x": 349,
+      "y": 1689
+    },
+    "left_ankle": {
+      "x": 528,
+      "y": 1863
+    },
+    "right_ankle": {
+      "x": 365,
+      "y": 1920
+    }
+  },
+  {
+    "frame": 2,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 345,
+      "y": 972
+    },
+    "left_eye": {
+      "x": 368,
+      "y": 954
+    },
+    "right_eye": {
+      "x": 339,
+      "y": 954
+    },
+    "left_ear": {
+      "x": 420,
+      "y": 971
+    },
+    "right_ear": {
+      "x": 345,
+      "y": 974
+    },
+    "left_shoulder": {
+      "x": 501,
+      "y": 1077
+    },
+    "right_shoulder": {
+      "x": 287,
+      "y": 1106
+    },
+    "left_elbow": {
+      "x": 555,
+      "y": 1118
+    },
+    "right_elbow": {
+      "x": 154,
+      "y": 1203
+    },
+    "left_wrist": {
+      "x": 442,
+      "y": 1000
+    },
+    "right_wrist": {
+      "x": 75,
+      "y": 1132
+    },
+    "left_hip": {
+      "x": 487,
+      "y": 1425
+    },
+    "right_hip": {
+      "x": 344,
+      "y": 1437
+    },
+    "left_knee": {
+      "x": 528,
+      "y": 1657
+    },
+    "right_knee": {
+      "x": 353,
+      "y": 1686
+    },
+    "left_ankle": {
+      "x": 541,
+      "y": 1858
+    },
+    "right_ankle": {
+      "x": 366,
+      "y": 1917
+    }
+  },
+  {
+    "frame": 3,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 374,
+      "y": 984
+    },
+    "left_eye": {
+      "x": 393,
+      "y": 965
+    },
+    "right_eye": {
+      "x": 362,
+      "y": 966
+    },
+    "left_ear": {
+      "x": 432,
+      "y": 978
+    },
+    "right_ear": {
+      "x": 354,
+      "y": 984
+    },
+    "left_shoulder": {
+      "x": 509,
+      "y": 1080
+    },
+    "right_shoulder": {
+      "x": 292,
+      "y": 1107
+    },
+    "left_elbow": {
+      "x": 562,
+      "y": 1128
+    },
+    "right_elbow": {
+      "x": 168,
+      "y": 1205
+    },
+    "left_wrist": {
+      "x": 454,
+      "y": 1023
+    },
+    "right_wrist": {
+      "x": 83,
+      "y": 1152
+    },
+    "left_hip": {
+      "x": 495,
+      "y": 1425
+    },
+    "right_hip": {
+      "x": 350,
+      "y": 1435
+    },
+    "left_knee": {
+      "x": 540,
+      "y": 1659
+    },
+    "right_knee": {
+      "x": 358,
+      "y": 1680
+    },
+    "left_ankle": {
+      "x": 556,
+      "y": 1869
+    },
+    "right_ankle": {
+      "x": 367,
+      "y": 1914
+    }
+  },
+  {
+    "frame": 4,
+    "tennis_ball": {
+      "x": 1314,
+      "y": 1184
+    },
+    "nose": {
+      "x": 393,
+      "y": 978
+    },
+    "left_eye": {
+      "x": 411,
+      "y": 959
+    },
+    "right_eye": {
+      "x": 375,
+      "y": 960
+    },
+    "left_ear": {
+      "x": 441,
+      "y": 972
+    },
+    "right_ear": {
+      "x": 350,
+      "y": 978
+    },
+    "left_shoulder": {
+      "x": 508,
+      "y": 1078
+    },
+    "right_shoulder": {
+      "x": 292,
+      "y": 1110
+    },
+    "left_elbow": {
+      "x": 564,
+      "y": 1138
+    },
+    "right_elbow": {
+      "x": 190,
+      "y": 1225
+    },
+    "left_wrist": {
+      "x": 456,
+      "y": 1029
+    },
+    "right_wrist": {
+      "x": 86,
+      "y": 1167
+    },
+    "left_hip": {
+      "x": 502,
+      "y": 1425
+    },
+    "right_hip": {
+      "x": 356,
+      "y": 1437
+    },
+    "left_knee": {
+      "x": 547,
+      "y": 1663
+    },
+    "right_knee": {
+      "x": 359,
+      "y": 1684
+    },
+    "left_ankle": {
+      "x": 560,
+      "y": 1864
+    },
+    "right_ankle": {
+      "x": 367,
+      "y": 1912
+    }
+  },
+  {
+    "frame": 5,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 365,
+      "y": 979
+    },
+    "left_eye": {
+      "x": 392,
+      "y": 958
+    },
+    "right_eye": {
+      "x": 348,
+      "y": 960
+    },
+    "left_ear": {
+      "x": 446,
+      "y": 973
+    },
+    "right_ear": {
+      "x": 336,
+      "y": 978
+    },
+    "left_shoulder": {
+      "x": 512,
+      "y": 1088
+    },
+    "right_shoulder": {
+      "x": 305,
+      "y": 1114
+    },
+    "left_elbow": {
+      "x": 569,
+      "y": 1155
+    },
+    "right_elbow": {
+      "x": 199,
+      "y": 1224
+    },
+    "left_wrist": {
+      "x": 464,
+      "y": 1041
+    },
+    "right_wrist": {
+      "x": 78,
+      "y": 1170
+    },
+    "left_hip": {
+      "x": 501,
+      "y": 1426
+    },
+    "right_hip": {
+      "x": 360,
+      "y": 1434
+    },
+    "left_knee": {
+      "x": 551,
+      "y": 1665
+    },
+    "right_knee": {
+      "x": 360,
+      "y": 1683
+    },
+    "left_ankle": {
+      "x": 573,
+      "y": 1870
+    },
+    "right_ankle": {
+      "x": 366,
+      "y": 1918
+    }
+  },
+  {
+    "frame": 6,
+    "tennis_ball": {
+      "x": 1165,
+      "y": 1164
+    },
+    "nose": {
+      "x": 381,
+      "y": 998
+    },
+    "left_eye": {
+      "x": 405,
+      "y": 978
+    },
+    "right_eye": {
+      "x": 366,
+      "y": 978
+    },
+    "left_ear": {
+      "x": 450,
+      "y": 985
+    },
+    "right_ear": {
+      "x": 352,
+      "y": 987
+    },
+    "left_shoulder": {
+      "x": 517,
+      "y": 1089
+    },
+    "right_shoulder": {
+      "x": 312,
+      "y": 1110
+    },
+    "left_elbow": {
+      "x": 582,
+      "y": 1170
+    },
+    "right_elbow": {
+      "x": 205,
+      "y": 1224
+    },
+    "left_wrist": {
+      "x": 486,
+      "y": 1065
+    },
+    "right_wrist": {
+      "x": 82,
+      "y": 1185
+    },
+    "left_hip": {
+      "x": 507,
+      "y": 1431
+    },
+    "right_hip": {
+      "x": 367,
+      "y": 1437
+    },
+    "left_knee": {
+      "x": 559,
+      "y": 1669
+    },
+    "right_knee": {
+      "x": 367,
+      "y": 1687
+    },
+    "left_ankle": {
+      "x": 576,
+      "y": 1870
+    },
+    "right_ankle": {
+      "x": 365,
+      "y": 1921
+    }
+  },
+  {
+    "frame": 7,
+    "tennis_ball": {
+      "x": 1093,
+      "y": 1150
+    },
+    "nose": {
+      "x": 449,
+      "y": 978
+    },
+    "left_eye": {
+      "x": 459,
+      "y": 958
+    },
+    "right_eye": {
+      "x": 426,
+      "y": 960
+    },
+    "left_ear": {
+      "x": 468,
+      "y": 974
+    },
+    "right_ear": {
+      "x": 369,
+      "y": 981
+    },
+    "left_shoulder": {
+      "x": 522,
+      "y": 1088
+    },
+    "right_shoulder": {
+      "x": 305,
+      "y": 1112
+    },
+    "left_elbow": {
+      "x": 595,
+      "y": 1173
+    },
+    "right_elbow": {
+      "x": 212,
+      "y": 1236
+    },
+    "left_wrist": {
+      "x": 490,
+      "y": 1073
+    },
+    "right_wrist": {
+      "x": 75,
+      "y": 1196
+    },
+    "left_hip": {
+      "x": 521,
+      "y": 1425
+    },
+    "right_hip": {
+      "x": 373,
+      "y": 1433
+    },
+    "left_knee": {
+      "x": 567,
+      "y": 1668
+    },
+    "right_knee": {
+      "x": 375,
+      "y": 1681
+    },
+    "left_ankle": {
+      "x": 576,
+      "y": 1875
+    },
+    "right_ankle": {
+      "x": 365,
+      "y": 1914
+    }
+  },
+  {
+    "frame": 8,
+    "tennis_ball": {
+      "x": 1017,
+      "y": 1146
+    },
+    "nose": {
+      "x": 435,
+      "y": 981
+    },
+    "left_eye": {
+      "x": 453,
+      "y": 960
+    },
+    "right_eye": {
+      "x": 411,
+      "y": 961
+    },
+    "left_ear": {
+      "x": 476,
+      "y": 971
+    },
+    "right_ear": {
+      "x": 362,
+      "y": 977
+    },
+    "left_shoulder": {
+      "x": 529,
+      "y": 1088
+    },
+    "right_shoulder": {
+      "x": 313,
+      "y": 1112
+    },
+    "left_elbow": {
+      "x": 600,
+      "y": 1189
+    },
+    "right_elbow": {
+      "x": 217,
+      "y": 1247
+    },
+    "left_wrist": {
+      "x": 505,
+      "y": 1099
+    },
+    "right_wrist": {
+      "x": 81,
+      "y": 1210
+    },
+    "left_hip": {
+      "x": 525,
+      "y": 1423
+    },
+    "right_hip": {
+      "x": 379,
+      "y": 1432
+    },
+    "left_knee": {
+      "x": 573,
+      "y": 1665
+    },
+    "right_knee": {
+      "x": 372,
+      "y": 1686
+    },
+    "left_ankle": {
+      "x": 583,
+      "y": 1869
+    },
+    "right_ankle": {
+      "x": 359,
+      "y": 1920
+    }
+  },
+  {
+    "frame": 9,
+    "tennis_ball": {
+      "x": 944,
+      "y": 1143
+    },
+    "nose": {
+      "x": 438,
+      "y": 972
+    },
+    "left_eye": {
+      "x": 457,
+      "y": 951
+    },
+    "right_eye": {
+      "x": 415,
+      "y": 952
+    },
+    "left_ear": {
+      "x": 481,
+      "y": 965
+    },
+    "right_ear": {
+      "x": 368,
+      "y": 969
+    },
+    "left_shoulder": {
+      "x": 532,
+      "y": 1086
+    },
+    "right_shoulder": {
+      "x": 320,
+      "y": 1108
+    },
+    "left_elbow": {
+      "x": 602,
+      "y": 1192
+    },
+    "right_elbow": {
+      "x": 220,
+      "y": 1255
+    },
+    "left_wrist": {
+      "x": 503,
+      "y": 1089
+    },
+    "right_wrist": {
+      "x": 77,
+      "y": 1231
+    },
+    "left_hip": {
+      "x": 532,
+      "y": 1419
+    },
+    "right_hip": {
+      "x": 386,
+      "y": 1427
+    },
+    "left_knee": {
+      "x": 575,
+      "y": 1666
+    },
+    "right_knee": {
+      "x": 374,
+      "y": 1687
+    },
+    "left_ankle": {
+      "x": 585,
+      "y": 1869
+    },
+    "right_ankle": {
+      "x": 358,
+      "y": 1923
+    }
+  },
+  {
+    "frame": 10,
+    "tennis_ball": {
+      "x": 871,
+      "y": 1140
+    },
+    "nose": {
+      "x": 452,
+      "y": 966
+    },
+    "left_eye": {
+      "x": 469,
+      "y": 946
+    },
+    "right_eye": {
+      "x": 427,
+      "y": 948
+    },
+    "left_ear": {
+      "x": 492,
+      "y": 963
+    },
+    "right_ear": {
+      "x": 377,
+      "y": 969
+    },
+    "left_shoulder": {
+      "x": 544,
+      "y": 1091
+    },
+    "right_shoulder": {
+      "x": 329,
+      "y": 1111
+    },
+    "left_elbow": {
+      "x": 611,
+      "y": 1205
+    },
+    "right_elbow": {
+      "x": 226,
+      "y": 1254
+    },
+    "left_wrist": {
+      "x": 513,
+      "y": 1119
+    },
+    "right_wrist": {
+      "x": 81,
+      "y": 1236
+    },
+    "left_hip": {
+      "x": 539,
+      "y": 1422
+    },
+    "right_hip": {
+      "x": 392,
+      "y": 1428
+    },
+    "left_knee": {
+      "x": 581,
+      "y": 1671
+    },
+    "right_knee": {
+      "x": 378,
+      "y": 1690
+    },
+    "left_ankle": {
+      "x": 587,
+      "y": 1869
+    },
+    "right_ankle": {
+      "x": 354,
+      "y": 1918
+    }
+  },
+  {
+    "frame": 11,
+    "tennis_ball": {
+      "x": 797,
+      "y": 1141
+    },
+    "nose": {
+      "x": 461,
+      "y": 960
+    },
+    "left_eye": {
+      "x": 478,
+      "y": 939
+    },
+    "right_eye": {
+      "x": 433,
+      "y": 942
+    },
+    "left_ear": {
+      "x": 501,
+      "y": 956
+    },
+    "right_ear": {
+      "x": 380,
+      "y": 964
+    },
+    "left_shoulder": {
+      "x": 552,
+      "y": 1089
+    },
+    "right_shoulder": {
+      "x": 336,
+      "y": 1108
+    },
+    "left_elbow": {
+      "x": 618,
+      "y": 1207
+    },
+    "right_elbow": {
+      "x": 240,
+      "y": 1255
+    },
+    "left_wrist": {
+      "x": 519,
+      "y": 1128
+    },
+    "right_wrist": {
+      "x": 108,
+      "y": 1252
+    },
+    "left_hip": {
+      "x": 546,
+      "y": 1423
+    },
+    "right_hip": {
+      "x": 398,
+      "y": 1428
+    },
+    "left_knee": {
+      "x": 587,
+      "y": 1674
+    },
+    "right_knee": {
+      "x": 384,
+      "y": 1690
+    },
+    "left_ankle": {
+      "x": 588,
+      "y": 1872
+    },
+    "right_ankle": {
+      "x": 356,
+      "y": 1917
+    }
+  },
+  {
+    "frame": 12,
+    "tennis_ball": {
+      "x": 725,
+      "y": 1143
+    },
+    "nose": {
+      "x": 457,
+      "y": 952
+    },
+    "left_eye": {
+      "x": 476,
+      "y": 931
+    },
+    "right_eye": {
+      "x": 429,
+      "y": 934
+    },
+    "left_ear": {
+      "x": 504,
+      "y": 948
+    },
+    "right_ear": {
+      "x": 382,
+      "y": 958
+    },
+    "left_shoulder": {
+      "x": 560,
+      "y": 1083
+    },
+    "right_shoulder": {
+      "x": 343,
+      "y": 1105
+    },
+    "left_elbow": {
+      "x": 622,
+      "y": 1209
+    },
+    "right_elbow": {
+      "x": 254,
+      "y": 1260
+    },
+    "left_wrist": {
+      "x": 525,
+      "y": 1140
+    },
+    "right_wrist": {
+      "x": 126,
+      "y": 1253
+    },
+    "left_hip": {
+      "x": 550,
+      "y": 1419
+    },
+    "right_hip": {
+      "x": 403,
+      "y": 1425
+    },
+    "left_knee": {
+      "x": 592,
+      "y": 1671
+    },
+    "right_knee": {
+      "x": 388,
+      "y": 1683
+    },
+    "left_ankle": {
+      "x": 586,
+      "y": 1872
+    },
+    "right_ankle": {
+      "x": 358,
+      "y": 1911
+    }
+  },
+  {
+    "frame": 13,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 468,
+      "y": 951
+    },
+    "left_eye": {
+      "x": 485,
+      "y": 930
+    },
+    "right_eye": {
+      "x": 441,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 509,
+      "y": 946
+    },
+    "right_ear": {
+      "x": 391,
+      "y": 954
+    },
+    "left_shoulder": {
+      "x": 561,
+      "y": 1080
+    },
+    "right_shoulder": {
+      "x": 350,
+      "y": 1099
+    },
+    "left_elbow": {
+      "x": 619,
+      "y": 1206
+    },
+    "right_elbow": {
+      "x": 266,
+      "y": 1258
+    },
+    "left_wrist": {
+      "x": 520,
+      "y": 1137
+    },
+    "right_wrist": {
+      "x": 141,
+      "y": 1260
+    },
+    "left_hip": {
+      "x": 552,
+      "y": 1413
+    },
+    "right_hip": {
+      "x": 407,
+      "y": 1417
+    },
+    "left_knee": {
+      "x": 595,
+      "y": 1671
+    },
+    "right_knee": {
+      "x": 393,
+      "y": 1678
+    },
+    "left_ankle": {
+      "x": 587,
+      "y": 1876
+    },
+    "right_ankle": {
+      "x": 358,
+      "y": 1909
+    }
+  },
+  {
+    "frame": 14,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 474,
+      "y": 949
+    },
+    "left_eye": {
+      "x": 489,
+      "y": 927
+    },
+    "right_eye": {
+      "x": 446,
+      "y": 930
+    },
+    "left_ear": {
+      "x": 512,
+      "y": 942
+    },
+    "right_ear": {
+      "x": 396,
+      "y": 951
+    },
+    "left_shoulder": {
+      "x": 563,
+      "y": 1074
+    },
+    "right_shoulder": {
+      "x": 357,
+      "y": 1092
+    },
+    "left_elbow": {
+      "x": 616,
+      "y": 1203
+    },
+    "right_elbow": {
+      "x": 277,
+      "y": 1256
+    },
+    "left_wrist": {
+      "x": 519,
+      "y": 1140
+    },
+    "right_wrist": {
+      "x": 161,
+      "y": 1261
+    },
+    "left_hip": {
+      "x": 556,
+      "y": 1407
+    },
+    "right_hip": {
+      "x": 414,
+      "y": 1411
+    },
+    "left_knee": {
+      "x": 597,
+      "y": 1665
+    },
+    "right_knee": {
+      "x": 399,
+      "y": 1672
+    },
+    "left_ankle": {
+      "x": 586,
+      "y": 1876
+    },
+    "right_ankle": {
+      "x": 358,
+      "y": 1908
+    }
+  },
+  {
+    "frame": 15,
+    "tennis_ball": {
+      "x": 514,
+      "y": 1163
+    },
+    "nose": {
+      "x": 480,
+      "y": 959
+    },
+    "left_eye": {
+      "x": 497,
+      "y": 938
+    },
+    "right_eye": {
+      "x": 453,
+      "y": 939
+    },
+    "left_ear": {
+      "x": 521,
+      "y": 945
+    },
+    "right_ear": {
+      "x": 402,
+      "y": 949
+    },
+    "left_shoulder": {
+      "x": 564,
+      "y": 1066
+    },
+    "right_shoulder": {
+      "x": 362,
+      "y": 1080
+    },
+    "left_elbow": {
+      "x": 613,
+      "y": 1182
+    },
+    "right_elbow": {
+      "x": 292,
+      "y": 1245
+    },
+    "left_wrist": {
+      "x": 513,
+      "y": 1095
+    },
+    "right_wrist": {
+      "x": 188,
+      "y": 1263
+    },
+    "left_hip": {
+      "x": 555,
+      "y": 1400
+    },
+    "right_hip": {
+      "x": 413,
+      "y": 1401
+    },
+    "left_knee": {
+      "x": 600,
+      "y": 1662
+    },
+    "right_knee": {
+      "x": 403,
+      "y": 1665
+    },
+    "left_ankle": {
+      "x": 586,
+      "y": 1875
+    },
+    "right_ankle": {
+      "x": 362,
+      "y": 1906
+    }
+  },
+  {
+    "frame": 16,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 490,
+      "y": 968
+    },
+    "left_eye": {
+      "x": 505,
+      "y": 947
+    },
+    "right_eye": {
+      "x": 463,
+      "y": 947
+    },
+    "left_ear": {
+      "x": 525,
+      "y": 948
+    },
+    "right_ear": {
+      "x": 407,
+      "y": 951
+    },
+    "left_shoulder": {
+      "x": 562,
+      "y": 1056
+    },
+    "right_shoulder": {
+      "x": 364,
+      "y": 1075
+    },
+    "left_elbow": {
+      "x": 602,
+      "y": 1158
+    },
+    "right_elbow": {
+      "x": 303,
+      "y": 1240
+    },
+    "left_wrist": {
+      "x": 492,
+      "y": 1068
+    },
+    "right_wrist": {
+      "x": 208,
+      "y": 1260
+    },
+    "left_hip": {
+      "x": 555,
+      "y": 1395
+    },
+    "right_hip": {
+      "x": 415,
+      "y": 1398
+    },
+    "left_knee": {
+      "x": 603,
+      "y": 1662
+    },
+    "right_knee": {
+      "x": 408,
+      "y": 1665
+    },
+    "left_ankle": {
+      "x": 582,
+      "y": 1873
+    },
+    "right_ankle": {
+      "x": 367,
+      "y": 1903
+    }
+  },
+  {
+    "frame": 17,
+    "tennis_ball": {
+      "x": 368,
+      "y": 1188
+    },
+    "nose": {
+      "x": 497,
+      "y": 957
+    },
+    "left_eye": {
+      "x": 510,
+      "y": 937
+    },
+    "right_eye": {
+      "x": 471,
+      "y": 938
+    },
+    "left_ear": {
+      "x": 523,
+      "y": 942
+    },
+    "right_ear": {
+      "x": 411,
+      "y": 946
+    },
+    "left_shoulder": {
+      "x": 562,
+      "y": 1051
+    },
+    "right_shoulder": {
+      "x": 364,
+      "y": 1074
+    },
+    "left_elbow": {
+      "x": 603,
+      "y": 1145
+    },
+    "right_elbow": {
+      "x": 309,
+      "y": 1231
+    },
+    "left_wrist": {
+      "x": 485,
+      "y": 1071
+    },
+    "right_wrist": {
+      "x": 232,
+      "y": 1257
+    },
+    "left_hip": {
+      "x": 560,
+      "y": 1392
+    },
+    "right_hip": {
+      "x": 419,
+      "y": 1396
+    },
+    "left_knee": {
+      "x": 605,
+      "y": 1659
+    },
+    "right_knee": {
+      "x": 414,
+      "y": 1663
+    },
+    "left_ankle": {
+      "x": 584,
+      "y": 1873
+    },
+    "right_ankle": {
+      "x": 371,
+      "y": 1899
+    }
+  },
+  {
+    "frame": 18,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 504,
+      "y": 953
+    },
+    "left_eye": {
+      "x": 515,
+      "y": 933
+    },
+    "right_eye": {
+      "x": 479,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 524,
+      "y": 937
+    },
+    "right_ear": {
+      "x": 417,
+      "y": 941
+    },
+    "left_shoulder": {
+      "x": 562,
+      "y": 1046
+    },
+    "right_shoulder": {
+      "x": 363,
+      "y": 1070
+    },
+    "left_elbow": {
+      "x": 602,
+      "y": 1137
+    },
+    "right_elbow": {
+      "x": 309,
+      "y": 1229
+    },
+    "left_wrist": {
+      "x": 488,
+      "y": 1068
+    },
+    "right_wrist": {
+      "x": 253,
+      "y": 1246
+    },
+    "left_hip": {
+      "x": 561,
+      "y": 1389
+    },
+    "right_hip": {
+      "x": 421,
+      "y": 1395
+    },
+    "left_knee": {
+      "x": 605,
+      "y": 1657
+    },
+    "right_knee": {
+      "x": 418,
+      "y": 1663
+    },
+    "left_ankle": {
+      "x": 580,
+      "y": 1873
+    },
+    "right_ankle": {
+      "x": 374,
+      "y": 1897
+    }
+  },
+  {
+    "frame": 19,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 506,
+      "y": 959
+    },
+    "left_eye": {
+      "x": 517,
+      "y": 939
+    },
+    "right_eye": {
+      "x": 482,
+      "y": 939
+    },
+    "left_ear": {
+      "x": 526,
+      "y": 939
+    },
+    "right_ear": {
+      "x": 421,
+      "y": 941
+    },
+    "left_shoulder": {
+      "x": 565,
+      "y": 1039
+    },
+    "right_shoulder": {
+      "x": 363,
+      "y": 1065
+    },
+    "left_elbow": {
+      "x": 600,
+      "y": 1125
+    },
+    "right_elbow": {
+      "x": 317,
+      "y": 1224
+    },
+    "left_wrist": {
+      "x": 484,
+      "y": 1059
+    },
+    "right_wrist": {
+      "x": 297,
+      "y": 1219
+    },
+    "left_hip": {
+      "x": 564,
+      "y": 1383
+    },
+    "right_hip": {
+      "x": 421,
+      "y": 1390
+    },
+    "left_knee": {
+      "x": 606,
+      "y": 1654
+    },
+    "right_knee": {
+      "x": 419,
+      "y": 1660
+    },
+    "left_ankle": {
+      "x": 578,
+      "y": 1872
+    },
+    "right_ankle": {
+      "x": 381,
+      "y": 1891
+    }
+  },
+  {
+    "frame": 20,
+    "tennis_ball": {
+      "x": 200,
+      "y": 1234
+    },
+    "nose": {
+      "x": 510,
+      "y": 957
+    },
+    "left_eye": {
+      "x": 519,
+      "y": 936
+    },
+    "right_eye": {
+      "x": 487,
+      "y": 936
+    },
+    "left_ear": {
+      "x": 525,
+      "y": 939
+    },
+    "right_ear": {
+      "x": 426,
+      "y": 941
+    },
+    "left_shoulder": {
+      "x": 567,
+      "y": 1039
+    },
+    "right_shoulder": {
+      "x": 364,
+      "y": 1057
+    },
+    "left_elbow": {
+      "x": 601,
+      "y": 1104
+    },
+    "right_elbow": {
+      "x": 313,
+      "y": 1183
+    },
+    "left_wrist": {
+      "x": 476,
+      "y": 1039
+    },
+    "right_wrist": {
+      "x": 338,
+      "y": 1194
+    },
+    "left_hip": {
+      "x": 570,
+      "y": 1383
+    },
+    "right_hip": {
+      "x": 426,
+      "y": 1389
+    },
+    "left_knee": {
+      "x": 606,
+      "y": 1651
+    },
+    "right_knee": {
+      "x": 426,
+      "y": 1659
+    },
+    "left_ankle": {
+      "x": 578,
+      "y": 1872
+    },
+    "right_ankle": {
+      "x": 382,
+      "y": 1887
+    }
+  },
+  {
+    "frame": 21,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 516,
+      "y": 952
+    },
+    "left_eye": {
+      "x": 522,
+      "y": 934
+    },
+    "right_eye": {
+      "x": 493,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 523,
+      "y": 939
+    },
+    "right_ear": {
+      "x": 430,
+      "y": 940
+    },
+    "left_shoulder": {
+      "x": 564,
+      "y": 1033
+    },
+    "right_shoulder": {
+      "x": 361,
+      "y": 1058
+    },
+    "left_elbow": {
+      "x": 589,
+      "y": 1077
+    },
+    "right_elbow": {
+      "x": 315,
+      "y": 1173
+    },
+    "left_wrist": {
+      "x": 450,
+      "y": 1009
+    },
+    "right_wrist": {
+      "x": 359,
+      "y": 1164
+    },
+    "left_hip": {
+      "x": 572,
+      "y": 1377
+    },
+    "right_hip": {
+      "x": 427,
+      "y": 1385
+    },
+    "left_knee": {
+      "x": 609,
+      "y": 1650
+    },
+    "right_knee": {
+      "x": 428,
+      "y": 1657
+    },
+    "left_ankle": {
+      "x": 576,
+      "y": 1870
+    },
+    "right_ankle": {
+      "x": 383,
+      "y": 1881
+    }
+  },
+  {
+    "frame": 22,
+    "tennis_ball": {
+      "x": 688,
+      "y": 1196
+    },
+    "nose": {
+      "x": 519,
+      "y": 952
+    },
+    "left_eye": {
+      "x": 522,
+      "y": 933
+    },
+    "right_eye": {
+      "x": 496,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 515,
+      "y": 937
+    },
+    "right_ear": {
+      "x": 429,
+      "y": 938
+    },
+    "left_shoulder": {
+      "x": 560,
+      "y": 1026
+    },
+    "right_shoulder": {
+      "x": 354,
+      "y": 1062
+    },
+    "left_elbow": {
+      "x": 589,
+      "y": 1073
+    },
+    "right_elbow": {
+      "x": 324,
+      "y": 1206
+    },
+    "left_wrist": {
+      "x": 457,
+      "y": 991
+    },
+    "right_wrist": {
+      "x": 368,
+      "y": 1173
+    },
+    "left_hip": {
+      "x": 573,
+      "y": 1380
+    },
+    "right_hip": {
+      "x": 427,
+      "y": 1390
+    },
+    "left_knee": {
+      "x": 609,
+      "y": 1651
+    },
+    "right_knee": {
+      "x": 426,
+      "y": 1650
+    },
+    "left_ankle": {
+      "x": 571,
+      "y": 1878
+    },
+    "right_ankle": {
+      "x": 386,
+      "y": 1869
+    }
+  },
+  {
+    "frame": 23,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 522,
+      "y": 954
+    },
+    "left_eye": {
+      "x": 524,
+      "y": 934
+    },
+    "right_eye": {
+      "x": 500,
+      "y": 934
+    },
+    "left_ear": {
+      "x": 514,
+      "y": 937
+    },
+    "right_ear": {
+      "x": 433,
+      "y": 938
+    },
+    "left_shoulder": {
+      "x": 562,
+      "y": 1024
+    },
+    "right_shoulder": {
+      "x": 351,
+      "y": 1056
+    },
+    "left_elbow": {
+      "x": 591,
+      "y": 1071
+    },
+    "right_elbow": {
+      "x": 335,
+      "y": 1201
+    },
+    "left_wrist": {
+      "x": 457,
+      "y": 999
+    },
+    "right_wrist": {
+      "x": 443,
+      "y": 1173
+    },
+    "left_hip": {
+      "x": 576,
+      "y": 1376
+    },
+    "right_hip": {
+      "x": 426,
+      "y": 1387
+    },
+    "left_knee": {
+      "x": 611,
+      "y": 1647
+    },
+    "right_knee": {
+      "x": 428,
+      "y": 1647
+    },
+    "left_ankle": {
+      "x": 565,
+      "y": 1882
+    },
+    "right_ankle": {
+      "x": 388,
+      "y": 1875
+    }
+  },
+  {
+    "frame": 24,
+    "tennis_ball": {
+      "x": 1181,
+      "y": 1167
+    },
+    "nose": {
+      "x": 524,
+      "y": 948
+    },
+    "left_eye": {
+      "x": 523,
+      "y": 927
+    },
+    "right_eye": {
+      "x": 501,
+      "y": 928
+    },
+    "left_ear": {
+      "x": 505,
+      "y": 933
+    },
+    "right_ear": {
+      "x": 428,
+      "y": 936
+    },
+    "left_shoulder": {
+      "x": 547,
+      "y": 1032
+    },
+    "right_shoulder": {
+      "x": 347,
+      "y": 1054
+    },
+    "left_elbow": {
+      "x": 600,
+      "y": 1097
+    },
+    "right_elbow": {
+      "x": 331,
+      "y": 1191
+    },
+    "left_wrist": {
+      "x": 572,
+      "y": 1030
+    },
+    "right_wrist": {
+      "x": 468,
+      "y": 1149
+    },
+    "left_hip": {
+      "x": 575,
+      "y": 1382
+    },
+    "right_hip": {
+      "x": 434,
+      "y": 1393
+    },
+    "left_knee": {
+      "x": 608,
+      "y": 1647
+    },
+    "right_knee": {
+      "x": 433,
+      "y": 1647
+    },
+    "left_ankle": {
+      "x": 564,
+      "y": 1884
+    },
+    "right_ankle": {
+      "x": 380,
+      "y": 1869
+    }
+  },
+  {
+    "frame": 25,
+    "tennis_ball": {
+      "x": 1415,
+      "y": 1154
+    },
+    "nose": {
+      "x": 529,
+      "y": 947
+    },
+    "left_eye": {
+      "x": 523,
+      "y": 926
+    },
+    "right_eye": {
+      "x": 505,
+      "y": 927
+    },
+    "left_ear": {
+      "x": 498,
+      "y": 934
+    },
+    "right_ear": {
+      "x": 426,
+      "y": 936
+    },
+    "left_shoulder": {
+      "x": 545,
+      "y": 1037
+    },
+    "right_shoulder": {
+      "x": 347,
+      "y": 1050
+    },
+    "left_elbow": {
+      "x": 637,
+      "y": 1079
+    },
+    "right_elbow": {
+      "x": 338,
+      "y": 1169
+    },
+    "left_wrist": {
+      "x": 613,
+      "y": 960
+    },
+    "right_wrist": {
+      "x": 484,
+      "y": 1146
+    },
+    "left_hip": {
+      "x": 575,
+      "y": 1383
+    },
+    "right_hip": {
+      "x": 436,
+      "y": 1390
+    },
+    "left_knee": {
+      "x": 603,
+      "y": 1648
+    },
+    "right_knee": {
+      "x": 439,
+      "y": 1647
+    },
+    "left_ankle": {
+      "x": 568,
+      "y": 1884
+    },
+    "right_ankle": {
+      "x": 380,
+      "y": 1870
+    }
+  },
+  {
+    "frame": 26,
+    "tennis_ball": {
+      "x": 1656,
+      "y": 1141
+    },
+    "nose": {
+      "x": 526,
+      "y": 947
+    },
+    "left_eye": {
+      "x": 521,
+      "y": 926
+    },
+    "right_eye": {
+      "x": 504,
+      "y": 928
+    },
+    "left_ear": {
+      "x": 497,
+      "y": 928
+    },
+    "right_ear": {
+      "x": 428,
+      "y": 933
+    },
+    "left_shoulder": {
+      "x": 548,
+      "y": 1021
+    },
+    "right_shoulder": {
+      "x": 345,
+      "y": 1044
+    },
+    "left_elbow": {
+      "x": 595,
+      "y": 1073
+    },
+    "right_elbow": {
+      "x": 340,
+      "y": 1167
+    },
+    "left_wrist": {
+      "x": 471,
+      "y": 998
+    },
+    "right_wrist": {
+      "x": 491,
+      "y": 1149
+    },
+    "left_hip": {
+      "x": 577,
+      "y": 1374
+    },
+    "right_hip": {
+      "x": 432,
+      "y": 1383
+    },
+    "left_knee": {
+      "x": 602,
+      "y": 1644
+    },
+    "right_knee": {
+      "x": 437,
+      "y": 1648
+    },
+    "left_ankle": {
+      "x": 560,
+      "y": 1882
+    },
+    "right_ankle": {
+      "x": 385,
+      "y": 1878
+    }
+  },
+  {
+    "frame": 27,
+    "tennis_ball": {
+      "x": 1896,
+      "y": 1135
+    },
+    "nose": {
+      "x": 528,
+      "y": 949
+    },
+    "left_eye": {
+      "x": 521,
+      "y": 929
+    },
+    "right_eye": {
+      "x": 507,
+      "y": 930
+    },
+    "left_ear": {
+      "x": 494,
+      "y": 930
+    },
+    "right_ear": {
+      "x": 429,
+      "y": 931
+    },
+    "left_shoulder": {
+      "x": 542,
+      "y": 1017
+    },
+    "right_shoulder": {
+      "x": 340,
+      "y": 1038
+    },
+    "left_elbow": {
+      "x": 583,
+      "y": 1077
+    },
+    "right_elbow": {
+      "x": 342,
+      "y": 1158
+    },
+    "left_wrist": {
+      "x": 472,
+      "y": 1026
+    },
+    "right_wrist": {
+      "x": 510,
+      "y": 1137
+    },
+    "left_hip": {
+      "x": 578,
+      "y": 1374
+    },
+    "right_hip": {
+      "x": 433,
+      "y": 1386
+    },
+    "left_knee": {
+      "x": 604,
+      "y": 1642
+    },
+    "right_knee": {
+      "x": 434,
+      "y": 1648
+    },
+    "left_ankle": {
+      "x": 559,
+      "y": 1881
+    },
+    "right_ankle": {
+      "x": 382,
+      "y": 1878
+    }
+  },
+  {
+    "frame": 28,
+    "tennis_ball": {
+      "x": 2135,
+      "y": 1130
+    },
+    "nose": {
+      "x": 528,
+      "y": 946
+    },
+    "left_eye": {
+      "x": 521,
+      "y": 925
+    },
+    "right_eye": {
+      "x": 507,
+      "y": 927
+    },
+    "left_ear": {
+      "x": 492,
+      "y": 927
+    },
+    "right_ear": {
+      "x": 429,
+      "y": 930
+    },
+    "left_shoulder": {
+      "x": 539,
+      "y": 1023
+    },
+    "right_shoulder": {
+      "x": 345,
+      "y": 1037
+    },
+    "left_elbow": {
+      "x": 576,
+      "y": 1108
+    },
+    "right_elbow": {
+      "x": 355,
+      "y": 1157
+    },
+    "left_wrist": {
+      "x": 465,
+      "y": 1053
+    },
+    "right_wrist": {
+      "x": 531,
+      "y": 1120
+    },
+    "left_hip": {
+      "x": 575,
+      "y": 1375
+    },
+    "right_hip": {
+      "x": 433,
+      "y": 1385
+    },
+    "left_knee": {
+      "x": 600,
+      "y": 1644
+    },
+    "right_knee": {
+      "x": 435,
+      "y": 1651
+    },
+    "left_ankle": {
+      "x": 556,
+      "y": 1881
+    },
+    "right_ankle": {
+      "x": 376,
+      "y": 1881
+    }
+  },
+  {
+    "frame": 29,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 529,
+      "y": 947
+    },
+    "left_eye": {
+      "x": 520,
+      "y": 925
+    },
+    "right_eye": {
+      "x": 508,
+      "y": 928
+    },
+    "left_ear": {
+      "x": 489,
+      "y": 928
+    },
+    "right_ear": {
+      "x": 429,
+      "y": 933
+    },
+    "left_shoulder": {
+      "x": 537,
+      "y": 1026
+    },
+    "right_shoulder": {
+      "x": 345,
+      "y": 1039
+    },
+    "left_elbow": {
+      "x": 583,
+      "y": 1116
+    },
+    "right_elbow": {
+      "x": 358,
+      "y": 1155
+    },
+    "left_wrist": {
+      "x": 467,
+      "y": 1057
+    },
+    "right_wrist": {
+      "x": 531,
+      "y": 1115
+    },
+    "left_hip": {
+      "x": 570,
+      "y": 1377
+    },
+    "right_hip": {
+      "x": 430,
+      "y": 1386
+    },
+    "left_knee": {
+      "x": 596,
+      "y": 1645
+    },
+    "right_knee": {
+      "x": 435,
+      "y": 1654
+    },
+    "left_ankle": {
+      "x": 556,
+      "y": 1881
+    },
+    "right_ankle": {
+      "x": 372,
+      "y": 1881
+    }
+  },
+  {
+    "frame": 30,
+    "tennis_ball": {
+      "x": null,
+      "y": null
+    },
+    "nose": {
+      "x": 527,
+      "y": 952
+    },
+    "left_eye": {
+      "x": 518,
+      "y": 931
+    },
+    "right_eye": {
+      "x": 507,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 487,
+      "y": 934
+    },
+    "right_ear": {
+      "x": 429,
+      "y": 937
+    },
+    "left_shoulder": {
+      "x": 538,
+      "y": 1030
+    },
+    "right_shoulder": {
+      "x": 346,
+      "y": 1039
+    },
+    "left_elbow": {
+      "x": 589,
+      "y": 1113
+    },
+    "right_elbow": {
+      "x": 358,
+      "y": 1147
+    },
+    "left_wrist": {
+      "x": 446,
+      "y": 1028
+    },
+    "right_wrist": {
+      "x": 505,
+      "y": 1098
+    },
+    "left_hip": {
+      "x": 566,
+      "y": 1380
+    },
+    "right_hip": {
+      "x": 425,
+      "y": 1385
+    },
+    "left_knee": {
+      "x": 594,
+      "y": 1648
+    },
+    "right_knee": {
+      "x": 432,
+      "y": 1654
+    },
+    "left_ankle": {
+      "x": 558,
+      "y": 1882
+    },
+    "right_ankle": {
+      "x": 372,
+      "y": 1882
+    }
+  },
+  {
+    "frame": 31,
+    "tennis_ball": {
+      "x": 2852,
+      "y": 1126
+    },
+    "nose": {
+      "x": 523,
+      "y": 952
+    },
+    "left_eye": {
+      "x": 516,
+      "y": 933
+    },
+    "right_eye": {
+      "x": 503,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 485,
+      "y": 936
+    },
+    "right_ear": {
+      "x": 423,
+      "y": 936
+    },
+    "left_shoulder": {
+      "x": 520,
+      "y": 1038
+    },
+    "right_shoulder": {
+      "x": 350,
+      "y": 1035
+    },
+    "left_elbow": {
+      "x": 580,
+      "y": 1125
+    },
+    "right_elbow": {
+      "x": 371,
+      "y": 1131
+    },
+    "left_wrist": {
+      "x": 513,
+      "y": 1054
+    },
+    "right_wrist": {
+      "x": 514,
+      "y": 1096
+    },
+    "left_hip": {
+      "x": 556,
+      "y": 1381
+    },
+    "right_hip": {
+      "x": 430,
+      "y": 1384
+    },
+    "left_knee": {
+      "x": 588,
+      "y": 1648
+    },
+    "right_knee": {
+      "x": 433,
+      "y": 1651
+    },
+    "left_ankle": {
+      "x": 561,
+      "y": 1884
+    },
+    "right_ankle": {
+      "x": 370,
+      "y": 1882
+    }
+  },
+  {
+    "frame": 32,
+    "tennis_ball": {
+      "x": 3090,
+      "y": 1129
+    },
+    "nose": {
+      "x": 517,
+      "y": 952
+    },
+    "left_eye": {
+      "x": 513,
+      "y": 934
+    },
+    "right_eye": {
+      "x": 497,
+      "y": 933
+    },
+    "left_ear": {
+      "x": 485,
+      "y": 939
+    },
+    "right_ear": {
+      "x": 420,
+      "y": 936
+    },
+    "left_shoulder": {
+      "x": 508,
+      "y": 1040
+    },
+    "right_shoulder": {
+      "x": 356,
+      "y": 1036
+    },
+    "left_elbow": {
+      "x": 563,
+      "y": 1124
+    },
+    "right_elbow": {
+      "x": 397,
+      "y": 1125
+    },
+    "left_wrist": {
+      "x": 546,
+      "y": 1088
+    },
+    "right_wrist": {
+      "x": 550,
+      "y": 1110
+    },
+    "left_hip": {
+      "x": 546,
+      "y": 1380
+    },
+    "right_hip": {
+      "x": 430,
+      "y": 1384
+    },
+    "left_knee": {
+      "x": 585,
+      "y": 1647
+    },
+    "right_knee": {
+      "x": 430,
+      "y": 1650
+    },
+    "left_ankle": {
+      "x": 564,
+      "y": 1882
+    },
+    "right_ankle": {
+      "x": 372,
+      "y": 1884
+    }
+  },
+  {
+    "frame": 33,
+    "tennis_ball": {
+      "x": 3327,
+      "y": 1136
+    },
+    "nose": {
+      "x": 510,
+      "y": 948
+    },
+    "left_eye": {
+      "x": 507,
+      "y": 930
+    },
+    "right_eye": {
+      "x": 490,
+      "y": 930
+    },
+    "left_ear": {
+      "x": 483,
+      "y": 938
+    },
+    "right_ear": {
+      "x": 414,
+      "y": 935
+    },
+    "left_shoulder": {
+      "x": 504,
+      "y": 1041
+    },
+    "right_shoulder": {
+      "x": 354,
+      "y": 1040
+    },
+    "left_elbow": {
+      "x": 558,
+      "y": 1122
+    },
+    "right_elbow": {
+      "x": 412,
+      "y": 1127
+    },
+    "left_wrist": {
+      "x": 551,
+      "y": 1095
+    },
+    "right_wrist": {
+      "x": 568,
+      "y": 1111
+    },
+    "left_hip": {
+      "x": 540,
+      "y": 1387
+    },
+    "right_hip": {
+      "x": 425,
+      "y": 1393
+    },
+    "left_knee": {
+      "x": 584,
+      "y": 1651
+    },
+    "right_knee": {
+      "x": 426,
+      "y": 1657
+    },
+    "left_ankle": {
+      "x": 566,
+      "y": 1881
+    },
+    "right_ankle": {
+      "x": 375,
+      "y": 1890
+    }
+  },
+  {
+    "frame": 34,
+    "tennis_ball": {
+      "x": 3559,
+      "y": 1139
+    },
+    "nose": {
+      "x": 510,
+      "y": 945
+    },
+    "left_eye": {
+      "x": 508,
+      "y": 928
+    },
+    "right_eye": {
+      "x": 491,
+      "y": 926
+    },
+    "left_ear": {
+      "x": 482,
+      "y": 939
+    },
+    "right_ear": {
+      "x": 414,
+      "y": 932
+    },
+    "left_shoulder": {
+      "x": 498,
+      "y": 1047
+    },
+    "right_shoulder": {
+      "x": 351,
+      "y": 1038
+    },
+    "left_elbow": {
+      "x": 563,
+      "y": 1140
+    },
+    "right_elbow": {
+      "x": 410,
+      "y": 1119
+    },
+    "left_wrist": {
+      "x": 579,
+      "y": 1126
+    },
+    "right_wrist": {
+      "x": 570,
+      "y": 1104
+    },
+    "left_hip": {
+      "x": 535,
+      "y": 1390
+    },
+    "right_hip": {
+      "x": 422,
+      "y": 1395
+    },
+    "left_knee": {
+      "x": 582,
+      "y": 1653
+    },
+    "right_knee": {
+      "x": 424,
+      "y": 1662
+    },
+    "left_ankle": {
+      "x": 569,
+      "y": 1878
+    },
+    "right_ankle": {
+      "x": 375,
+      "y": 1891
+    }
+  }
+]

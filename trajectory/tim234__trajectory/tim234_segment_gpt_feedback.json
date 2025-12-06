@@ -1,0 +1,5 @@
+{
+  "problem_frame": "N/A",
+  "suggestion": "資料讀取失敗: [Errno 2] No such file or directory: 'trajectory\\\\tim234__trajectory\\\\tim234_segment(3D_trajectory_smoothed)_only_swing.json'",
+  "error": true
+}

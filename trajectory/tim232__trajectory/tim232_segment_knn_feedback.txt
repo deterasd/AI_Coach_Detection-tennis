@@ -1,0 +1,1 @@
+trajectory\tim232__trajectory\tim232_segment(3D_trajectory_smoothed)_only_swing.json

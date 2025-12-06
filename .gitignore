@@ -1,0 +1,82 @@
+junior_forehand
+.venv
+.vscode
+# knn_dataset.json # Keep this if it is a small dataset needed for the code
+open_ai_key.py
+ffprobe.exe
+ffplay.exe
+ffmpeg.exe
+trajectory/
+__pycache__/
+*.pyc
+*.mp4
+*.avi
+*.MOV
+*.JPG
+*.jpg
+*.png
+*.bmp
+*.rar
+*.zip
+*.mp3
+node_modules/
+play_records/
+output/
+input_videos/
+binocular_correction/indoor_*/
+binocular_correction/outdoor_*/
+binocular_correction/output/
+2d_html/呂嘉洋/
+.DS_Store
+Thumbs.db
+
+# 新增：更多工具與臨時檔案
+*.log          # 日誌檔案
+*.tmp          # 臨時檔案
+*.bak          # 備份檔案
+*.swp          # Vim 交換檔案
+*.swo          # Vim 交換檔案
+
+# 新增：Python 相關
+*.egg-info/    # Python 套件資訊
+dist/          # 發佈目錄
+build/         # 建置目錄
+
+# 新增：IDE 與編輯器
+.idea/         # PyCharm
+*.sublime-*    # Sublime Text
+
+# 新增：作業系統檔案
+desktop.ini    # Windows 桌面設定
+
+# Test Scripts (Optional, can be ignored)
+test_*.py
+!test_pipeline.py  # Keep main pipeline test if needed
+!trajector_processing_simple_test_fast.py # Keep this important test file
+!trajector_processing_simple_test.py # Keep this important test file
+
+# Test Output Folders - Universal pattern to exclude all test_* folders
+test_*/
+test*/
+
+# Specific test folders (legacy list - now covered by test_* pattern above)
+compare_entry_to_exit_output/
+compare_hit_event_output/
+compare_trajectory_output/
+video cut/
+video_segments_output/
+測試影片存放/
+tennis_analysis_sessions/
+
+
+# Force include specific folders requested by user
+# !trajectory/  # Removed - now ignored
+# !trajectory/**  # Removed - now ignored
+!play_records/
+!play_records/**
+!output/
+!output/**
+!input_videos/
+!input_videos/**
+!binocular_correction/
+!binocular_correction/**
