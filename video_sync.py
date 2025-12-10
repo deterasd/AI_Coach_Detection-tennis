@@ -68,10 +68,16 @@ def process_video(input_path, output_path, start_frame, frames_to_process, dimen
     cap = cv2.VideoCapture(input_path)
     width, height = dimensions
     
-    # 使用 H.264 編碼器提升效能
+    # 🟢 無論是否支援 CUDA，都先定義 fourcc，避免變數不存在
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+
+    # 若可用 CUDA，則可在未來加速解碼（可選）
     if cv2.cuda.getCudaEnabledDeviceCount() > 0:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    
+        print("[INFO] CUDA device detected, using GPU-accelerated video processing.")
+    else:
+        print("[INFO] No CUDA device detected, using CPU mode.")
+
+    # 初始化輸出
     out = cv2.VideoWriter(output_path, fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
     
     # 設置讀取緩衝區大小
@@ -144,8 +150,12 @@ def synchronize_videos(input_path_1, input_path_2, json_path_1, json_path_2):
     cap1.release()
     cap2.release()
 
-    output_path_1 = input_path_1
-    output_path_2 = input_path_2
+    # 創建臨時輸出檔案，避免讀寫衝突
+    import tempfile
+    import os
+    temp_dir = tempfile.gettempdir()
+    output_path_1 = os.path.join(temp_dir, f"temp_sync_1_{os.path.basename(input_path_1)}")
+    output_path_2 = os.path.join(temp_dir, f"temp_sync_2_{os.path.basename(input_path_2)}")
 
     # 使用線程池並行處理兩個影片
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -162,6 +172,11 @@ def synchronize_videos(input_path_1, input_path_2, json_path_1, json_path_2):
                 future.result()
             except Exception as e:
                 print(f"處理過程中發生錯誤: {str(e)}")
+
+    # 將臨時檔案移動回原始位置
+    import shutil
+    shutil.move(output_path_1, input_path_1)
+    shutil.move(output_path_2, input_path_2)
 
     final_duration = frames_to_process / fps1
     print(f"\n最終影片資訊:")
