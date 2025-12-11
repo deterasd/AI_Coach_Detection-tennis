@@ -1,6 +1,549 @@
-{
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step2. 骨架一致性驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* New Styles for Comprehensive View */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .file-upload-btn span {
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
   "metadata": {
-    "analysis_time": "2025-12-10T23:13:10.461468",
+    "analysis_time": "2025-12-11T21:39:58.511417",
     "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json",
     "total_frames": 141,
     "analysis_type": "Bone Consistency Analysis"
@@ -2941,4 +3484,1208 @@
     "top_10_spikes": []
   },
   "detailed_angle_anomalies": {}
-}
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>骨架一致性驗證</span></h1>
+        <div class="upload-section">
+            <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Injected by JS -->
+    </div>
+
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+    
+    <!-- Height Warning Alert -->
+    <div id="heightWarning" style="display:none; margin-bottom: 24px; padding: 16px; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; color: #fbbf24; align-items: center; gap: 12px;">
+        <span style="font-size: 1.5rem;">⚠️</span>
+        <div>
+            <div style="font-weight: 700; font-size: 1.1rem;">身高比例異常警告</div>
+            <div id="heightWarningText" style="opacity: 0.9;"></div>
+        </div>
+    </div>
+
+    <!-- Tooltip Container (Moved to body level for better positioning) -->
+    <div id="mapTooltip" style="position: absolute; display: none; background: rgba(0,0,0,0.9); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; pointer-events: none; border: 1px solid rgba(255,255,255,0.2); z-index: 9999; white-space: nowrap;"></div>
+
+    <div class="grid" id="dashboardGrid">
+        <!-- Cards will be injected here by JS -->
+    </div>
+
+    <h2 class="section-title">📋 詳細數據分析</h2>
+    
+    <div class="two-col-grid">
+        <div>
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">各部位骨架長度統計 (Bone Statistics)</h3>
+            <div class="data-table-container">
+                <table id="boneTable">
+                    <thead>
+                        <tr>
+                            <th>部位</th>
+                            <th>平均長度 (cm)</th>
+                            <th>標準差長度 (Std)</th>
+                            <th>變異係數 (CV%)</th>
+                            <th>品質</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div>
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">左右對稱性分析 (Symmetry Analysis)</h3>
+            <div class="data-table-container">
+                <table id="symmetryTable">
+                    <thead>
+                        <tr>
+                            <th>部位對</th>
+                            <th>左側均值 (cm)</th>
+                            <th>右側均值 (cm)</th>
+                            <th>差異 %</th>
+                            <th>評估</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">檢測到的突波 (Top Spikes)</h3>
+            <div class="data-table-container">
+                <table id="spikesTable">
+                    <thead>
+                        <tr>
+                            <th>Frame</th>
+                            <th>Bone/Joint</th>
+                            <th>Value (cm)</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Chart.js Global Defaults for Premium Dark Theme
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    // Tooltip styling
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Pre-process JSON string to handle NaN/Infinity which are valid in Python but not in standard JSON
+                let jsonString = e.target.result;
+                jsonString = jsonString.replace(/:\s*NaN/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity/g, ': null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('解析 JSON 失敗，請確認檔案格式正確。\n錯誤: ' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter or Offline Data
+    if (window.OFFLINE_DATA) {
+        renderDashboard(window.OFFLINE_DATA);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text(); // Get text first to handle NaN
+                })
+                .then(text => {
+                    // Pre-process JSON string to handle NaN/Infinity
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    alert('無法從 URL 載入 JSON 檔案: ' + src);
+                });
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params) {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusBadge(value, type) {
+        let status = 'neutral';
+        let text = value;
+        
+        if (type === 'cv') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        } else if (type === 'quality') {
+            if (value === '優秀' || value === 'Excellent' || value === '良好' || value === 'Good') { status = 'success'; }
+            else if (value === '可接受' || value === 'Acceptable') { status = 'warning'; }
+            else { status = 'danger'; }
+        } else if (type === 'diff') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        }
+        
+        return `<span class="status-badge status-${status}">${text}</span>`;
+    }
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">所有骨長/對稱檢查皆通過</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep2(data) {
+        if (!data || !data.overall_summary) return null;
+
+        let workingScore = 100;
+        const breakdown = [];
+        const summary = data.overall_summary;
+        const bones = data.bone_statistics || {};
+        const symmetry = Array.isArray(data.symmetry_analysis) ? data.symmetry_analysis : [];
+        const spikesTotal = (data.spike_detection && data.spike_detection.total_spikes) || summary.total_spikes_detected || 0;
+        const heightWarning = data.body_height_analysis && data.body_height_analysis.scale_warning;
+
+        const register = (label, value, detail, penalty) => {
+            const safePenalty = penalty > 0 && Number.isFinite(penalty) ? penalty : 0;
+            if (safePenalty > 0) workingScore -= safePenalty;
+            breakdown.push({ label, value, detail, impact: safePenalty });
+        };
+
+        const avgCv = summary.average_cv || summary.average_cv_percent || 0;
+        const avgCvPenalty = avgCv > 4 ? clamp((avgCv - 4) * 2.2, 0, 22) : 0;
+        register('平均骨長 CV', `${avgCv.toFixed(2)}%`, '整體穩定度，建議小於 4%', avgCvPenalty);
+
+        let worstBone = null;
+        Object.keys(bones).forEach(key => {
+            const stat = bones[key];
+            if (!worstBone || stat.cv > worstBone.cv) {
+                worstBone = { name: key, cv: stat.cv };
+            }
+        });
+        if (worstBone) {
+            const worstPenalty = worstBone.cv > 8 ? clamp((worstBone.cv - 8) * 1.8, 0, 20) : 0;
+            register(`最高 CV 骨段 (${worstBone.name})`, `${worstBone.cv.toFixed(2)}%`, '單一骨段的離散程度 (建議 < 8%)', worstPenalty);
+        } else {
+            register('最高 CV 骨段', 'N/A', '缺少骨段統計資料', 0);
+        }
+
+        let worstSym = null;
+        symmetry.forEach(pair => {
+            if (!worstSym || pair.difference_percent > worstSym.difference_percent) {
+                worstSym = pair;
+            }
+        });
+        if (worstSym) {
+            const symPenalty = worstSym.difference_percent > 5 ? clamp((worstSym.difference_percent - 5) * 1.8, 0, 20) : 0;
+            register(`最差對稱組 (${worstSym.pair_name})`, `${worstSym.difference_percent.toFixed(2)}%`, '左右差異 (建議 ≦ 5%)', symPenalty);
+        } else {
+            register('對稱性', 'N/A', '未提供對稱分析', 0);
+        }
+
+        const spikePenalty = spikesTotal > 0 ? clamp(spikesTotal * 0.7, 0, 15) : 0;
+        register('突波檢測', `${spikesTotal} 次`, '突然拉長/縮短的次數 (0 次為佳)', spikePenalty);
+
+        if (heightWarning) {
+            register('身高尺規偏移', '警示', heightWarning, 5);
+        } else {
+            register('身高尺規偏移', '正常', '比例合理，未扣分', 0);
+        }
+
+        workingScore = clamp(workingScore, 0, 100);
+        const totalPenalty = breakdown.reduce((sum, item) => sum + item.impact, 0);
+        const leading = breakdown.reduce((max, item) => item.impact > max.impact ? item : max, breakdown[0] || { impact: 0 });
+        const summaryText = totalPenalty > 0 && leading
+            ? `主要扣分來自「${leading.label}」：${leading.value} 導致 -${leading.impact.toFixed(1)} 分`
+            : '骨長、對稱、身高校準皆維持在建議範圍。';
+
+        return {
+            score: workingScore,
+            level: describeScoreLevel(workingScore),
+            summary: summaryText,
+            breakdown
+        };
+    }
+
+    function renderDashboard(data) {
+        dashboardGrid.innerHTML = ''; // Clear previous charts
+        
+        // --- 1. Populate Summary Stats ---
+        const statsContainer = document.getElementById('summaryStats');
+        const summary = data.overall_summary;
+        
+        // Height Warning Logic
+        if (data.body_height_analysis && data.body_height_analysis.scale_warning) {
+            const warningDiv = document.getElementById('heightWarning');
+            const warningText = document.getElementById('heightWarningText');
+            warningDiv.style.display = 'flex';
+            warningText.textContent = data.body_height_analysis.scale_warning;
+        }
+
+        // --- Body Map Coloring & Tooltip Logic ---
+        // Logic moved to the end of function to ensure DOM elements exist
+
+        
+        const summaryItems = [
+            { label: '平均變異係數 (CV)', value: `${summary.average_cv.toFixed(2)}%`, sub: '越低越穩定' },
+            { label: '整體品質', value: summary.quality_level, sub: `Analyzed ${summary.total_bones_analyzed} bones` },
+            { label: '檢測到的突波', value: summary.total_spikes_detected, sub: 'Sudden changes' },
+            { label: '身高估計', value: data.body_height_analysis ? `${data.body_height_analysis.mean_cm.toFixed(1)} cm` : 'N/A', sub: data.body_height_analysis ? `±${data.body_height_analysis.std_cm.toFixed(1)} cm` : '' }
+        ];
+
+        statsContainer.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+
+        renderCompositeScoreCard(calculateCompositeScoreStep2(data));
+
+
+        // --- 2. Populate Bone Statistics Table ---
+        const boneTableBody = document.querySelector('#boneTable tbody');
+        const boneStats = data.bone_statistics;
+        const boneNames = Object.keys(boneStats).sort((a, b) => boneStats[b].cv - boneStats[a].cv);
+        
+        boneTableBody.innerHTML = boneNames.map(name => {
+            const stat = boneStats[name];
+            return `
+                <tr>
+                    <td>${name}</td>
+                    <td>${stat.mean.toFixed(1)}</td>
+                    <td>${stat.std.toFixed(2)}</td>
+                    <td>${getStatusBadge(stat.cv, 'cv')}</td>
+                    <td>${getStatusBadge(stat.quality_level, 'quality')}</td>
+                </tr>
+            `;
+        }).join('');
+
+
+        // --- 3. Populate Symmetry Table ---
+        const symTableBody = document.querySelector('#symmetryTable tbody');
+        if (data.symmetry_analysis) {
+            const sortedSymmetry = [...data.symmetry_analysis].sort((a, b) => b.difference_percent - a.difference_percent);
+            symTableBody.innerHTML = sortedSymmetry.map(sym => `
+                <tr>
+                    <td>${sym.pair_name}</td>
+                    <td>${sym.left_mean_cm.toFixed(1)}</td>
+                    <td>${sym.right_mean_cm.toFixed(1)}</td>
+                    <td>${getStatusBadge(sym.difference_percent, 'diff')}</td>
+                    <td>${sym.assessment}</td>
+                </tr>
+            `).join('');
+        } else {
+            symTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub)">無對稱性分析數據</td></tr>';
+        }
+
+        // --- 4. Populate Spikes Table ---
+        const spikesTableBody = document.querySelector('#spikesTable tbody');
+        if (data.spike_detection && data.spike_detection.top_10_spikes) {
+            spikesTableBody.innerHTML = data.spike_detection.top_10_spikes.map(spike => `
+                <tr>
+                    <td>${spike.frame_prev} → ${spike.frame_curr}</td>
+                    <td>${spike.bone_zh || spike.bone || 'Unknown'}</td>
+                    <td>${spike.diff ? spike.diff.toFixed(2) : 'N/A'} cm</td>
+                    <td>突波 (Spike)</td>
+                </tr>
+            `).join('');
+        } else {
+            spikesTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-sub)">無突波數據</td></tr>';
+        }
+
+
+        // --- 5. Render Charts ---
+        const blocks = [
+            { 
+                id: 'chart_angles', 
+                title: '關節角度異常統計 (Joint Angles)', 
+                desc: '統計各關節角度超出合理範圍（如膝蓋過度反折）的比例。', 
+                criteria: '異常率應 < 1%，若過高表示骨架結構崩壞',
+                params: 'X軸: 關節名稱 | Y軸: 異常率 (%)' 
+            },
+            { 
+                id: 'chart1', 
+                title: '骨架長度變異係數 (CV%)', 
+                desc: '顯示各部位骨架長度的穩定性，CV 值越低代表該部位長度在時間軸上越穩定。', 
+                criteria: 'CV < 5% 優秀 | 5-10% 可接受 | > 10% 不穩定',
+                params: 'X軸: 部位名稱 | Y軸: CV (%)' 
+            },
+            { 
+                id: 'chart2', 
+                title: '骨架長度統計 (Mean & Std)', 
+                desc: '顯示各部位的平均長度(Bar)與標準差(Error Bar)。白色工字線代表標準差範圍 (Mean ± Std)。', 
+                criteria: '1. 標準差(Std) 建議 < 2.0 cm (穩定)；若 > 5.0 cm 則視為不穩定。\n2. 長度比例參考: 上臂≈前臂, 大腿>小腿, 脊柱≈30-40%身高。',
+                params: 'X軸: 部位名稱 | Y軸: 長度 (cm)' 
+            },
+            { 
+                id: 'chart3', 
+                title: '左右對稱性比較 (Symmetry)', 
+                desc: '比較左右對稱部位（如手臂、腿部）的平均長度差異。', 
+                criteria: '差異應 < 5%，若差異過大可能表示重建有偏差',
+                params: 'X軸: 部位對 | Y軸: 長度 (cm)' 
+            },
+            {
+                id: 'chart_series',
+                title: '骨架長度時序變化 (Length Time Series)',
+                desc: '顯示特定部位在每一幀的長度變化，可觀察是否有異常跳動。',
+                criteria: '曲線應平滑，無劇烈突波',
+                params: 'X軸: Frame | Y軸: 長度 (cm)'
+            },
+            {
+                id: 'chart_cv_series',
+                title: '骨架穩定度時序分析 (Rolling CV Analysis)',
+                desc: '顯示特定部位在時間軸上的穩定度變化 (Rolling Window CV, Window=30)。',
+                criteria: 'CV 突升表示該時間段檢測不穩定',
+                params: 'X軸: Frame | Y軸: Rolling CV (%)'
+            }
+        ];
+
+        // Inject Body Map Card First (Custom HTML)
+        // 3D-style Perspective Coordinates (Approximate)
+        const bodyMapHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">人體部位健康度地圖 (Body Health Map - 3D View)</h3>
+                </div>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; align-items: center; height: 100%;">
+                    <div style="position: relative; width: 300px; height: 500px;">
+                        <!-- 3D-style SVG Stick Figure -->
+                        <svg viewBox="0 0 300 500" style="width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                            <defs>
+                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="2" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                                <linearGradient id="boneGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:rgba(255,255,255,0.1)" />
+                                    <stop offset="50%" style="stop-color:rgba(255,255,255,0.5)" />
+                                    <stop offset="100%" style="stop-color:rgba(255,255,255,0.1)" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Grid Floor for 3D effect -->
+                            <path d="M50,450 L250,450 L290,480 L10,480 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" />
+                            
+                            <!-- Bones (Lines) - Using Chinese data-name -->
+                            <g stroke-width="6" stroke-linecap="round" opacity="0.9">
+                                <!-- Head & Torso -->
+                                <line id="bone_head" x1="160" y1="35" x2="140" y2="35" stroke="#555" data-name="頭部" />
+                                <line id="visual_neck" x1="150" y1="60" x2="150" y2="90" stroke="#555" />
+                                <line id="bone_spine" x1="150" y1="90" x2="150" y2="220" stroke="#555" data-name="脊柱" />
+                                <line id="bone_torso" x1="110" y1="90" x2="190" y2="90" stroke="#555" data-name="肩寬" />
+                                <line id="bone_pelvis" x1="120" y1="220" x2="180" y2="220" stroke="#555" data-name="骨盆" />
+                                
+                                <!-- Right Arm (Back) -->
+                                <line id="bone_right_upper_arm" x1="110" y1="90" x2="80" y2="160" stroke="#444" data-name="右上臂" />
+                                <line id="bone_right_forearm" x1="80" y1="160" x2="60" y2="230" stroke="#444" data-name="右前臂" />
+                                
+                                <!-- Left Arm (Front) -->
+                                <line id="bone_left_upper_arm" x1="190" y1="90" x2="220" y2="160" stroke="#666" data-name="左上臂" />
+                                <line id="bone_left_forearm" x1="220" y1="160" x2="240" y2="230" stroke="#666" data-name="左前臂" />
+                                
+                                <!-- Right Leg (Back) -->
+                                <line id="bone_right_thigh" x1="120" y1="220" x2="100" y2="340" stroke="#444" data-name="右大腿" />
+                                <line id="bone_right_calf" x1="100" y1="340" x2="90" y2="450" stroke="#444" data-name="右小腿" />
+                                
+                                <!-- Left Leg (Front) -->
+                                <line id="bone_left_thigh" x1="180" y1="220" x2="200" y2="340" stroke="#666" data-name="左大腿" />
+                                <line id="bone_left_calf" x1="200" y1="340" x2="210" y2="450" stroke="#666" data-name="左小腿" />
+                            </g>
+
+                            <!-- Joints (Circles) -->
+                            <g stroke="#fff" stroke-width="2" fill="#222">
+                                <!-- Head Group -->
+                                <circle id="joint_head" cx="150" cy="40" r="25" class="joint-point" data-name="頭部(Head)" fill-opacity="0.3" stroke-dasharray="2,2" />
+                                <circle id="joint_nose" cx="150" cy="45" r="4" class="joint-point" data-name="鼻子(Nose)" />
+                                <circle id="joint_left_eye" cx="160" cy="35" r="3" class="joint-point" data-name="左眼(L.Eye)" />
+                                <circle id="joint_right_eye" cx="140" cy="35" r="3" class="joint-point" data-name="右眼(R.Eye)" />
+                                <circle id="joint_left_ear" cx="170" cy="40" r="3" class="joint-point" data-name="左耳(L.Ear)" />
+                                <circle id="joint_right_ear" cx="130" cy="40" r="3" class="joint-point" data-name="右耳(R.Ear)" />
+
+                                <!-- Upper Body -->
+                                <circle id="joint_left_shoulder" cx="190" cy="90" r="6" class="joint-point" data-name="左肩(L.Shoulder)" />
+                                <circle id="joint_right_shoulder" cx="110" cy="90" r="6" class="joint-point" data-name="右肩(R.Shoulder)" />
+                                <circle id="joint_left_elbow" cx="220" cy="160" r="6" class="joint-point" data-name="左肘(L.Elbow)" />
+                                <circle id="joint_right_elbow" cx="80" cy="160" r="6" class="joint-point" data-name="右肘(R.Elbow)" />
+                                <circle id="joint_left_wrist" cx="240" cy="230" r="5" class="joint-point" data-name="左腕(L.Wrist)" />
+                                <circle id="joint_right_wrist" cx="60" cy="230" r="5" class="joint-point" data-name="右腕(R.Wrist)" />
+
+                                <!-- Lower Body -->
+                                <circle id="joint_left_hip" cx="180" cy="220" r="7" class="joint-point" data-name="左髖(L.Hip)" />
+                                <circle id="joint_right_hip" cx="120" cy="220" r="7" class="joint-point" data-name="右髖(R.Hip)" />
+                                <circle id="joint_left_knee" cx="200" cy="340" r="7" class="joint-point" data-name="左膝(L.Knee)" />
+                                <circle id="joint_right_knee" cx="100" cy="340" r="7" class="joint-point" data-name="右膝(R.Knee)" />
+                                <circle id="joint_left_ankle" cx="210" cy="450" r="6" class="joint-point" data-name="左踝(L.Ankle)" />
+                                <circle id="joint_right_ankle" cx="90" cy="450" r="6" class="joint-point" data-name="右踝(R.Ankle)" />
+                            </g>
+                        </svg>
+                        
+                        <div style="position: absolute; bottom: 0; right: 0; font-size: 0.7rem; color: var(--text-sub); text-align: right;">
+                            <div>🟢 < 5%</div>
+                            <div>🟡 5-10%</div>
+                            <div>🔴 > 10%</div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div class="info-section" style="margin-top: 0; padding: 16px;">
+                            <div class="info-item" style="grid-template-columns: 1fr;">
+                                <div class="info-badge badge-desc" style="width: fit-content;">說明</div>
+                                <p class="info-text" style="font-size: 0.85rem;">
+                                    <strong>骨骼 (線):</strong> 長度 CV% (顏色代表穩定度)<br>
+                                    <strong>關節 (點):</strong> 深度 CV% (顏色代表深度穩定度)<br>
+                                    <span style="color: #fbbf24;">滑鼠懸停查看詳細數據</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        dashboardGrid.innerHTML += bodyMapHtml;
+
+        blocks.forEach(block => {
+            if (block.id === 'chart_angles') {
+                // Custom HTML for Joint Angles (Text based)
+                const angleStats = data.joint_angle_analysis || {};
+                const angleLabels = Object.keys(angleStats);
+                const getLabel = (k) => {
+                    const map = {'left_elbow': '左肘', 'right_elbow': '右肘', 'left_knee': '左膝', 'right_knee': '右膝'};
+                    return map[k] || k;
+                };
+
+                let angleHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 300px; padding-right: 8px;">
+                `;
+
+                if (angleLabels.length > 0) {
+                    angleLabels.forEach(key => {
+                        const stat = angleStats[key];
+                        const rate = stat.abnormal_rate;
+                        let color = '#4ade80';
+                        if (rate >= 1) color = '#fbbf24';
+                        if (rate >= 5) color = '#f87171';
+
+                        angleHtml += `
+                            <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border-left: 4px solid ${color};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 600; font-size: 1rem;">${getLabel(key)}</span>
+                                    <span style="font-family: 'JetBrains Mono'; color: ${color}; font-weight: 700;">${rate.toFixed(2)}% 異常</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; color: var(--text-sub);">
+                                    <div>Mean: <span style="color: var(--text-main);">${stat.mean_angle_deg.toFixed(1)}°</span></div>
+                                    <div>Range: <span style="color: var(--text-main);">${stat.min_angle_deg.toFixed(0)}° - ${stat.max_angle_deg.toFixed(0)}°</span></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    angleHtml += `<div style="text-align: center; color: var(--text-sub); padding: 20px;">無關節角度數據</div>`;
+                }
+
+                angleHtml += `
+                        </div>
+                        <div class="info-section" style="margin-top: 24px;">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-badge badge-criteria">判斷標準</div>
+                                <p class="info-text text-criteria">${block.criteria}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += angleHtml;
+
+            } else if (block.id === 'chart_series') {
+                // Custom HTML for Time Series Chart with Dropdown
+                const seriesHtml = `
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                            <select id="seriesBoneSelect" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 12px; border-radius: 8px; outline: none;">
+                                <!-- Options injected later -->
+                            </select>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="${block.id}"></canvas>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += seriesHtml;
+            } else if (block.id === 'chart_cv_series') {
+                // Custom HTML for Rolling CV Chart with Dropdown
+                const cvSeriesHtml = `
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                            <select id="cvSeriesBoneSelect" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 12px; border-radius: 8px; outline: none;">
+                                <!-- Options injected later -->
+                            </select>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="${block.id}"></canvas>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += cvSeriesHtml;
+            } else if (block.id === 'chart3') {
+                dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+                
+                // Add Body Height Text Block (No Chart) - Moved here
+                if (data.body_height_analysis) {
+                    const bha = data.body_height_analysis;
+                    const meanCm = bha.mean_cm.toFixed(1);
+                    const stdCm = bha.std_cm.toFixed(1);
+                    const minCm = bha.min_cm.toFixed(1);
+                    const maxCm = bha.max_cm.toFixed(1);
+                    
+                    const heightHtml = `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">身高估計分佈 (Body Height)</h3>
+                            </div>
+                            <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                                <div style="display: flex; align-items: baseline; gap: 12px;">
+                                    <span style="font-size: 2.5rem; font-weight: 700; color: var(--text-main);">${meanCm}</span>
+                                    <span style="font-size: 1rem; color: var(--text-sub);">cm</span>
+                                    <span style="font-size: 1.5rem; font-weight: 600; color: var(--accent-primary); margin-left: 12px;">${(bha.mean_cm * 10).toFixed(0)} mm</span>
+                                    <span style="font-size: 1rem; color: ${bha.cv_percent < 5 ? '#4ade80' : '#fbbf24'}; font-weight: 600;">(±${stdCm} cm)</span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-sub); background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px;">
+                                    💡 合理範圍參考: 成人身高通常介於 <strong>140 - 210 cm</strong> 之間。
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px;">
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">Min / Max</div>
+                                        <div style="font-family: 'JetBrains Mono';">${minCm} / ${maxCm} cm</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">CV Stability</div>
+                                        <div style="font-family: 'JetBrains Mono'; color: ${bha.cv_percent < 5 ? '#4ade80' : '#f87171'};">${bha.cv_percent.toFixed(2)}%</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">Assessment</div>
+                                        <div style="font-size: 0.9rem;">${bha.assessment.split('|')[0]}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    dashboardGrid.innerHTML += heightHtml;
+                }
+            } else {
+                dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+            }
+        });
+        
+
+
+        // --- Chart 0: Joint Angles (Updated) ---
+        // Replaced by custom HTML block above
+
+        // --- Chart Series: Time Series Chart Logic ---
+        if (data.bone_statistics) {
+            const boneStats = data.bone_statistics;
+            const boneNames = Object.keys(boneStats);
+            const select = document.getElementById('seriesBoneSelect');
+            
+            if (select) {
+                // Populate dropdown
+                select.innerHTML = boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                
+                let seriesChart = null;
+
+                const updateSeriesChart = (boneName) => {
+                    const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return;
+
+                    const ctx = document.getElementById('chart_series').getContext('2d');
+                    const seriesDataCm = stat.series_data; // Already in cm
+                    const labels = seriesDataCm.map((_, i) => i);
+
+                    if (seriesChart) seriesChart.destroy();
+
+                    seriesChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `${boneName} Length (cm)`,
+                                data: seriesDataCm,
+                                borderColor: '#6366f1',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                fill: true,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Frame' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Length (cm)' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `Length: ${context.parsed.y.toFixed(2)} cm`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                };
+
+                // Initial render
+                if (boneNames.length > 0) {
+                    updateSeriesChart(boneNames[0]);
+                }
+
+                // Event listener
+                select.addEventListener('change', (e) => {
+                    updateSeriesChart(e.target.value);
+                });
+            }
+        }
+
+        // --- Chart CV Series: Rolling CV Logic ---
+        if (data.bone_statistics) {
+            const boneStats = data.bone_statistics;
+            const boneNames = Object.keys(boneStats);
+            const selectCV = document.getElementById('cvSeriesBoneSelect');
+            
+            if (selectCV) {
+                selectCV.innerHTML = boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                
+                let cvChart = null;
+
+                const calculateRollingCV = (data, windowSize) => {
+                    let result = [];
+                    for (let i = 0; i < data.length; i++) {
+                        let start = Math.max(0, i - Math.floor(windowSize / 2));
+                        let end = Math.min(data.length, i + Math.floor(windowSize / 2) + 1);
+                        let windowData = data.slice(start, end);
+                        
+                        if (windowData.length < 2) {
+                            result.push(0);
+                            continue;
+                        }
+
+                        let mean = windowData.reduce((a, b) => a + b, 0) / windowData.length;
+                        let variance = windowData.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / windowData.length;
+                        let std = Math.sqrt(variance);
+                        let cv = mean !== 0 ? (std / mean) * 100 : 0;
+                        result.push(cv);
+                    }
+                    return result;
+                };
+
+                const updateCVChart = (boneName) => {
+                    const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return;
+
+                    const ctx = document.getElementById('chart_cv_series').getContext('2d');
+                    const rollingCV = calculateRollingCV(stat.series_data, 30); // Window 30
+                    const labels = rollingCV.map((_, i) => i);
+
+                    if (cvChart) cvChart.destroy();
+
+                    cvChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `${boneName} Rolling CV (%)`,
+                                data: rollingCV,
+                                borderColor: '#a855f7',
+                                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                fill: true,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            scales: {
+                                x: { title: { display: true, text: 'Frame' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                                y: { title: { display: true, text: 'CV (%)' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `CV: ${context.parsed.y.toFixed(2)}%`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                };
+
+                if (boneNames.length > 0) updateCVChart(boneNames[0]);
+                selectCV.addEventListener('change', (e) => updateCVChart(e.target.value));
+            }
+        }
+
+        // --- Chart 1: CV% ---
+        // Sort bones by CV desc
+        const sortedBones = boneNames.sort((a, b) => boneStats[b].cv - boneStats[a].cv);
+        
+        new Chart(document.getElementById('chart1'), {
+            type: 'bar',
+            data: {
+                labels: sortedBones,
+                datasets: [{
+                    label: '變異係數 (CV%)',
+                    data: sortedBones.map(b => boneStats[b].cv),
+                    backgroundColor: sortedBones.map(b => {
+                        const cv = boneStats[b].cv;
+                        if (cv < 5) return '#4ade80';
+                        if (cv < 10) return '#fbbf24';
+                        return '#f87171';
+                    }),
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'CV (%)' } } }
+            }
+        });
+
+        // --- Chart 2: Mean & Std ---
+        // Sort by Mean length desc
+        const sortedByLen = boneNames.sort((a, b) => boneStats[b].mean - boneStats[a].mean);
+        
+        // Custom Plugin for Error Bars
+        const errorBarPlugin = {
+            id: 'errorBar',
+            afterDatasetsDraw: (chart) => {
+                const { ctx, data, scales: { y } } = chart;
+                
+                chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                    const value = data.datasets[0].data[index];
+                    const std = data.datasets[0].error[index];
+                    
+                    if (std === undefined || std === null) return;
+
+                    const x = bar.x;
+                    const yMean = y.getPixelForValue(value);
+                    const yHigh = y.getPixelForValue(value + std);
+                    const yLow = y.getPixelForValue(value - std);
+                    
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // White-ish for visibility
+                    
+                    // Vertical line
+                    ctx.moveTo(x, yLow);
+                    ctx.lineTo(x, yHigh);
+                    
+                    // Top cap
+                    ctx.moveTo(x - 6, yHigh);
+                    ctx.lineTo(x + 6, yHigh);
+                    
+                    // Bottom cap
+                    ctx.moveTo(x - 6, yLow);
+                    ctx.lineTo(x + 6, yLow);
+                    
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        new Chart(document.getElementById('chart2'), {
+            type: 'bar',
+            data: {
+                labels: sortedByLen,
+                datasets: [{
+                    label: '平均長度 (cm)',
+                    data: sortedByLen.map(b => boneStats[b].mean), // Already in cm
+                    error: sortedByLen.map(b => boneStats[b].std), // Pass std here
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Length (cm)' } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const std = context.dataset.error[idx];
+                                return `Std: ±${std.toFixed(2)} cm`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [errorBarPlugin]
+        });
+
+        // --- Chart 3: Symmetry ---
+        if (data.symmetry_analysis) {
+            const symLabels = data.symmetry_analysis.map(s => s.pair_name);
+            const leftData = data.symmetry_analysis.map(s => s.left_mean_cm); // Already in cm
+            const rightData = data.symmetry_analysis.map(s => s.right_mean_cm); // Already in cm
+            
+            new Chart(document.getElementById('chart3'), {
+                type: 'bar',
+                data: {
+                    labels: symLabels,
+                    datasets: [
+                        {
+                            label: '左側 (Left)',
+                            data: leftData,
+                            backgroundColor: data.symmetry_analysis.map(s => (s.left_cv && s.left_cv > 10) ? '#f87171' : '#6366f1'), // Red if unstable
+                            borderRadius: 4
+                        },
+                        {
+                            label: '右側 (Right)',
+                            data: rightData,
+                            backgroundColor: data.symmetry_analysis.map(s => (s.right_cv && s.right_cv > 10) ? '#f87171' : '#a855f7'), // Red if unstable
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Length (cm)' } } },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const idx = context.dataIndex;
+                                    const item = data.symmetry_analysis[idx];
+                                    if (context.dataset.label.includes('Left')) {
+                                        return item.left_cv ? `CV: ${item.left_cv.toFixed(1)}%` : '';
+                                    } else {
+                                        return item.right_cv ? `CV: ${item.right_cv.toFixed(1)}%` : '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize Body Map Coloring
+        initBodyMapColoring(data);
+    }
+
+    // --- Body Map Coloring Logic ---
+    function initBodyMapColoring(data) {
+        if (data.bone_statistics) {
+            const bs = data.bone_statistics;
+            const ds = data.joint_depth_analysis || {}; // Joint depth stats
+            
+            // Helper to get color based on CV
+            const getCvColor = (cv) => {
+                if (cv < 5) return '#4ade80'; // Green
+                if (cv < 10) return '#fbbf24'; // Yellow
+                return '#f87171'; // Red
+            };
+
+            // 1. Color Bones (Lines)
+            const setBoneColor = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                const boneName = el.getAttribute('data-name'); // e.g. "脊柱"
+                const stat = bs[boneName];
+
+                if (stat) {
+                    const color = getCvColor(stat.cv);
+                    el.setAttribute('stroke', color);
+                    el.dataset.cv = stat.cv.toFixed(2);
+                    el.dataset.mean = stat.mean.toFixed(1); // Already in cm
+                }
+            };
+
+            // Apply to all lines starting with bone_
+            document.querySelectorAll('svg line[id^="bone_"]').forEach(el => {
+                setBoneColor(el.id);
+            });
+
+            // 2. Color Joints (Circles)
+            const setJointColor = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                // id is like "joint_left_shoulder"
+                // JSON keys are like "left_shoulder"
+                let jointKey = id.replace('joint_', '');
+                
+                // Map special keys if needed
+                if (jointKey === 'head') jointKey = 'nose'; // Use nose for head if available
+                
+                let stat = ds[jointKey];
+                
+                if (stat) {
+                    const color = getCvColor(stat.cv_percent);
+                    el.setAttribute('fill', color);
+                    el.setAttribute('stroke', color); // Make border same color
+                    el.dataset.cv = stat.cv_percent.toFixed(2);
+                    el.dataset.z_mean = stat.mean_z_cm.toFixed(1); // Already in cm
+                } else {
+                    // If no depth data, maybe use bone color or default
+                    el.setAttribute('fill', '#555');
+                    el.setAttribute('stroke', '#777');
+                }
+            };
+
+            // Apply to all circles starting with joint_
+            document.querySelectorAll('svg circle[id^="joint_"]').forEach(el => {
+                setJointColor(el.id);
+            });
+
+            // 3. Tooltip Event Listeners
+            const tooltip = document.getElementById('mapTooltip');
+
+            const showTooltip = (e) => {
+                const target = e.target;
+                let content = '';
+                
+                if (target.tagName === 'line' && target.id.startsWith('bone_')) {
+                    // Bone Tooltip
+                    const name = target.getAttribute('data-name') || target.id;
+                    const cv = target.dataset.cv;
+                    const mean = target.dataset.mean;
+                    if (cv) {
+                        content = `<strong>${name}</strong><br>Length: ${mean} cm<br>CV: ${cv}%`;
+                    }
+                } else if (target.tagName === 'circle' && target.classList.contains('joint-point')) {
+                    // Joint Tooltip
+                    const name = target.getAttribute('data-name') || target.id;
+                    const cv = target.dataset.cv;
+                    const z = target.dataset.z_mean;
+                    if (cv) {
+                        content = `<strong>${name}</strong><br>Depth (Z): ${z} cm<br>Stability (CV): ${cv}%`;
+                    } else {
+                        content = `<strong>${name}</strong><br>No depth data`;
+                    }
+                }
+
+                if (content) {
+                    tooltip.innerHTML = content;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.pageX + 15) + 'px';
+                    tooltip.style.top = (e.pageY + 15) + 'px';
+                }
+            };
+
+            const hideTooltip = () => {
+                tooltip.style.display = 'none';
+            };
+
+            // Attach events to all SVG elements
+            document.querySelectorAll('svg line, svg circle').forEach(el => {
+                el.addEventListener('mousemove', showTooltip);
+                el.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

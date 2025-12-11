@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step4. 物理運動邏輯驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.1); color: #34d399; }
+        .status-warning { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+        .status-danger { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+        .status-neutral { background: rgba(156, 163, 175, 0.1); color: #9ca3af; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .score-card { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>物理運動邏輯驗證</span></h1>
+        <div class="header-controls">
+            <div class="upload-section">
+                <label for="fileInput" class="file-upload-btn">
+                    📂 載入 JSON
+                </label>
+                <input type="file" id="fileInput" accept=".json">
+            </div>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div class="summary-grid" id="summaryStats">
+        <!-- Populated by JS -->
+    </div>
+
+    <div id="scoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div class="score-value" id="scoreValue">--</div>
+            <div class="score-level" id="scoreLevel">--</div>
+            <div class="score-progress">
+                <div id="scoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p class="score-summary" id="scoreSummary">載入資料後將自動計算動作評分。</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="scoreIssues" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="dashboard-grid" id="dashboardGrid">
+        <!-- Populated by JS -->
+    </div>
+</div>
+
+<script>
+    // Chart.js Global Defaults
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    const summaryStats = document.getElementById('summaryStats');
+    const scoreCard = document.getElementById('scoreCard');
+    const scoreValueEl = document.getElementById('scoreValue');
+    const scoreLevelEl = document.getElementById('scoreLevel');
+    const scoreProgressEl = document.getElementById('scoreProgress');
+    const scoreSummaryEl = document.getElementById('scoreSummary');
+    const scoreIssuesEl = document.getElementById('scoreIssues');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                renderDashboard(data);
+            } catch (error) {
+                alert('解析 JSON 失敗，請確認檔案格式正確。');
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const src = urlParams.get('src');
+    if (src) {
+        fetch(src)
+            .then(response => response.json())
+            .then(data => renderDashboard(data))
+            .catch(err => console.error('Error loading JSON from URL:', err));
+    }
+
+    function createCardHTML(id, title, description, criteria, params, selectId) {
+        const selectHTML = selectId ? 
+            `<select id="${selectId}" class="styled-select" style="padding: 4px 12px; font-size: 0.8rem; margin-left: auto;">
+            </select>` : '';
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    let charts = {};
+
+    function computeMotionScore(viewData, metrics = {}) {
+        const kinematics = viewData.motion_kinematics || {};
+        const jointAngles = viewData.joint_angles || {};
+        const torso = viewData.torso_stability || {};
+        const gravity = viewData.gravity_compliance || {};
+        const contact = viewData.ball_racket_contact || {};
+
+        if (!Object.keys(kinematics).length && !Object.keys(jointAngles).length) {
+            return null;
+        }
+
+        let score = 100;
+        const deductions = [];
+        const maxSpeed = metrics.maxSpeed || 0;
+        const abnormalAngles = metrics.abnormalAngles || 0;
+
+        if (maxSpeed > 60) {
+            const ded = Math.min(22, (maxSpeed - 60) * 1.2);
+            score -= ded;
+            deductions.push({ label: '速度峰值', desc: `峰值 ${maxSpeed.toFixed(1)} m/s 偏高`, points: ded });
+        } else if (maxSpeed > 45) {
+            const ded = Math.min(12, (maxSpeed - 45) * 0.6);
+            score -= ded;
+            deductions.push({ label: '速度峰值', desc: `峰值 ${maxSpeed.toFixed(1)} m/s 需留意`, points: ded });
+        }
+
+        if (abnormalAngles > 0) {
+            const ded = Math.min(25, 2 + abnormalAngles * 0.2);
+            score -= ded;
+            deductions.push({ label: '角度異常', desc: `${abnormalAngles} 幀超出範圍`, points: ded });
+        }
+
+        const deviationRatio = gravity.deviation_ratio || 0;
+        if (deviationRatio > 0.2) {
+            score -= 15;
+            deductions.push({ label: '重力偏差', desc: '偏差超過 20%', points: 15 });
+        } else if (deviationRatio > 0.1) {
+            score -= 8;
+            deductions.push({ label: '重力偏差', desc: '偏差介於 10%-20%', points: 8 });
+        } else if (gravity.assessment && gravity.assessment.includes('[!]')) {
+            score -= 6;
+            deductions.push({ label: '重力檢查', desc: '顯示異常', points: 6 });
+        }
+
+        if (typeof torso.std_displacement_mm === 'number') {
+            const torsoStd = torso.std_displacement_mm;
+            if (torsoStd > 30) {
+                score -= 10;
+                deductions.push({ label: '軀幹穩定性', desc: `位移標準差 ${torsoStd.toFixed(1)} mm 偏大`, points: 10 });
+            } else if (torsoStd > 20) {
+                score -= 6;
+                deductions.push({ label: '軀幹穩定性', desc: `位移波動 ${torsoStd.toFixed(1)} mm`, points: 6 });
+            }
+        }
+
+        if (contact.total_frames_analyzed) {
+            if (!contact.contact_count) {
+                score -= 6;
+                deductions.push({ label: '擊球檢測', desc: '未偵測到球拍接觸', points: 6 });
+            } else if (typeof contact.min_distance_mm === 'number' && contact.min_distance_mm > 230) {
+                const ded = Math.min(10, (contact.min_distance_mm - 200) * 0.1);
+                score -= ded;
+                deductions.push({ label: '擊球距離', desc: `最小距離 ${contact.min_distance_mm.toFixed(0)} mm 偏大`, points: ded });
+            }
+        }
+
+        const normalizedScore = Math.max(0, Math.min(100, score));
+        let level = '需改善';
+        if (normalizedScore >= 90) level = '優秀';
+        else if (normalizedScore >= 75) level = '良好';
+        else if (normalizedScore >= 60) level = '需留意';
+
+        let summary = '多項指標異常，請參考扣分說明。';
+        if (level === '優秀') {
+            summary = '整體動作穩定流暢，維持現有訓練即可。';
+        } else if (level === '良好') {
+            summary = '表現良好，可針對扣分項目微調動作細節。';
+        } else if (level === '需留意') {
+            summary = '存在需留意的細節，建議優先修正扣分項目。';
+        }
+
+        return {
+            score: normalizedScore,
+            level,
+            summary,
+            deductions
+        };
+    }
+
+    function updateScoreCard(viewData, metrics) {
+        const info = computeMotionScore(viewData, metrics);
+        if (!info) {
+            scoreCard.style.display = 'none';
+            return;
+        }
+
+        scoreCard.style.display = 'grid';
+        scoreValueEl.textContent = Math.round(info.score);
+        scoreLevelEl.textContent = info.level;
+        scoreProgressEl.style.width = `${info.score}%`;
+        scoreSummaryEl.textContent = info.summary;
+        
+        if (info.deductions.length > 0) {
+            scoreIssuesEl.innerHTML = info.deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.desc}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span class="impact-negative">-${item.points.toFixed(1)} 分</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            scoreIssuesEl.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">完美表現</div>
+                    <div class="score-detail-desc">未偵測到明顯異常，持續維持！</div>
+                </div>
+            `;
+        }
+    }
+
+    function renderDashboard(data) {
+        summaryStats.innerHTML = '';
+        dashboardGrid.innerHTML = '';
+        
+        // --- 1. Summary Stats ---
+        const kinematics = data.motion_kinematics || {};
+        const angles = data.joint_angles || {};
+        const gravity = data.gravity_compliance || {};
+        const contact = data.ball_racket_contact || {};
+
+        // Calculate max speed across all joints
+        let maxSpeed = 0;
+        Object.values(kinematics).forEach(k => maxSpeed = Math.max(maxSpeed, k.max_speed_m_s || 0));
+
+        // Count abnormal angles
+        let abnormalAngles = 0;
+        Object.values(angles).forEach(a => abnormalAngles += (a.abnormal_count || 0));
+
+        const summaryItems = [
+            { label: '最大速度 (Max Speed)', value: `${maxSpeed.toFixed(2)} m/s`, sub: 'Across all joints' },
+            { label: '異常角度 (Abnormal Angles)', value: abnormalAngles, sub: 'Total frames out of range' },
+            { label: '重力偏差 (Gravity Dev)', value: `${((gravity.deviation_ratio || 0) * 100).toFixed(1)}%`, sub: gravity.assessment || 'N/A' },
+            { label: '擊球檢測 (Contacts)', value: contact.contact_count || 0, sub: `Min Dist: ${(contact.min_distance_mm || 0).toFixed(0)} mm` }
+        ];
+
+        summaryStats.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+        updateScoreCard(data, { maxSpeed, abnormalAngles });
+
+        // --- 2. Define Charts ---
+        const blocks = [
+            { 
+                id: 'chart1', 
+                title: '速度分析 (Velocity Profile)', 
+                desc: '顯示關鍵部位（手腕、球）的移動速度變化。', 
+                criteria: '手腕一般 < 15m/s，球速 < 60m/s。突波可能代表噪聲。',
+                params: 'X軸: Frame | Y軸: Speed (m/s)',
+                selectId: 'chart1Select'
+            },
+            { 
+                id: 'chart2', 
+                title: '加速度分析 (Acceleration Profile)', 
+                desc: '顯示加速度變化，過大的加速度通常意味著軌跡抖動。', 
+                criteria: '人體動作加速度應平滑，無極端尖峰。',
+                params: 'X軸: Frame | Y軸: Acc (mm/s²)',
+                selectId: 'chart2Select'
+            },
+            { 
+                id: 'chart3', 
+                title: '關節角度 (Joint Angles)', 
+                desc: '檢視各關節角度隨時間的變化，檢查是否超出人體極限。', 
+                criteria: '肘/膝: 0-180°。超出範圍標示為異常。',
+                params: 'X軸: Frame | Y軸: Angle (deg)',
+                selectId: 'chart3Select'
+            },
+            { 
+                id: 'chart4', 
+                title: '軀幹穩定性 (Torso Stability)', 
+                desc: '分析軀幹中心點的位移量，評估身體晃動程度。', 
+                criteria: '位移應平滑且符合動作邏輯。',
+                params: 'X軸: Frame | Y軸: Displacement (mm)' 
+            },
+            { 
+                id: 'chart5', 
+                title: '重力加速度檢查 (Gravity Check)', 
+                desc: '分析球在飛行階段的垂直加速度。', 
+                criteria: '應接近 9810 mm/s² (偏差 < 20%)。',
+                params: 'X軸: Frame | Y軸: Vertical Acc (mm/s²)' 
+            },
+            { 
+                id: 'chart6', 
+                title: '球拍接觸距離 (Ball-Racket Dist)', 
+                desc: '球與手腕/球拍的距離變化，用於檢測擊球點。', 
+                criteria: '距離 < 200mm 視為潛在接觸。',
+                params: 'X軸: Frame | Y軸: Distance (mm)' 
+            }
+        ];
+
+        blocks.forEach(block => {
+            dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId);
+        });
+
+        // --- Chart 1: Velocity ---
+        const chart1Select = document.getElementById('chart1Select');
+        const kpOptions = Object.keys(kinematics);
+        kpOptions.forEach(kp => {
+            const opt = document.createElement('option');
+            opt.value = kp;
+            opt.textContent = kp;
+            chart1Select.appendChild(opt);
+        });
+
+        function updateChart1(kp) {
+            const ctx = document.getElementById('chart1');
+            if (charts['chart1']) charts['chart1'].destroy();
+            
+            const kData = kinematics[kp];
+            if (!kData || !kData.series) return;
+
+            charts['chart1'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: kData.series.frames,
+                    datasets: [{
+                        label: `${kp} Speed (m/s)`,
+                        data: kData.series.speed_mm_s.map(v => v / 1000), // Convert to m/s
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
+            });
+        }
+        if (kpOptions.length > 0) updateChart1(kpOptions[0]);
+        chart1Select.addEventListener('change', (e) => updateChart1(e.target.value));
+
+        // --- Chart 2: Acceleration ---
+        const chart2Select = document.getElementById('chart2Select');
+        kpOptions.forEach(kp => {
+            const opt = document.createElement('option');
+            opt.value = kp;
+            opt.textContent = kp;
+            chart2Select.appendChild(opt);
+        });
+
+        function updateChart2(kp) {
+            const ctx = document.getElementById('chart2');
+            if (charts['chart2']) charts['chart2'].destroy();
+            
+            const kData = kinematics[kp];
+            if (!kData || !kData.series) return;
+
+            charts['chart2'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: kData.series.frames, // Note: Acc frames might be shorter by 1
+                    datasets: [{
+                        label: `${kp} Acc (mm/s²)`,
+                        data: kData.series.acc_mm_s2,
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
+            });
+        }
+        if (kpOptions.length > 0) updateChart2(kpOptions[0]);
+        chart2Select.addEventListener('change', (e) => updateChart2(e.target.value));
+
+        // --- Chart 3: Joint Angles ---
+        const chart3Select = document.getElementById('chart3Select');
+        const angleOptions = Object.keys(angles);
+        angleOptions.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = a;
+            chart3Select.appendChild(opt);
+        });
+
+        function updateChart3(joint) {
+            const ctx = document.getElementById('chart3');
+            if (charts['chart3']) charts['chart3'].destroy();
+            
+            const aData = angles[joint];
+            if (!aData || !aData.series) return;
+
+            charts['chart3'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: aData.series.frames,
+                    datasets: [{
+                        label: `${joint} Angle (deg)`,
+                        data: aData.series.angles,
+                        borderColor: '#34d399',
+                        tension: 0.1,
+                        pointRadius: 1
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { min: 0, max: 180 },
+                        x: { ticks: { maxTicksLimit: 20 } }
+                    }
+                }
+            });
+        }
+        if (angleOptions.length > 0) updateChart3(angleOptions[0]);
+        chart3Select.addEventListener('change', (e) => updateChart3(e.target.value));
+
+        // --- Chart 4: Torso Stability ---
+        if (data.torso_stability && data.torso_stability.series) {
+            new Chart(document.getElementById('chart4'), {
+                type: 'line',
+                data: {
+                    labels: data.torso_stability.series.frames,
+                    datasets: [{
+                        label: 'Torso Displacement (mm)',
+                        data: data.torso_stability.series.displacement,
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
+            });
+        }
+
+        // --- Chart 5: Gravity Check ---
+        if (data.gravity_compliance && data.gravity_compliance.series) {
+            const gSeries = data.gravity_compliance.series;
+            const expected = data.gravity_compliance.expected_gravity_mm_s2;
+            
+            new Chart(document.getElementById('chart5'), {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Vertical Acceleration',
+                            data: gSeries.frames.map((f, i) => ({ x: f, y: Math.abs(gSeries.acc_y[i]) })),
+                            backgroundColor: '#f87171',
+                            pointRadius: 2
+                        },
+                        {
+                            type: 'line',
+                            label: 'Expected Gravity',
+                            data: [{x: gSeries.frames[0], y: expected}, {x: gSeries.frames[gSeries.frames.length-1], y: expected}],
+                            borderColor: '#9ca3af',
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // --- Chart 6: Ball-Racket Distance ---
+        if (data.ball_racket_contact && data.ball_racket_contact.series) {
+            const cSeries = data.ball_racket_contact.series;
+            new Chart(document.getElementById('chart6'), {
+                type: 'line',
+                data: {
+                    labels: cSeries.frames,
+                    datasets: [{
+                        label: 'Min Distance (mm)',
+                        data: cSeries.min_distance,
+                        borderColor: '#60a5fa',
+                        pointRadius: 0
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { x: { ticks: { maxTicksLimit: 20 } } },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: 200,
+                                    yMax: 200,
+                                    borderColor: 'rgba(255, 99, 132, 0.5)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6],
+                                    label: { content: 'Contact Threshold', enabled: true }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -16,17 +16,33 @@ import numpy as np
 from datetime import datetime
 from typing import Optional, Tuple
 import sys
+import os
+
+# Add parent directory to path to allow importing config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 引入共用模組
-from .utils import (
-    get_keypoint_safely,
-    calculate_distance,
-    calculate_angle,
-    load_json_file,
-    save_json_results,
-    generate_output_path,
-    get_keypoint_name_zh,
-)
+try:
+    from .utils import (
+        get_keypoint_safely,
+        calculate_distance,
+        calculate_angle,
+        load_json_file,
+        save_json_results,
+        generate_output_path,
+        get_keypoint_name_zh,
+    )
+except ImportError:
+    from utils import (
+        get_keypoint_safely,
+        calculate_distance,
+        calculate_angle,
+        load_json_file,
+        save_json_results,
+        generate_output_path,
+        get_keypoint_name_zh,
+    )
+
 from config import load_config, ValidationConfig
 
 
@@ -170,7 +186,12 @@ def analyze_motion_kinematics(data: list, config: ValidationConfig) -> dict:
             "max_acc_mm_s2": float(np.max(acc_mag)) if len(acc_mag) > 0 else None,
             "max_jerk_mm_s3": float(np.max(jerk_mag)) if len(jerk_mag) > 0 else None,
             "unreasonable_speed_count": unreasonable_speed_count,
-            "unreasonable_speed_rate": float(unreasonable_speed_count / len(speed) * 100) if len(speed) > 0 else 0.0
+            "unreasonable_speed_rate": float(unreasonable_speed_count / len(speed) * 100) if len(speed) > 0 else 0.0,
+            "series": {
+                "frames": valid_indices.tolist(),
+                "speed_mm_s": speed.tolist(),
+                "acc_mm_s2": acc_mag.tolist() if len(acc_mag) > 0 else []
+            }
         }
     
     return results
@@ -200,7 +221,8 @@ def analyze_joint_angles(data: list, config: ValidationConfig) -> dict:
     
     for joint_name, (j1, j2, j3) in joint_defs.items():
         angles = []
-        for frame in data:
+        frame_indices = []
+        for i, frame in enumerate(data):
             p1 = get_keypoint_safely(frame, j1)
             p2 = get_keypoint_safely(frame, j2)
             p3 = get_keypoint_safely(frame, j3)
@@ -209,6 +231,7 @@ def analyze_joint_angles(data: list, config: ValidationConfig) -> dict:
                 angle = calculate_angle(p1, p2, p3)
                 if angle is not None:
                     angles.append(angle)
+                    frame_indices.append(i)
         
         if not angles:
             continue
@@ -222,7 +245,11 @@ def analyze_joint_angles(data: list, config: ValidationConfig) -> dict:
             "mean_angle": float(arr.mean()),
             "std_angle": float(arr.std()),
             "abnormal_count": abnormal,
-            "abnormal_rate": float(abnormal / len(arr) * 100)
+            "abnormal_rate": float(abnormal / len(arr) * 100),
+            "series": {
+                "frames": frame_indices,
+                "angles": angles
+            }
         }
     
     return results
@@ -240,8 +267,9 @@ def analyze_torso_stability(data: list, config: ValidationConfig) -> dict:
         dict: 軀幹穩定性分析結果
     """
     torso_centers = []
+    frame_indices = []
     
-    for frame in data:
+    for i, frame in enumerate(data):
         ls = get_keypoint_safely(frame, "left_shoulder")
         rs = get_keypoint_safely(frame, "right_shoulder")
         lh = get_keypoint_safely(frame, "left_hip")
@@ -250,6 +278,7 @@ def analyze_torso_stability(data: list, config: ValidationConfig) -> dict:
         if all(p is not None for p in [ls, rs, lh, rh]):
             center = (ls + rs + lh + rh) / 4
             torso_centers.append(center)
+            frame_indices.append(i)
     
     if len(torso_centers) < 2:
         return {}
@@ -270,7 +299,11 @@ def analyze_torso_stability(data: list, config: ValidationConfig) -> dict:
         "mean_displacement_mm": mean_displacement,
         "max_displacement_mm": max_displacement,
         "std_displacement_mm": float(np.std(displacements)),
-        "assessment": assessment
+        "assessment": assessment,
+        "series": {
+            "frames": frame_indices[1:], # diff reduces length by 1
+            "displacement": displacements.tolist()
+        }
     }
 
 
@@ -287,6 +320,8 @@ def analyze_ball_racket_contact(data: list, config: ValidationConfig) -> dict:
     """
     contact_frames = []
     min_distances = []
+    all_distances = [] # Store all for plotting
+    all_frames = []
     contact_threshold = getattr(config, 'racket_contact_threshold', 200.0)  # mm
     
     for frame_idx, frame in enumerate(data):
@@ -312,6 +347,8 @@ def analyze_ball_racket_contact(data: list, config: ValidationConfig) -> dict:
         if distances:
             min_dist = min(distances)
             min_distances.append(min_dist)
+            all_distances.append(min_dist)
+            all_frames.append(frame_idx)
             
             # 使用配置的接觸距離閾值
             if min_dist < contact_threshold:
@@ -328,7 +365,11 @@ def analyze_ball_racket_contact(data: list, config: ValidationConfig) -> dict:
         "contact_count": len(contact_frames),
         "min_distance_mm": float(np.min(min_distances)),
         "mean_distance_mm": float(np.mean(min_distances)),
-        "contact_frames": contact_frames[:10]  # 只返回前 10 個接觸幀
+        "contact_frames": contact_frames[:10],  # 只返回前 10 個接觸幀
+        "series": {
+            "frames": all_frames,
+            "min_distance": all_distances
+        }
     }
 
 
@@ -399,7 +440,11 @@ def analyze_gravity_compliance(data: list, config: ValidationConfig) -> dict:
         "mean_y_acceleration_mm_s2": mean_acc_y,
         "expected_gravity_mm_s2": float(expected_gravity),
         "deviation_ratio": float(deviation),
-        "assessment": assessment
+        "assessment": assessment,
+        "series": {
+            "frames": vel_indices[1:].tolist(), # acc indices
+            "acc_y": acc_y.flatten().tolist()
+        }
     }
 
 
@@ -530,7 +575,12 @@ def validate_physical_motion_analysis(
     
     # 保存結果
     if output_json_path is None:
-        output_json_path = generate_output_path(json_3d_path, '_step4_physical_motion_results')
+        # 建立 results 資料夾
+        results_dir = os.path.join(os.path.dirname(json_3d_path), 'Verification Result')
+        os.makedirs(results_dir, exist_ok=True)
+        
+        base_name = os.path.splitext(os.path.basename(json_3d_path))[0]
+        output_json_path = os.path.join(results_dir, f"{base_name}_step4_physical_motion_results.json")
     
     save_json_results(results, output_json_path)
     print(f"\n[OK] 結果已儲存至: {output_json_path}")

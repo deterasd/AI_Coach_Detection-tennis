@@ -357,7 +357,7 @@
                 <!-- Step 1 Action -->
                 <div class="action-row">
                     <div class="action-header">
-                        <div class="action-title">Step 1: 重投影誤差驗證</div>
+                        <div class="action-title">Step 1 重投影誤差驗證</div>
                     </div>
                     <div class="action-desc">驗證 3D 重建結果與 2D 觀測點的投影誤差，檢查相機校正準確度。</div>
                     
@@ -380,7 +380,7 @@
                 <!-- Step 2 Action -->
                 <div class="action-row">
                     <div class="action-header">
-                        <div class="action-title">Step 2: 骨架一致性驗證</div>
+                        <div class="action-title">Step 2 骨架一致性驗證</div>
                     </div>
                     <div class="action-desc">分析骨骼長度變異、左右對稱性及動作平滑度，確保生物力學合理性。</div>
                     
@@ -399,6 +399,29 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Step 3 Action -->
+                <div class="action-row">
+                    <div class="action-header">
+                        <div class="action-title">Step 3 深度合理性驗證</div>
+                    </div>
+                    <div class="action-desc">檢查全身關節深度穩定度、左右對稱差異與腕/膝等邏輯違規比例，評估3D深度可信度。</div>
+                    
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-run-step3" class="btn btn-primary" onclick="runStep3()">
+                            執行分析
+                        </button>
+                        <a id="btn-view-step3" class="btn btn-success view-btn" target="_blank">
+                            檢視報告
+                        </a>
+                        <button id="btn-download-step3" class="btn btn-secondary" style="display:none;" onclick="downloadReport(3)">
+                            下載離線報告
+                        </button>
+                        <div id="status-step3" class="status-indicator">
+                            <div class="spinner"></div> <span>執行中...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -407,6 +430,9 @@
 
 <script>
     let cameraConfigs = {};
+    window.step1Result = null;
+    window.step2Result = null;
+    window.step3Result = null;
 
     async function loadConfigs() {
         try {
@@ -615,7 +641,11 @@
 
     function setCompleteState(step, resultFile) {
         const viewBtn = document.getElementById(`btn-view-step${step}`);
-        const reportPage = step === 1 ? 'step1_reprojection_error.html' : 'step2_bone_consistency.html';
+        const reportPage = step === 1
+            ? 'step1_reprojection_error.html'
+            : step === 2
+                ? 'step2_bone_consistency.html'
+                : 'step3_depth_reasonableness.html';
         
         viewBtn.href = `${reportPage}?src=${encodeURIComponent(resultFile)}`;
         viewBtn.style.display = 'inline-flex';
@@ -623,13 +653,18 @@
         // Store result for download and show button
         if (step === 1) window.step1Result = resultFile;
         if (step === 2) window.step2Result = resultFile;
+        if (step === 3) window.step3Result = resultFile;
         
         const downloadBtn = document.getElementById(`btn-download-step${step}`);
         if (downloadBtn) downloadBtn.style.display = 'inline-flex';
     }
 
     function downloadReport(step) {
-        const resultFile = step === 1 ? window.step1Result : window.step2Result;
+        const resultFile = step === 1
+            ? window.step1Result
+            : step === 2
+                ? window.step2Result
+                : window.step3Result;
         if (!resultFile) return;
         
         const url = `/api/export/offline-report?type=step${step}&file=${encodeURIComponent(resultFile)}`;
@@ -655,6 +690,10 @@
 
             if (data.status === 'success') {
                 setCompleteState(2, data.result_file);
+                
+                // Auto-save HTML report
+                await fetch(`/api/export/offline-report?type=step2&file=${encodeURIComponent(data.result_file)}&save_to_disk=true`);
+                
                 return true; // Return success for chain execution
             } else {
                 alert('錯誤: ' + data.error);
@@ -662,6 +701,40 @@
             }
         } catch (e) {
             setRunningState(2, false);
+            alert('請求失敗: ' + e);
+            return false;
+        }
+    }
+
+    async function runStep3() {
+        const payload = {
+            json_3d: document.getElementById('file-3d').value
+        };
+
+        setRunningState(3, true);
+
+        try {
+            const res = await fetch('/api/validate/step3', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            setRunningState(3, false);
+
+            if (data.status === 'success') {
+                setCompleteState(3, data.result_file);
+
+                await fetch(`/api/export/offline-report?type=step3&file=${encodeURIComponent(data.result_file)}&save_to_disk=true`);
+
+                return true;
+            } else {
+                alert('錯誤: ' + data.error);
+                return false;
+            }
+        } catch (e) {
+            setRunningState(3, false);
             alert('請求失敗: ' + e);
             return false;
         }
@@ -689,6 +762,18 @@
         document.getElementById('btn-view-step2').style.display = 'none';
         document.getElementById('btn-view-step2').href = '#';
         document.getElementById('btn-download-step2').style.display = 'none';
+
+        // Reset UI states for Step 3
+        document.getElementById('btn-run-step3').disabled = false;
+        document.getElementById('btn-run-step3').textContent = '執行分析';
+        document.getElementById('status-step3').classList.remove('visible');
+        document.getElementById('btn-view-step3').style.display = 'none';
+        document.getElementById('btn-view-step3').href = '#';
+        document.getElementById('btn-download-step3').style.display = 'none';
+
+        window.step1Result = null;
+        window.step2Result = null;
+        window.step3Result = null;
     }
 
     // Run all tests sequentially
@@ -713,6 +798,13 @@
             // Open Step 2 Report
             const btn2 = document.getElementById('btn-view-step2');
             if (btn2 && btn2.href) window.open(btn2.href, '_blank');
+
+            // Run Step 3
+            const step3Success = await runStep3();
+            if (step3Success) {
+                const btn3 = document.getElementById('btn-view-step3');
+                if (btn3 && btn3.href) window.open(btn3.href, '_blank');
+            }
         }
     }
 
@@ -743,6 +835,10 @@
 
             if (data.status === 'success') {
                 setCompleteState(1, data.result_file);
+                
+                // Auto-save HTML report
+                await fetch(`/api/export/offline-report?type=step1&file=${encodeURIComponent(data.result_file)}&save_to_disk=true`);
+                
                 return true;
             } else {
                 alert('錯誤: ' + data.error);

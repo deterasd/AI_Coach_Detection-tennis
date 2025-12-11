@@ -145,6 +145,155 @@
             font-weight: 500;
         }
 
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
         .section-title {
             font-size: 1.5rem;
             font-weight: 700;
@@ -384,6 +533,8 @@
             .grid { grid-template-columns: 1fr; }
             .info-item { grid-template-columns: 1fr; gap: 6px; }
             .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
         }
 
         /* Form Controls Styling */
@@ -459,6 +610,31 @@
     <!-- Summary Stats -->
     <div id="summaryStats" class="summary-grid">
         <!-- Injected by JS -->
+    </div>
+
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <h2 class="section-title">📊 視覺化圖表分析</h2>
@@ -614,11 +790,19 @@
         }
     }
 
-    function createCardHTML(id, title, description, criteria, params) {
+    function createCardHTML(id, title, description, criteria, params, selectId) {
+        const selectHTML = selectId ? 
+            `<select id="${selectId}" class="styled-select view-select" style="padding: 4px 12px; font-size: 0.8rem; margin-left: auto;">
+                <option value="Global">Global (All)</option>
+                <option value="Side">Camera Side</option>
+                <option value="45">Camera 45°</option>
+            </select>` : '';
+
         return `
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
                 </div>
                 <div class="chart-wrapper">
                     <div class="chart-container">
@@ -662,6 +846,124 @@
         return `<span class="status-badge status-${status}">${text}</span>`;
     }
 
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">所有檢查均符合要求</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="${item.impact > 0 ? 'impact-negative' : 'impact-positive'}">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep1(data) {
+        if (!data || !data.global_stats) return null;
+
+        let workingScore = 100;
+        const breakdown = [];
+        const stats = data.global_stats;
+        const metadata = data.metadata || {};
+        const anomalies = (data.detailed_anomalies && data.detailed_anomalies.summary) ? data.detailed_anomalies.summary : null;
+
+        const register = (label, value, detail, penalty) => {
+            const safePenalty = penalty > 0 && Number.isFinite(penalty) ? penalty : 0;
+            if (safePenalty > 0) {
+                workingScore -= safePenalty;
+            }
+            breakdown.push({ label, value, detail, impact: safePenalty });
+        };
+
+        const overallMean = stats.overall_mean || 0;
+        const meanPenalty = overallMean > 2 ? clamp((overallMean - 2) * 8, 0, 25) : 0;
+        register('平均重投影誤差', `${overallMean.toFixed(2)} px`, '建議 < 2 px，超標會放大全局殘差', meanPenalty);
+
+        const q95 = Math.max(stats.side_95th || 0, stats['45_95th'] || 0);
+        const q95Penalty = q95 > 6 ? clamp((q95 - 6) * 2.5, 0, 18) : 0;
+        register('95% 誤差門檻', `${q95.toFixed(2)} px`, '尾端誤差衡量極端情況，建議維持在 6 px 以下', q95Penalty);
+
+        const anomalyRate = anomalies && metadata.total_frames && metadata.total_keypoints
+            ? (anomalies.total_count / (metadata.total_frames * metadata.total_keypoints)) * 100
+            : 0;
+        const anomalyPenalty = anomalyRate > 4 ? clamp((anomalyRate - 4) * 1.8, 0, 18) : 0;
+        register('異常樣本占比', `${anomalyRate.toFixed(2)}%`, '連續或大量異常的比例 (以 4% 為容忍)', anomalyPenalty);
+
+        const outlierRate = ((stats.outlier_rate_side || 0) + (stats.outlier_rate_45 || 0)) / 2;
+        const outlierPenalty = outlierRate > 0.2 ? clamp(outlierRate * 2.5, 0, 15) : 0;
+        register('重建離群率', `${outlierRate.toFixed(2)}%`, '由後端閾值檢測的 outlier，建議趨近 0%', outlierPenalty);
+
+        const bias = Math.abs(stats.camera_bias || 0);
+        const biasPenalty = bias > 1 ? clamp((bias - 1) * 4, 0, 10) : 0;
+        register('雙機視角偏差', `${bias.toFixed(2)} px`, 'Side 與 45° 差異 > 1px 代表標定不均衡', biasPenalty);
+
+        let worstKeypoint = null;
+        if (Array.isArray(data.keypoint_errors) && data.keypoint_errors.length > 0) {
+            worstKeypoint = data.keypoint_errors.reduce((prev, curr) => (curr.avg_error > prev.avg_error ? curr : prev));
+        }
+        if (worstKeypoint) {
+            const keyPenalty = worstKeypoint.avg_error > 8 ? clamp((worstKeypoint.avg_error - 8) * 1.5, 0, 15) : 0;
+            register(`最差關節 (${worstKeypoint.name})`, `${worstKeypoint.avg_error.toFixed(2)} px`, '針對單一難點關節的平均殘差 (8 px 為建議上限)', keyPenalty);
+        } else {
+            register('最差關節', 'N/A', '未提供關節統計，無法計入評分', 0);
+        }
+
+        workingScore = clamp(workingScore, 0, 100);
+        const totalPenalty = breakdown.reduce((sum, item) => sum + item.impact, 0);
+        const leading = breakdown.reduce((max, item) => item.impact > max.impact ? item : max, breakdown[0] || { impact: 0 });
+        const summary = totalPenalty > 0 && leading
+            ? `主要扣分來自「${leading.label}」：${leading.value} 造成 -${leading.impact.toFixed(1)} 分`
+            : '各項監控指標皆在建議範圍內，維持現有流程即可。';
+
+        return {
+            score: workingScore,
+            level: describeScoreLevel(workingScore),
+            summary,
+            breakdown
+        };
+    }
+
     function renderDashboard(data) {
         dashboardGrid.innerHTML = ''; // Clear previous charts
         
@@ -683,6 +985,8 @@
                 <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
             </div>
         `).join('');
+
+        renderCompositeScoreCard(calculateCompositeScoreStep1(data));
 
 
         // --- 2. Populate Keypoint Table ---
@@ -861,35 +1165,40 @@
                 title: '時序穩定性 (Temporal Stability)', 
                 desc: '顯示每一影格的平均重投影誤差，可找出誤差異常的時間區間。', 
                 criteria: '少數影格異常可插值修復；連續多影格異常表示該區段數據不可靠',
-                params: 'X軸: 影格 (Frame) | Y軸: 誤差值 (Pixels)' 
+                params: 'X軸: 影格 (Frame) | Y軸: 誤差值 (Pixels)',
+                selectId: 'chart2Select'
             },
             { 
                 id: 'chart3', 
                 title: '關鍵點誤差分佈 (Keypoint Errors)', 
                 desc: '顯示各關節點的平均重投影誤差，長條越短表示該關節點的 3D 重建品質越好。', 
                 criteria: '< 5px 優秀 | 5-10px 良好 | 10-15px 中等 | > 15px 較差 (優先使用 Hip/Shoulder)',
-                params: 'X軸: 平均誤差 (Pixels) | Y軸: 關鍵點名稱' 
+                params: 'X軸: 平均誤差 (Pixels) | Y軸: 關鍵點名稱',
+                selectId: 'chart3Select'
             },
             { 
                 id: 'chart4', 
                 title: '異常值嚴重程度 (Anomaly Severity)', 
                 desc: '統計數據中異常點的嚴重程度分佈。', 
                 criteria: '< 5% 優秀 | 5-10% 良好 | 10-15% 中等 | > 15% 需改善',
-                params: '圖表: 環形圖 (各等級數量佔比)' 
+                params: '圖表: 環形圖 (各等級數量佔比)',
+                selectId: 'chart4Select'
             },
             { 
                 id: 'chart_heatmap', 
                 title: '關節點時序熱力圖 (Temporal Heatmap)', 
                 desc: '檢視各部位在時間軸上的誤差分佈，快速識別遮擋或全身性失效。', 
                 criteria: '垂直深色條紋=全身失效 | 水平深色條紋=持續遮擋',
-                params: 'X軸: Frame | Y軸: Keypoint | 顏色: 誤差大小' 
+                params: 'X軸: Frame | Y軸: Keypoint | 顏色: 誤差大小',
+                selectId: 'chart_heatmapSelect'
             },
             { 
                 id: 'chart6', 
                 title: '深度與誤差關聯 (Depth vs Error)', 
                 desc: '分析重投影誤差與深度距離的關係（距離越遠，誤差越大是正常現象）。', 
                 criteria: '< 1500mm 高精度 | 1500-2500mm 中精度 | > 2500mm 低精度',
-                params: 'X軸: 深度 Z (mm) | Y軸: 預測誤差 (Pixels)' 
+                params: 'X軸: 深度 Z (mm) | Y軸: 預測誤差 (Pixels)',
+                selectId: 'chart6Select'
             },
             { 
                 id: 'chart7', 
@@ -909,7 +1218,7 @@
 
         // Inject HTML
         blocks.forEach(block => {
-            dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+            dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId);
         });
 
         // --- Chart 1: Global Stats (Updated) ---
@@ -961,91 +1270,164 @@
             }
         });
 
+        // Store chart instances
+        const charts = {};
+
         // --- Chart 2: Temporal Stability ---
-        const frames = data.per_frame_errors.frames;
-        const sideErrors = data.per_frame_errors.side;
-        const cam45Errors = data.per_frame_errors['45'];
-        
-        new Chart(document.getElementById('chart2'), {
-            type: 'line',
-            data: {
-                labels: frames,
-                datasets: [
-                    { label: 'Side 相機', data: sideErrors, borderColor: '#667eea', backgroundColor: 'rgba(102, 126, 234, 0.1)', tension: 0.1, pointRadius: 0, borderWidth: 2 },
-                    { label: '45° 相機', data: cam45Errors, borderColor: '#f093fb', backgroundColor: 'rgba(240, 147, 251, 0.1)', tension: 0.1, pointRadius: 0, borderWidth: 2 }
-                ]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                scales: { x: { title: { display: true, text: '影格' }, ticks: { maxTicksLimit: 20 } } }
+        function updateChart2(view) {
+            const ctx = document.getElementById('chart2');
+            if (charts['chart2']) charts['chart2'].destroy();
+
+            const frames = data.per_frame_errors.frames;
+            const sideErrors = data.per_frame_errors.side;
+            const cam45Errors = data.per_frame_errors['45'];
+            
+            const datasets = [];
+            if (view === 'Global' || view === 'Side') {
+                datasets.push({ 
+                    label: 'Side 相機', 
+                    data: sideErrors, 
+                    borderColor: '#667eea', 
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)', 
+                    tension: 0.1, 
+                    pointRadius: 0, 
+                    borderWidth: 2,
+                    fill: view === 'Side'
+                });
             }
-        });
+            if (view === 'Global' || view === '45') {
+                datasets.push({ 
+                    label: '45° 相機', 
+                    data: cam45Errors, 
+                    borderColor: '#f093fb', 
+                    backgroundColor: 'rgba(240, 147, 251, 0.1)', 
+                    tension: 0.1, 
+                    pointRadius: 0, 
+                    borderWidth: 2,
+                    fill: view === '45'
+                });
+            }
+
+            charts['chart2'] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: frames, datasets: datasets },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: { x: { title: { display: true, text: '影格' }, ticks: { maxTicksLimit: 20 } } }
+                }
+            });
+        }
+        updateChart2('Global');
+        document.getElementById('chart2Select').addEventListener('change', (e) => updateChart2(e.target.value));
 
         // --- Chart 3: Keypoint Errors ---
-        const sortedKeypoints = [...data.keypoint_errors].sort((a, b) => b.avg_error - a.avg_error);
-        new Chart(document.getElementById('chart3'), {
-            type: 'bar',
-            indexAxis: 'y',
-            data: {
-                labels: sortedKeypoints.map(k => k.name),
-                datasets: [{
-                    label: '平均誤差',
-                    data: sortedKeypoints.map(k => k.avg_error),
-                    backgroundColor: sortedKeypoints.map(k => {
-                        if (k.avg_error < 5) return '#4ade80'; // Excellent
-                        if (k.avg_error < 10) return '#fbbf24'; // Good
-                        if (k.avg_error < 15) return '#fb923c'; // Moderate
-                        return '#f87171'; // Poor
-                    }),
-                    borderWidth: 0
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+        function updateChart3(view) {
+            const ctx = document.getElementById('chart3');
+            if (charts['chart3']) charts['chart3'].destroy();
+
+            const sortedKeypoints = [...data.keypoint_errors].sort((a, b) => {
+                const valA = view === 'Side' ? a.side_mean : (view === '45' ? a['45_mean'] : a.avg_error);
+                const valB = view === 'Side' ? b.side_mean : (view === '45' ? b['45_mean'] : b.avg_error);
+                return valB - valA;
+            });
+
+            const values = sortedKeypoints.map(k => {
+                if (view === 'Side') return k.side_mean;
+                if (view === '45') return k['45_mean'];
+                return k.avg_error;
+            });
+
+            charts['chart3'] = new Chart(ctx, {
+                type: 'bar',
+                indexAxis: 'y',
+                data: {
+                    labels: sortedKeypoints.map(k => k.name),
+                    datasets: [{
+                        label: view === 'Global' ? '平均誤差 (px)' : `${view} 相機誤差 (px)`,
+                        data: values,
+                        backgroundColor: values.map(v => {
+                            if (v < 5) return '#4ade80';
+                            if (v < 10) return '#fbbf24';
+                            return '#f87171';
+                        }),
+                        borderRadius: 4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+        }
+        updateChart3('Global');
+        document.getElementById('chart3Select').addEventListener('change', (e) => updateChart3(e.target.value));
+
 
         // --- Chart 4: Anomaly Severity ---
-        const anomalies = (data.detailed_anomalies && data.detailed_anomalies.summary) ? data.detailed_anomalies.summary : {
-            severe_count: 0,
-            moderate_count: 0,
-            mild_count: 0,
-            total_count: 0
-        };
-        
-        new Chart(document.getElementById('chart4'), {
-            type: 'doughnut',
-            data: {
-                labels: ['嚴重 (>2x)', '中度 (>1.5x)', '輕微 (>1x)', '正常'],
-                datasets: [{
-                    data: [
-                        anomalies.severe_count, 
-                        anomalies.moderate_count, 
-                        anomalies.mild_count, 
-                        (data.metadata.total_frames * data.metadata.total_keypoints) - anomalies.total_count
-                    ],
-                    backgroundColor: ['#f87171', '#fb923c', '#fbbf24', '#4ade80'],
-                    borderWidth: 0
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+        function updateChart4(view) {
+            const ctx = document.getElementById('chart4');
+            if (charts['chart4']) charts['chart4'].destroy();
+
+            let severeCount = 0, moderateCount = 0, mildCount = 0, totalCount = 0;
+            const totalPoints = data.metadata.total_frames * data.metadata.total_keypoints;
+
+            if (data.detailed_anomalies && data.detailed_anomalies.by_severity) {
+                const count = (list) => {
+                    if (!list) return 0;
+                    if (view === 'Global') return list.length;
+                    return list.filter(item => {
+                        if (!item.camera) return true;
+                        if (view === 'Side') return item.camera.toLowerCase().includes('side');
+                        if (view === '45') return item.camera.toLowerCase().includes('45');
+                        return true;
+                    }).length;
+                };
+                
+                severeCount = count(data.detailed_anomalies.by_severity.severe);
+                moderateCount = count(data.detailed_anomalies.by_severity.moderate);
+                mildCount = count(data.detailed_anomalies.by_severity.mild);
+                totalCount = severeCount + moderateCount + mildCount;
+            }
+
+            const viewTotalPoints = view === 'Global' ? totalPoints : totalPoints / 2;
+            const normalCount = Math.max(0, viewTotalPoints - totalCount);
+
+            charts['chart4'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['嚴重 (>2x)', '中度 (>1.5x)', '輕微 (>1x)', '正常'],
+                    datasets: [{
+                        data: [severeCount, moderateCount, mildCount, normalCount],
+                        backgroundColor: ['#f87171', '#fb923c', '#fbbf24', '#4ade80'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+        updateChart4('Global');
+        document.getElementById('chart4Select').addEventListener('change', (e) => updateChart4(e.target.value));
 
 
 
         // --- Chart 6: Depth vs Error (Updated with Dropdown) ---
         // Inject Dropdown
         const chart6Container = document.getElementById('chart6').parentElement.parentElement;
-        const selectHTML = `
-            <div style="margin-bottom: 16px; display: flex; gap: 10px; align-items: center;">
-                <label class="control-label">選擇關節點:</label>
-                <select id="chart6Select" class="styled-select">
+        
+        // We will inject a container for controls
+        const controlsHTML = `
+            <div style="margin-bottom: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label class="control-label">Keypoint:</label>
+                <select id="chart6KpSelect" class="styled-select" style="padding: 4px 12px; font-size: 0.8rem;">
                     <option value="all">全部 (All)</option>
-                    ${data.keypoint_errors.map(k => `<option value="${k.name}">${k.name}</option>`).join('')}
+                    ${(data.keypoint_errors || []).map(k => `<option value="${k.name}">${k.name}</option>`).join('')}
                 </select>
             </div>
         `;
-        chart6Container.insertAdjacentHTML('afterbegin', selectHTML);
+        chart6Container.insertAdjacentHTML('afterbegin', controlsHTML);
 
         const rel = data.error_depth_relationship;
         const p1 = { x: rel.depth_min, y: rel.slope * rel.depth_min + rel.intercept };
@@ -1053,12 +1435,11 @@
         
         let allScatterPoints = [];
         if (data.detailed_anomalies && data.detailed_anomalies.all_anomalies) {
-            allScatterPoints = data.detailed_anomalies.all_anomalies.map(a => ({ x: a.depth_z, y: a.error, kp: a.keypoint }));
+            allScatterPoints = data.detailed_anomalies.all_anomalies.map(a => ({ x: a.depth_z, y: a.error, kp: a.keypoint, camera: a.camera }));
         } else if (data.full_keypoint_details) {
-             // If full details available, use them for better scatter
              Object.keys(data.full_keypoint_details).forEach(kp => {
                  data.full_keypoint_details[kp].forEach(p => {
-                     allScatterPoints.push({ x: p.depth_z, y: p.error, kp: kp });
+                     allScatterPoints.push({ x: p.depth_z, y: p.error, kp: kp, camera: p.camera });
                  });
              });
         }
@@ -1073,35 +1454,11 @@
         const defaultColor = '#9ca3af';
 
         // Group data by keypoint for multiple datasets
-        const scatterDatasets = [];
-        const uniqueKps = [...new Set(allScatterPoints.map(p => p.kp))];
-        
-        uniqueKps.forEach(kp => {
-            scatterDatasets.push({
-                label: kp,
-                data: allScatterPoints.filter(p => p.kp === kp),
-                backgroundColor: kpColors[kp] || defaultColor,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            });
-        });
-
-        // Add trend line
-        scatterDatasets.push({
-            type: 'line',
-            label: '趨勢線',
-            data: [p1, p2],
-            borderColor: '#818cf8',
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: false
-        });
-
         const chart6Ctx = document.getElementById('chart6').getContext('2d');
         let chart6 = new Chart(chart6Ctx, {
             type: 'scatter',
             data: {
-                datasets: scatterDatasets
+                datasets: [] // Will be populated by updateChart6
             },
             options: { 
                 responsive: true, 
@@ -1125,47 +1482,77 @@
             }
         });
 
-        // Dropdown Event Listener - Toggle visibility
-        document.getElementById('chart6Select').addEventListener('change', (e) => {
-            const selectedKp = e.target.value;
+        function updateChart6(view, kp) {
+            let filteredPoints = allScatterPoints;
             
-            chart6.data.datasets.forEach((ds, index) => {
-                if (ds.type === 'line') return; // Always show trend line
-                
-                if (selectedKp === 'all') {
-                    chart6.setDatasetVisibility(index, true);
-                } else {
-                    chart6.setDatasetVisibility(index, ds.label === selectedKp);
-                }
+            // Filter by View
+            if (view !== 'Global') {
+                filteredPoints = filteredPoints.filter(p => {
+                    if (!p.camera) return true; 
+                    if (view === 'Side') return p.camera.toLowerCase().includes('side');
+                    if (view === '45') return p.camera.toLowerCase().includes('45');
+                    return true;
+                });
+            }
+
+            // Filter by Keypoint
+            if (kp !== 'all') {
+                filteredPoints = filteredPoints.filter(p => p.kp === kp);
+            }
+
+            // Re-group for datasets
+            const scatterDatasets = [];
+            const uniqueKps = [...new Set(filteredPoints.map(p => p.kp))];
+            
+            uniqueKps.forEach(k => {
+                scatterDatasets.push({
+                    label: k,
+                    data: filteredPoints.filter(p => p.kp === k),
+                    backgroundColor: kpColors[k] || defaultColor,
+                    pointRadius: 2,
+                    pointHoverRadius: 5
+                });
             });
+
+            // Add trend line
+            scatterDatasets.push({
+                type: 'line',
+                label: '趨勢線',
+                data: [p1, p2],
+                borderColor: '#818cf8',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false
+            });
+
+            chart6.data.datasets = scatterDatasets;
             chart6.update();
-        });
+        }
+
+        // Listeners
+        const chart6ViewSelect = document.getElementById('chart6Select'); 
+        const chart6KpSelect = document.getElementById('chart6KpSelect');
+
+        // Initial Load
+        updateChart6('Global', 'all');
+
+        if (chart6ViewSelect) {
+            chart6ViewSelect.addEventListener('change', (e) => {
+                updateChart6(e.target.value, chart6KpSelect ? chart6KpSelect.value : 'all');
+            });
+        }
+        if (chart6KpSelect) {
+            chart6KpSelect.addEventListener('change', (e) => {
+                updateChart6(chart6ViewSelect ? chart6ViewSelect.value : 'Global', e.target.value);
+            });
+        }
 
         // --- Chart Heatmap: Temporal Heatmap ---
         if (document.getElementById('chart_heatmap')) {
-            const heatmapContainer = document.getElementById('chart_heatmap').parentElement.parentElement;
-            
-            // Inject Dropdown if not exists
-            if (!document.getElementById('heatmapCameraSelect')) {
-                const hmSelectHTML = `
-                    <div style="margin-bottom: 16px; display: flex; gap: 10px; align-items: center;">
-                        <label class="control-label">相機視角:</label>
-                        <select id="heatmapCameraSelect" class="styled-select">
-                            <option value="all">全部 (All)</option>
-                            <option value="side">Side</option>
-                            <option value="45">45°</option>
-                        </select>
-                    </div>
-                `;
-                heatmapContainer.insertAdjacentHTML('afterbegin', hmSelectHTML);
-            }
-
             const heatmapCtx = document.getElementById('chart_heatmap').getContext('2d');
             let heatmapChart = null;
 
-            function updateHeatmap() {
-                const filterCam = document.getElementById('heatmapCameraSelect').value;
-                
+            function updateHeatmap(view) {
                 // Prepare Data
                 let heatmapData = [];
                 let yLabels = [];
@@ -1179,8 +1566,13 @@
                         let records = data.full_keypoint_details[kp];
                         
                         // Filter by Camera
-                        if (filterCam !== 'all') {
-                            records = records.filter(r => r.camera === filterCam);
+                        if (view !== 'Global') {
+                            records = records.filter(r => {
+                                if (!r.camera) return true;
+                                if (view === 'Side') return r.camera.toLowerCase().includes('side');
+                                if (view === '45') return r.camera.toLowerCase().includes('45');
+                                return true;
+                            });
                         }
 
                         // Group by frame to find max error per frame for this keypoint
@@ -1259,10 +1651,13 @@
             }
 
             // Initial Load
-            updateHeatmap();
+            updateHeatmap('Global');
 
             // Event Listener
-            document.getElementById('heatmapCameraSelect').addEventListener('change', updateHeatmap);
+            const hmSelect = document.getElementById('chart_heatmapSelect');
+            if (hmSelect) {
+                hmSelect.addEventListener('change', (e) => updateHeatmap(e.target.value));
+            }
         }
 
         // --- Chart 7: Camera Bias ---

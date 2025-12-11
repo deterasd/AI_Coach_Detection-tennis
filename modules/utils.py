@@ -329,10 +329,10 @@ def calculate_cv(values: np.ndarray) -> float:
         float: CV 值（百分比）
     """
     mean_val = np.mean(values)
-    if mean_val < 1e-6:
+    if abs(mean_val) < 1e-6:
         return 0.0
     std_val = np.std(values)
-    return float(std_val / mean_val * 100)
+    return float(std_val / abs(mean_val) * 100)
 
 
 def detect_outliers_iqr(

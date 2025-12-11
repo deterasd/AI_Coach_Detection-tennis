@@ -17,9 +17,13 @@ import numpy as np
 from numpy.linalg import norm
 from datetime import datetime
 import sys
+import os
+
+# Add project root to sys.path to fix relative imports when running as script
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # 引入共用模組
-from .utils import (
+from modules.utils import (
     get_keypoint_safely,
     calculate_distance,
     load_json_file,
@@ -73,7 +77,8 @@ def analyze_velocity_changes(data: list, config: ValidationConfig) -> dict:
                 "max_velocity_mm_s": float(np.max(arr)),
                 "std_velocity_mm_s": float(np.std(arr)),
                 "cv_percent": calculate_cv(arr),
-                "sample_count": len(arr)
+                "sample_count": len(arr),
+                "series_data": [float(x) for x in arr]
             }
     
     return joint_velocities
@@ -139,7 +144,8 @@ def analyze_acceleration_anomalies(data: list, config: ValidationConfig) -> dict
         "outlier_count": len(outlier_indices),
         "outlier_rate": float(len(outlier_indices) / len(arr) * 100),
         "sample_count": len(arr),
-        "outlier_details": outlier_details
+        "outlier_details": outlier_details,
+        "series_data": [float(x) for x in arr]
     }
 
 
@@ -309,7 +315,8 @@ def analyze_smoothness(data: list, config: ValidationConfig) -> dict:
         "mean_second_diff_mm": float(np.mean(arr)),
         "std_second_diff_mm": float(np.std(arr)),
         "max_second_diff_mm": float(np.max(arr)),
-        "sample_count": len(arr)
+        "sample_count": len(arr),
+        "series_data": [float(x) for x in arr]
     }
 
 
@@ -573,6 +580,129 @@ def analyze_detailed_anomalies(
     }
 
 
+def calculate_score(
+    detailed_anomalies: dict,
+    smoothness: dict,
+    config: ValidationConfig
+) -> dict:
+    """
+    計算時間平滑度評分 (0-100)
+    
+    參數:
+        detailed_anomalies: 詳細異常分析結果
+        smoothness: 平滑度分析結果
+        config: 驗證配置
+    
+    返回:
+        dict: 評分結果
+    """
+    score = 100.0
+    deductions = []
+    
+    # 1. 加速度異常扣分
+    accel = detailed_anomalies.get('acceleration_anomalies', {})
+    accel_severe_count = len(accel.get('severe', []))
+    accel_moderate_count = len(accel.get('moderate', []))
+    accel_mild_count = len(accel.get('mild', []))
+    
+    deduction_accel = 0.0
+    if accel_severe_count > 0:
+        d = min(30.0, accel_severe_count * 5.0)
+        deduction_accel += d
+        deductions.append({"reason": f"嚴重加速度異常 ({accel_severe_count} 次)", "points": d})
+    
+    if accel_moderate_count > 0:
+        d = min(20.0, accel_moderate_count * 2.0)
+        deduction_accel += d
+        deductions.append({"reason": f"中等加速度異常 ({accel_moderate_count} 次)", "points": d})
+        
+    if accel_mild_count > 0:
+        d = min(10.0, accel_mild_count * 0.5)
+        deduction_accel += d
+        # 輕微異常不列入詳細扣分列表，除非扣分較多
+        if d > 2.0:
+            deductions.append({"reason": f"輕微加速度異常 ({accel_mild_count} 次)", "points": d})
+            
+    score -= deduction_accel
+    
+    # 2. 方向突變扣分
+    dir_chg = detailed_anomalies.get('direction_change_anomalies', {})
+    dir_severe_count = len(dir_chg.get('severe', []))
+    dir_moderate_count = len(dir_chg.get('moderate', []))
+    
+    deduction_dir = 0.0
+    if dir_severe_count > 0:
+        d = min(30.0, dir_severe_count * 5.0)
+        deduction_dir += d
+        deductions.append({"reason": f"嚴重方向突變 ({dir_severe_count} 次)", "points": d})
+        
+    if dir_moderate_count > 0:
+        d = min(20.0, dir_moderate_count * 2.0)
+        deduction_dir += d
+        deductions.append({"reason": f"中等方向突變 ({dir_moderate_count} 次)", "points": d})
+        
+    score -= deduction_dir
+    
+    # 3. 異常跳躍扣分 (最嚴重)
+    jumps = detailed_anomalies.get('jump_anomalies', {})
+    jump_severe_count = len(jumps.get('severe', []))
+    jump_moderate_count = len(jumps.get('moderate', []))
+    
+    deduction_jump = 0.0
+    if jump_severe_count > 0:
+        d = min(40.0, jump_severe_count * 10.0)
+        deduction_jump += d
+        deductions.append({"reason": f"嚴重異常跳躍 ({jump_severe_count} 次)", "points": d})
+        
+    if jump_moderate_count > 0:
+        d = min(20.0, jump_moderate_count * 5.0)
+        deduction_jump += d
+        deductions.append({"reason": f"中等異常跳躍 ({jump_moderate_count} 次)", "points": d})
+        
+    score -= deduction_jump
+    
+    # 4. 方向反轉扣分
+    reversals = detailed_anomalies.get('direction_reversals', {}).get('count', 0)
+    if reversals > 0:
+        d = min(20.0, reversals * 2.0)
+        score -= d
+        deductions.append({"reason": f"方向反轉 ({reversals} 次)", "points": d})
+        
+    # 5. 整體平滑度扣分
+    mean_second_diff = smoothness.get('mean_second_diff_mm', 0.0)
+    deduction_smooth = 0.0
+    if mean_second_diff > 20.0:
+        deduction_smooth = 20.0
+        deductions.append({"reason": f"整體平滑度極差 (均值 {mean_second_diff:.1f}mm)", "points": 20.0})
+    elif mean_second_diff > 10.0:
+        deduction_smooth = 10.0
+        deductions.append({"reason": f"整體平滑度不佳 (均值 {mean_second_diff:.1f}mm)", "points": 10.0})
+    elif mean_second_diff > 5.0:
+        deduction_smooth = 5.0
+        deductions.append({"reason": f"整體平滑度普通 (均值 {mean_second_diff:.1f}mm)", "points": 5.0})
+        
+    score -= deduction_smooth
+    
+    # 確保分數在 0-100 之間
+    score = max(0.0, min(100.0, score))
+    
+    # 評級
+    if score >= 90:
+        level = "Excellent"
+    elif score >= 80:
+        level = "Good"
+    elif score >= 60:
+        level = "Fair"
+    else:
+        level = "Poor"
+        
+    return {
+        "total_score": float(score),
+        "level": level,
+        "deductions": deductions
+    }
+
+
 def print_analysis_report_enhanced(
     velocity: dict,
     acceleration: dict,
@@ -808,12 +938,21 @@ def validate_time_smoothness_analysis(
         acceleration, direction_change, jump_anomalies, direction_continuity, config
     )
     
+    # 計算評分
+    score_result = calculate_score(detailed_anomalies, smoothness, config)
+    
     # 列印報告
     print_analysis_report_enhanced(
         velocity, acceleration, direction_change,
         jump_anomalies, smoothness, frequency, direction_continuity,
         detailed_anomalies, config
     )
+    
+    print("\n" + "=" * 100)
+    print(f"【評分結果】 {score_result['total_score']:.1f} / 100 ({score_result['level']})")
+    print("=" * 100)
+    for d in score_result['deductions']:
+        print(f"  - {d['reason']}: -{d['points']:.1f}")
     
     # 整合結果
     results = {
@@ -823,6 +962,7 @@ def validate_time_smoothness_analysis(
             "total_frames": int(len(data)),
             "analysis_type": "Time Smoothness Analysis"
         },
+        "score": score_result,
         "overall_summary": {
             "total_acceleration_outliers": acceleration.get('outlier_count', 0) if acceleration else 0,
             "total_large_jumps": jump_anomalies.get('large_jump_count', 0) if jump_anomalies else 0,

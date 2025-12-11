@@ -15,19 +15,107 @@ Step 3: 深度合理性驗證分析
 import numpy as np
 from datetime import datetime
 import sys
+import os
+import json
+
+# Add parent directory to path to allow importing config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 引入共用模組
-from .utils import (
-    get_keypoint_safely,
-    load_json_file,
-    save_json_results,
-    calculate_cv,
-    detect_outliers_zscore,
-    generate_output_path,
-    KEYPOINT_NAMES_EN,
-    get_keypoint_name_zh,
-)
+try:
+    from .utils import (
+        get_keypoint_safely,
+        load_json_file,
+        save_json_results,
+        calculate_cv,
+        detect_outliers_zscore,
+        generate_output_path,
+        KEYPOINT_NAMES_EN,
+        get_keypoint_name_zh,
+    )
+except ImportError:
+    from utils import (
+        get_keypoint_safely,
+        load_json_file,
+        save_json_results,
+        calculate_cv,
+        detect_outliers_zscore,
+        generate_output_path,
+        KEYPOINT_NAMES_EN,
+        get_keypoint_name_zh,
+    )
+
 from config import load_config, ValidationConfig
+
+
+# ========================================================
+# 輔助函數 (相機變換)
+# ========================================================
+
+def rq_decomposition(matrix: np.ndarray) -> tuple:
+    """執行 3x3 矩陣的 RQ 分解以取得 K 與 R。"""
+    # 使用 Gram-Schmidt 正交化或其他方法
+    # 這裡使用 numpy 的簡單實作
+    Q, R = np.linalg.qr(np.flipud(matrix).T)
+    R = np.flipud(R.T)
+    Q = np.flipud(Q.T)
+    
+    # 修正 R 的對角線符號，確保 K 的對角線為正
+    for i in range(3):
+        if R[i, i] < 0:
+            R[:, i] *= -1
+            Q[i, :] *= -1
+            
+    return R, Q
+
+def get_camera_matrices(config_path: str, dataset_name: str) -> dict:
+    """從設定檔讀取相機矩陣"""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            configs = json.load(f)
+        
+        if dataset_name in configs:
+            return configs[dataset_name]
+        
+        # 嘗試模糊匹配
+        for key in configs:
+            if key in dataset_name or dataset_name in key:
+                return configs[key]
+                
+        return None
+    except Exception as e:
+        print(f"讀取相機設定失敗: {e}")
+        return None
+
+def transform_to_camera_frame(data: list, P: np.ndarray) -> list:
+    """
+    將 3D 軌跡變換到相機座標系
+    X_cam = K^(-1) * P * X_world
+    """
+    # 分解 P = K[R|t]
+    M = P[:, :3]
+    K, R = rq_decomposition(M)
+    K_inv = np.linalg.inv(K)
+    
+    transformed_data = []
+    for frame in data:
+        new_frame = frame.copy()
+        for kp in KEYPOINT_NAMES_EN:
+            point = get_keypoint_safely(frame, kp)
+            if point is not None:
+                # 齊次座標
+                X_world = np.append(point, 1.0)
+                # 投影到相機座標系: P * X_world = K * X_cam => X_cam = K_inv * P * X_world
+                X_cam = K_inv @ (P @ X_world)
+                
+                # 更新座標
+                new_frame[kp] = {
+                    'x': float(X_cam[0]),
+                    'y': float(X_cam[1]),
+                    'z': float(X_cam[2]) # 這是深度
+                }
+        transformed_data.append(new_frame)
+    return transformed_data
 
 
 # ========================================================
@@ -146,13 +234,23 @@ def analyze_depth_symmetry(data: list, config: ValidationConfig) -> list:
         mean_diff = float(np.mean(diffs))
         max_diff = float(np.max(diffs))
         
+        # 評估對稱性品質
+        # 假設: 深度差異在 50mm 內為優，100mm 內為可接受，超過為差
+        if mean_diff <= 50:
+            assessment = "Good"
+        elif mean_diff <= 100:
+            assessment = "Acceptable"
+        else:
+            assessment = "Poor"
+
         symmetry_results.append({
             'pair_name': zh_name,
             'sample_count': len(diffs),
             'mean_depth_diff_mm': mean_diff,
             'std_depth_diff_mm': float(np.std(diffs)),
             'max_depth_diff_mm': max_diff,
-            'median_depth_diff_mm': float(np.median(diffs))
+            'median_depth_diff_mm': float(np.median(diffs)),
+            'assessment': assessment
         })
     
     return symmetry_results
@@ -299,6 +397,99 @@ def analyze_depth_statistics(depth_stats: dict) -> dict:
     }
 
 
+def analyze_temporal_depth_stability(data: list, config: ValidationConfig) -> dict:
+    """
+    分析時間軸上的深度穩定性 (偵測整體深度跳動)
+    """
+    frame_diffs = []
+    
+    for i in range(1, len(data)):
+        curr_frame = data[i]
+        prev_frame = data[i-1]
+        
+        diff_sum = 0
+        valid_points = 0
+        
+        for kp in KEYPOINT_NAMES_EN:
+            p1 = get_keypoint_safely(prev_frame, kp)
+            p2 = get_keypoint_safely(curr_frame, kp)
+            
+            if p1 is not None and p2 is not None:
+                diff_sum += abs(p2[2] - p1[2])
+                valid_points += 1
+        
+        avg_diff = diff_sum / valid_points if valid_points > 0 else 0
+        frame_diffs.append({
+            'frame_index': i,
+            'avg_depth_change_mm': avg_diff
+        })
+    
+    # 統計
+    changes = [x['avg_depth_change_mm'] for x in frame_diffs]
+    if not changes:
+        return {'unstable_frames': [], 'max_change_mm': 0, 'mean_change_mm': 0}
+        
+    mean_change = float(np.mean(changes))
+    std_change = float(np.std(changes))
+    threshold = mean_change + 3 * std_change
+    
+    unstable_frames = [x for x in frame_diffs if x['avg_depth_change_mm'] > threshold]
+    
+    return {
+        'mean_frame_change_mm': mean_change,
+        'max_frame_change_mm': float(np.max(changes)),
+        'unstable_frames': unstable_frames, # Frames with sudden global depth shift
+        'threshold_mm': threshold
+    }
+
+
+def calculate_depth_quality_score(depth_stats: dict, logic_stats: dict, overall_stats: dict) -> dict:
+    """計算整體深度品質分數 (0-100)"""
+    score = 100.0
+    deductions = []
+    
+    # 1. CV 扣分 (穩定性)
+    avg_cv = overall_stats.get('average_cv_percent', 0)
+    if avg_cv > 10:
+        deduct = (avg_cv - 10) * 2
+        score -= deduct
+        deductions.append(f"平均 CV 過高 ({avg_cv:.1f}%) -{deduct:.1f}")
+    elif avg_cv > 5:
+        deduct = (avg_cv - 5) * 1
+        score -= deduct
+        deductions.append(f"平均 CV 略高 ({avg_cv:.1f}%) -{deduct:.1f}")
+        
+    # 2. 邏輯異常扣分
+    wrist_rate = logic_stats.get('wrist_behind_shoulder_rate', 0)
+    knee_rate = logic_stats.get('knee_behind_hip_rate', 0)
+    
+    if wrist_rate > 0:
+        deduct = min(20, wrist_rate * 0.5)
+        score -= deduct
+        deductions.append(f"手腕深度異常 ({wrist_rate:.1f}%) -{deduct:.1f}")
+        
+    if knee_rate > 0:
+        deduct = min(20, knee_rate * 0.5)
+        score -= deduct
+        deductions.append(f"膝蓋深度異常 ({knee_rate:.1f}%) -{deduct:.1f}")
+        
+    # 3. 異常值扣分
+    total_outliers = sum(s['outlier_count'] for s in depth_stats.values())
+    total_samples = sum(s['sample_count'] for s in depth_stats.values())
+    outlier_rate = (total_outliers / total_samples * 100) if total_samples else 0
+    
+    if outlier_rate > 1:
+        deduct = min(20, outlier_rate * 2)
+        score -= deduct
+        deductions.append(f"深度異常值比例 ({outlier_rate:.1f}%) -{deduct:.1f}")
+
+    return {
+        'score': max(0, min(100, score)),
+        'deductions': deductions,
+        'level': 'Excellent' if score >= 90 else 'Good' if score >= 80 else 'Acceptable' if score >= 60 else 'Poor'
+    }
+
+
 def print_analysis_report(
     depth_stats: dict,
     symmetry_results: list,
@@ -429,6 +620,7 @@ def validate_depth_reasonableness_analysis(
 ) -> dict:
     """
     深度合理性驗證分析（主函數）
+    支援多視角分析 (Global, 45, Side)
     
     參數:
         json_3d_path: 3D 軌跡 JSON 檔案路徑
@@ -446,53 +638,96 @@ def validate_depth_reasonableness_analysis(
     data = load_json_file(json_3d_path)
     print(f"總幀數: {len(data)}")
     
-    # 執行各項分析
-    print("\n執行深度範圍分析...")
-    depth_stats = analyze_depth_ranges(data, config)
+    # 嘗試載入相機參數以進行多視角分析
+    views = {'Global': data}
     
-    print("執行深度對稱性分析...")
-    symmetry_results = analyze_depth_symmetry(data, config)
+    # 尋找 camera_configs.json
+    cam_config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(json_3d_path))), 'camera_configs.json')
+    if not os.path.exists(cam_config_path):
+        # 嘗試往上找
+        current_dir = os.path.dirname(os.path.abspath(json_3d_path))
+        while len(current_dir) > 3:
+            p = os.path.join(current_dir, 'camera_configs.json')
+            if os.path.exists(p):
+                cam_config_path = p
+                break
+            current_dir = os.path.dirname(current_dir)
+            
+    if os.path.exists(cam_config_path):
+        # 推斷 dataset_name (使用父資料夾名稱)
+        dataset_name = os.path.basename(os.path.dirname(json_3d_path))
+        print(f"嘗試載入相機設定 (Dataset: {dataset_name})...")
+        
+        cam_matrices = get_camera_matrices(cam_config_path, dataset_name)
+        if cam_matrices:
+            print("成功載入相機矩陣，將進行多視角分析。")
+            if 'p1' in cam_matrices:
+                P1 = np.array(cam_matrices['p1'])
+                views['45'] = transform_to_camera_frame(data, P1)
+            if 'p2' in cam_matrices:
+                P2 = np.array(cam_matrices['p2'])
+                views['Side'] = transform_to_camera_frame(data, P2)
+        else:
+            print(f"未找到 {dataset_name} 的相機設定，僅執行 Global 分析。")
     
-    print("執行深度邏輯分析...")
-    logic_stats = analyze_depth_logic(data, config)
+    full_results = {}
     
-    print("執行整體深度統計分析...")
-    overall_stats = analyze_depth_statistics(depth_stats)
-    
-    # 列印報告
-    print_analysis_report(
-        depth_stats, symmetry_results,
-        logic_stats, overall_stats, config
-    )
-    
-    # 整合結果
-    results = {
-        "metadata": {
-            "analysis_time": datetime.now().isoformat(),
-            "source_file": str(json_3d_path),
-            "total_frames": int(len(data)),
-            "analysis_type": "Depth Reasonableness Analysis"
-        },
-        "overall_summary": {
-            "average_cv": overall_stats.get('average_cv_percent', 0.0),
-            "total_keypoints_analyzed": len(depth_stats),
-            "total_logic_violations": (logic_stats.get('wrist_behind_shoulder_count', 0) + 
-                                      logic_stats.get('knee_behind_hip_count', 0))
-        },
-        "depth_range_analysis": depth_stats,
-        "depth_symmetry": symmetry_results,
-        "depth_logic_check": logic_stats,
-        "overall_statistics": overall_stats
-    }
-    
+    for view_name, view_data in views.items():
+        print(f"\n[{view_name} View Analysis]")
+        
+        # 執行各項分析
+        depth_stats = analyze_depth_ranges(view_data, config)
+        symmetry_results = analyze_depth_symmetry(view_data, config)
+        logic_stats = analyze_depth_logic(view_data, config)
+        overall_stats = analyze_depth_statistics(depth_stats)
+        temporal_stats = analyze_temporal_depth_stability(view_data, config)
+        quality_score = calculate_depth_quality_score(depth_stats, logic_stats, overall_stats)
+        
+        # 僅對 Global 視角列印詳細報告，避免洗版
+        if view_name == 'Global':
+            print_analysis_report(
+                depth_stats, symmetry_results,
+                logic_stats, overall_stats, config
+            )
+        
+        # 整合該視角的結果
+        full_results[view_name] = {
+            "metadata": {
+                "analysis_time": datetime.now().isoformat(),
+                "source_file": str(json_3d_path),
+                "total_frames": int(len(view_data)),
+                "analysis_type": "Depth Reasonableness Analysis",
+                "view": view_name
+            },
+            "overall_summary": {
+                "average_cv": overall_stats.get('average_cv_percent', 0.0),
+                "quality_level": config.get_quality_level_cv(overall_stats.get('average_cv_percent', 0.0)),
+                "total_keypoints_analyzed": len(depth_stats),
+                "total_logic_violations": (logic_stats.get('wrist_behind_shoulder_count', 0) + 
+                                          logic_stats.get('knee_behind_hip_count', 0)),
+                "mean_depth_mm": overall_stats.get('overall_mean_depth_mm', 0.0),
+                "quality_score": quality_score
+            },
+            "depth_range_analysis": depth_stats,
+            "depth_symmetry": symmetry_results,
+            "depth_logic_check": logic_stats,
+            "overall_statistics": overall_stats,
+            "temporal_stability": temporal_stats
+        }
+
     # 保存結果
     if output_json_path is None:
-        output_json_path = generate_output_path(json_3d_path, '_step3_depth_reasonableness_results')
+        # 建立 results 資料夾
+        results_dir = os.path.join(os.path.dirname(json_3d_path), 'Verification Result')
+        os.makedirs(results_dir, exist_ok=True)
+        
+        base_name = os.path.splitext(os.path.basename(json_3d_path))[0]
+        output_json_path = os.path.join(results_dir, f"{base_name}_step3_depth_reasonableness_results.json")
     
-    save_json_results(results, output_json_path)
+    save_json_results(full_results, output_json_path)
     print(f"\n[OK] 結果已儲存至: {output_json_path}")
     
-    return results
+    return full_results
 
 
 # ========================================================
@@ -511,7 +746,7 @@ if __name__ == "__main__":
             if arg == '--output' and i + 1 < len(sys.argv):
                 output_json_path = sys.argv[i + 1]
     else:
-        json_3d_path = "0306_3__trajectory/trajectory__2/0306_3__2(3D_trajectory_smoothed).json"
+        json_3d_path = "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json"
         config_path = None
         output_json_path = None
         print("提示: 可使用命令列參數:")

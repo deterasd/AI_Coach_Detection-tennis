@@ -14,21 +14,39 @@ Step 5: 空間一致性驗證分析
 """
 
 import json
+import os
 import numpy as np
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 import sys
 
+# Add parent directory to path to allow importing config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 引入共用模組
-from .utils import (
-    get_keypoint_safely,
-    calculate_distance,
-    load_json_file,
-    save_json_results,
-    calculate_cv,
-    detect_outliers_zscore,
-    generate_output_path,
-)
+try:
+    from .utils import (
+        get_keypoint_safely,
+        calculate_distance,
+        load_json_file,
+        save_json_results,
+        calculate_cv,
+        detect_outliers_zscore,
+        generate_output_path,
+        KEYPOINT_NAMES_EN,
+    )
+except ImportError:
+    from utils import (
+        get_keypoint_safely,
+        calculate_distance,
+        load_json_file,
+        save_json_results,
+        calculate_cv,
+        detect_outliers_zscore,
+        generate_output_path,
+        KEYPOINT_NAMES_EN,
+    )
+
 from config import load_config, ValidationConfig
 
 AXIS_TO_INDEX: Dict[str, int] = {"x": 0, "y": 1, "z": 2}
@@ -57,8 +75,9 @@ def analyze_ground_plane_consistency(data: list, config: ValidationConfig) -> di
         dict: 地面平面分析結果
     """
     ankle_diffs = []
+    frame_indices = []
     
-    for frame in data:
+    for i, frame in enumerate(data):
         left_ankle = get_keypoint_safely(frame, "left_ankle")
         right_ankle = get_keypoint_safely(frame, "right_ankle")
         
@@ -66,6 +85,7 @@ def analyze_ground_plane_consistency(data: list, config: ValidationConfig) -> di
             # Y 軸差異（高度差）
             diff = abs(left_ankle[1] - right_ankle[1])
             ankle_diffs.append(diff)
+            frame_indices.append(i)
     
     if not ankle_diffs:
         return {}
@@ -84,7 +104,11 @@ def analyze_ground_plane_consistency(data: list, config: ValidationConfig) -> di
         "std_diff_mm": float(np.std(arr)),
         "max_diff_mm": float(np.max(arr)),
         "median_diff_mm": float(np.median(arr)),
-        "assessment": assessment
+        "assessment": assessment,
+        "series": {
+            "frames": frame_indices,
+            "diff_mm": ankle_diffs
+        }
     }
 
 
@@ -108,8 +132,9 @@ def analyze_body_symmetry(data: list, config: ValidationConfig) -> list:
             continue
         seen_pairs.add(zh_name)
         asymmetry_percentages = []
+        frame_indices = []
         
-        for frame in data:
+        for i, frame in enumerate(data):
             ref_points = [get_keypoint_safely(frame, ref) for ref in midline_refs]
             if any(p is None for p in ref_points):
                 continue
@@ -123,6 +148,7 @@ def analyze_body_symmetry(data: list, config: ValidationConfig) -> list:
             avg = (dl + dr) / 2.0
             diff_rate = safe_percentage(abs(dl - dr), avg, config.epsilon)
             asymmetry_percentages.append(diff_rate)
+            frame_indices.append(i)
         
         if asymmetry_percentages:
             arr = np.array(asymmetry_percentages, dtype=float)
@@ -133,7 +159,11 @@ def analyze_body_symmetry(data: list, config: ValidationConfig) -> list:
                 "std_asymmetry_percent": float(np.std(arr)),
                 "max_asymmetry_percent": float(np.max(arr)),
                 "sample_count": len(arr),
-                "assessment": config.get_symmetry_assessment(mean_percent)
+                "assessment": config.get_symmetry_assessment(mean_percent),
+                "series": {
+                    "frames": frame_indices,
+                    "asymmetry_percent": asymmetry_percentages
+                }
             })
     
     return symmetry_results
@@ -159,7 +189,17 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
     
     total = len(data)
     
-    for frame in data:
+    # For plotting, we can track the vertical distance (positive = good, negative = violation)
+    # e.g. Head - Shoulder Y (since Y is down, Head Y < Shoulder Y is good. So Shoulder Y - Head Y > 0 is good)
+    series_data = {
+        "frames": [],
+        "head_shoulder_diff": [], # Shoulder Y - Head Y
+        "shoulder_hip_diff": [],  # Hip Y - Shoulder Y
+        "hip_knee_diff": [],      # Knee Y - Hip Y
+        "knee_ankle_diff": []     # Ankle Y - Knee Y
+    }
+
+    for i, frame in enumerate(data):
         nose = get_keypoint_safely(frame, "nose")
         ls = get_keypoint_safely(frame, "left_shoulder")
         rs = get_keypoint_safely(frame, "right_shoulder")
@@ -170,32 +210,46 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
         la = get_keypoint_safely(frame, "left_ankle")
         ra = get_keypoint_safely(frame, "right_ankle")
         
-        # 頭 > 肩
+        series_data["frames"].append(i)
+        
+        # Head vs Shoulder
         if not any(p is None for p in [nose, ls, rs]):
             shoulder_y = (ls[1] + rs[1]) / 2
             if nose[1] > shoulder_y:
                 violations["head_below_shoulder"] += 1
+            series_data["head_shoulder_diff"].append(shoulder_y - nose[1])
+        else:
+            series_data["head_shoulder_diff"].append(None)
         
-        # 肩 > 髖
+        # Shoulder vs Hip
         if not any(p is None for p in [ls, rs, lh, rh]):
             shoulder_y = (ls[1] + rs[1]) / 2
             hip_y = (lh[1] + rh[1]) / 2
             if shoulder_y > hip_y:
                 violations["shoulder_below_hip"] += 1
+            series_data["shoulder_hip_diff"].append(hip_y - shoulder_y)
+        else:
+            series_data["shoulder_hip_diff"].append(None)
         
-        # 髖 > 膝
+        # Hip vs Knee
         if not any(p is None for p in [lh, rh, lk, rk]):
             hip_y = (lh[1] + rh[1]) / 2
             knee_y = (lk[1] + rk[1]) / 2
             if hip_y > knee_y:
                 violations["hip_below_knee"] += 1
+            series_data["hip_knee_diff"].append(knee_y - hip_y)
+        else:
+            series_data["hip_knee_diff"].append(None)
         
-        # 膝 > 踝
+        # Knee vs Ankle
         if not any(p is None for p in [lk, rk, la, ra]):
             knee_y = (lk[1] + rk[1]) / 2
             ankle_y = (la[1] + ra[1]) / 2
             if knee_y > ankle_y:
                 violations["knee_below_ankle"] += 1
+            series_data["knee_ankle_diff"].append(ankle_y - knee_y)
+        else:
+            series_data["knee_ankle_diff"].append(None)
     
     return {
         "total_frames": total,
@@ -206,7 +260,8 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
         "hip_below_knee_count": violations["hip_below_knee"],
         "hip_below_knee_rate": float(violations["hip_below_knee"] / total * 100),
         "knee_below_ankle_count": violations["knee_below_ankle"],
-        "knee_below_ankle_rate": float(violations["knee_below_ankle"] / total * 100)
+        "knee_below_ankle_rate": float(violations["knee_below_ankle"] / total * 100),
+        "series": series_data
     }
 
 
@@ -222,8 +277,9 @@ def analyze_center_stability(data: list, config: ValidationConfig) -> dict:
         dict: 重心穩定性分析結果
     """
     centers = []
+    frame_indices = []
     
-    for frame in data:
+    for i, frame in enumerate(data):
         ls = get_keypoint_safely(frame, "left_shoulder")
         rs = get_keypoint_safely(frame, "right_shoulder")
         lh = get_keypoint_safely(frame, "left_hip")
@@ -232,6 +288,7 @@ def analyze_center_stability(data: list, config: ValidationConfig) -> dict:
         if all(p is not None for p in [ls, rs, lh, rh]):
             center = (ls + rs + lh + rh) / 4
             centers.append(center)
+            frame_indices.append(i)
     
     if not centers:
         return {}
@@ -263,7 +320,13 @@ def analyze_center_stability(data: list, config: ValidationConfig) -> dict:
     return {
         "sample_count": len(centers),
         "axes": axis_stats,
-        "mean_center": centers_arr.mean(axis=0).tolist()
+        "mean_center": centers_arr.mean(axis=0).tolist(),
+        "series": {
+            "frames": frame_indices,
+            "x": centers_arr[:, 0].tolist(),
+            "y": centers_arr[:, 1].tolist(),
+            "z": centers_arr[:, 2].tolist()
+        }
     }
 
 
@@ -299,8 +362,9 @@ def analyze_rigid_body_groups(data: list, config: ValidationConfig) -> dict:
         
         for j1, j2 in pairs:
             distances = []
+            frame_indices = []
             
-            for frame in data:
+            for i, frame in enumerate(data):
                 p1 = get_keypoint_safely(frame, j1)
                 p2 = get_keypoint_safely(frame, j2)
                 
@@ -308,6 +372,7 @@ def analyze_rigid_body_groups(data: list, config: ValidationConfig) -> dict:
                     dist = calculate_distance(p1, p2)
                     if dist is not None:
                         distances.append(dist)
+                        frame_indices.append(i)
             
             if distances:
                 arr = np.array(distances, dtype=float)
@@ -317,7 +382,11 @@ def analyze_rigid_body_groups(data: list, config: ValidationConfig) -> dict:
                     "pair": f"{j1}-{j2}",
                     "mean_distance_mm": float(np.mean(arr)),
                     "cv_percent": cv,
-                    "quality": config.get_quality_level_cv(cv)
+                    "quality": config.get_quality_level_cv(cv),
+                    "series": {
+                        "frames": frame_indices,
+                        "distance_mm": distances
+                    }
                 })
         
         results[group_name] = group_results
@@ -395,7 +464,14 @@ def analyze_penetration_detection(data: list, config: ValidationConfig) -> dict:
     penetration_frames = []
     penetration_events = []  # 記錄穿透事件起始
     
+    # For plotting
+    all_frames = []
+    all_depths = [] # 0 if no penetration, >0 if penetration
+    
     for frame_idx, frame in enumerate(data):
+        all_frames.append(frame_idx)
+        max_depth = 0.0
+        
         # 檢查手腕是否穿透地面
         for wrist_name in ["left_wrist", "right_wrist"]:
             wrist = get_keypoint_safely(frame, wrist_name)
@@ -408,6 +484,7 @@ def analyze_penetration_detection(data: list, config: ValidationConfig) -> dict:
                 # 如果手腕低於地面（Y 軸更大）
                 if wrist[1] > ground_y + config.penetration_tolerance:
                     penetration_depth = float(wrist[1] - ground_y)
+                    max_depth = max(max_depth, penetration_depth)
                     
                     # 檢查是否為新的穿透事件（與前一個事件間隔超過 5 幀）
                     is_new_event = True
@@ -424,11 +501,17 @@ def analyze_penetration_detection(data: list, config: ValidationConfig) -> dict:
                             "joint": wrist_name,
                             "penetration_depth_mm": penetration_depth
                         })
+        
+        all_depths.append(max_depth)
     
     return {
         "total_penetrations": penetration_count,
         "penetration_rate": float(penetration_count / len(data) * 100) if data else 0.0,
-        "penetration_frames": penetration_frames[:10]  # 只返回前 10 個
+        "penetration_frames": penetration_frames[:10],  # 只返回前 10 個
+        "series": {
+            "frames": all_frames,
+            "penetration_depth_mm": all_depths
+        }
     }
 
 
@@ -507,6 +590,85 @@ def print_analysis_report(
         print(f"穿透率: {penetration['penetration_rate']:.2f}%")
 
 
+def calculate_overall_score(
+    ground_plane: dict,
+    symmetry: list,
+    relative: dict,
+    rigid: dict,
+    penetration: dict,
+    topology: dict
+) -> dict:
+    """
+    計算總體評分 (0-100)
+    """
+    score = 100.0
+    deductions = {}
+
+    # 1. 地面平面 (Max 20)
+    gp_diff = ground_plane.get('mean_diff_mm', 0)
+    gp_deduction = 0
+    if gp_diff > 100:
+        gp_deduction = 20
+    elif gp_diff > 50:
+        gp_deduction = 10
+    elif gp_diff > 20:
+        gp_deduction = 5
+    score -= gp_deduction
+    deductions['ground_plane'] = gp_deduction
+
+    # 2. 對稱性 (Max 20)
+    avg_asym = 0
+    if symmetry:
+        avg_asym = sum(s.get('mean_asymmetry_percent', 0) for s in symmetry) / len(symmetry)
+    
+    sym_deduction = min(20, avg_asym * 0.5) # e.g. 40% asym -> 20 pts
+    score -= sym_deduction
+    deductions['symmetry'] = sym_deduction
+
+    # 3. 相對位置 (Max 20)
+    total_frames = relative.get('total_frames', 1)
+    violations = (
+        relative.get('head_below_shoulder_count', 0) +
+        relative.get('shoulder_below_hip_count', 0) +
+        relative.get('hip_below_knee_count', 0) +
+        relative.get('knee_below_ankle_count', 0)
+    )
+    violation_rate = (violations / total_frames) 
+    rel_deduction = min(20, violation_rate * 20)
+    score -= rel_deduction
+    deductions['relative_position'] = rel_deduction
+
+    # 4. 剛體組 (Max 20)
+    cv_sum = 0
+    cv_count = 0
+    for group, pairs in rigid.items():
+        for pair in pairs:
+            cv_sum += pair.get('cv_percent', 0)
+            cv_count += 1
+    
+    avg_cv = cv_sum / cv_count if cv_count > 0 else 0
+    rigid_deduction = min(20, avg_cv * 2) # e.g. 10% CV -> 20 pts
+    score -= rigid_deduction
+    deductions['rigid_body'] = rigid_deduction
+
+    # 5. 穿透 (Max 10)
+    pen_rate = penetration.get('penetration_rate', 0)
+    pen_deduction = min(10, pen_rate * 0.2) # 50% penetration -> 10 pts
+    score -= pen_deduction
+    deductions['penetration'] = pen_deduction
+
+    # 6. 拓撲 (Max 10)
+    completeness = topology.get('completeness_rate', 100)
+    topo_deduction = min(10, (100 - completeness))
+    score -= topo_deduction
+    deductions['topology'] = topo_deduction
+
+    return {
+        "total_score": max(0, round(score, 1)),
+        "deductions": deductions
+    }
+
+
 def validate_spatial_consistency_analysis(
     json_3d_path: str,
     output_json_path: str = None,
@@ -559,6 +721,13 @@ def validate_spatial_consistency_analysis(
         center_stability, rigid_groups, topology, penetration, config
     )
     
+    # 計算評分
+    score_data = calculate_overall_score(
+        ground_plane, symmetry_results, relative_position,
+        rigid_groups, penetration, topology
+    )
+    print(f"\n總體評分: {score_data['total_score']} / 100")
+
     # 整合結果
     results = {
         "metadata": {
@@ -567,6 +736,7 @@ def validate_spatial_consistency_analysis(
             "total_frames": int(len(data)),
             "analysis_type": "Spatial Consistency Analysis"
         },
+        "score": score_data,
         "overall_summary": {
             "ground_plane_consistent": ground_plane.get('assessment', '').startswith('[OK]') if ground_plane else None,
             "total_penetrations": penetration.get('total_penetrations', 0),
@@ -583,7 +753,12 @@ def validate_spatial_consistency_analysis(
     
     # 保存結果
     if output_json_path is None:
-        output_json_path = generate_output_path(json_3d_path, '_step5_spatial_consistency_results')
+        # 建立 results 資料夾
+        results_dir = os.path.join(os.path.dirname(json_3d_path), 'Verification Result')
+        os.makedirs(results_dir, exist_ok=True)
+        
+        base_name = os.path.splitext(os.path.basename(json_3d_path))[0]
+        output_json_path = os.path.join(results_dir, f"{base_name}_step5_spatial_consistency_results.json")
     
     save_json_results(results, output_json_path)
     print(f"\n[OK] 結果已儲存至: {output_json_path}")

@@ -6,9 +6,9 @@ from flask import Flask, request, jsonify, send_from_directory, make_response
 import glob
 
 # Import validation functions
-# Assuming these files are in the same directory
 from modules.step1_reprojection_error import validate_reprojection_analysis
 from modules.step2_bone_consistency import validate_bone_consistency_analysis
+from modules.step3_depth_reasonableness import validate_depth_reasonableness_analysis
 
 app = Flask(__name__, static_folder='templates')
 
@@ -91,10 +91,12 @@ def validate_step1():
         # We can let the function generate the default path, or specify one.
         # Let's specify one to be sure.
         
+        # Create results directory
+        output_dir = os.path.join(os.path.dirname(json_3d), 'Verification Result')
+        os.makedirs(output_dir, exist_ok=True)
+        
         base_name = os.path.splitext(os.path.basename(json_3d))[0]
         output_filename = f"{base_name}_step1_reprojection_error_results.json"
-        # Use the directory of the input file for output
-        output_dir = os.path.dirname(json_3d)
         output_path = os.path.join(output_dir, output_filename)
         
         validate_reprojection_analysis(
@@ -124,10 +126,12 @@ def validate_step2():
         if not json_3d:
             return jsonify({"error": "Missing required parameters"}), 400
 
+        # Create results directory
+        output_dir = os.path.join(os.path.dirname(json_3d), 'Verification Result')
+        os.makedirs(output_dir, exist_ok=True)
+
         base_name = os.path.splitext(os.path.basename(json_3d))[0]
         output_filename = f"{base_name}_step2_bone_consistency_results.json"
-        # Use the directory of the input file for output
-        output_dir = os.path.dirname(json_3d)
         output_path = os.path.join(output_dir, output_filename)
 
         validate_bone_consistency_analysis(
@@ -138,6 +142,38 @@ def validate_step2():
 
         return jsonify({
             "status": "success", 
+            "result_file": output_path.replace('\\', '/')
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/validate/step3', methods=['POST'])
+def validate_step3():
+    data = request.json
+    try:
+        json_3d = data.get('json_3d')
+
+        if not json_3d:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        output_dir = os.path.join(os.path.dirname(json_3d), 'Verification Result')
+        os.makedirs(output_dir, exist_ok=True)
+
+        base_name = os.path.splitext(os.path.basename(json_3d))[0]
+        output_filename = f"{base_name}_step3_depth_reasonableness_results.json"
+        output_path = os.path.join(output_dir, output_filename)
+
+        validate_depth_reasonableness_analysis(
+            json_3d,
+            output_json_path=output_path,
+            config_path=None
+        )
+
+        return jsonify({
+            "status": "success",
             "result_file": output_path.replace('\\', '/')
         })
 
@@ -211,6 +247,7 @@ def delete_camera_setting(name):
 def export_offline_report():
     report_type = request.args.get('type')
     result_file = request.args.get('file')
+    save_to_disk = request.args.get('save_to_disk', 'false').lower() == 'true'
     
     if not report_type or not result_file:
         return jsonify({"error": "Missing parameters"}), 400
@@ -223,6 +260,8 @@ def export_offline_report():
         template_file = 'templates/step1_reprojection_error.html'
     elif report_type == 'step2':
         template_file = 'templates/step2_bone_consistency.html'
+    elif report_type == 'step3':
+        template_file = 'templates/step3_depth_reasonableness.html'
     else:
         return jsonify({"error": "Invalid report type"}), 400
         
@@ -253,7 +292,25 @@ def export_offline_report():
             # Fallback if no head tag
             modified_html = injection_script + html_content
         
-        # Create response
+        # If save_to_disk is requested, save the file next to the result json
+        if save_to_disk:
+            output_dir = os.path.dirname(result_file)
+            base_name = os.path.splitext(os.path.basename(result_file))[0]
+            # Remove _results suffix if present to avoid redundancy
+            base_name = base_name.replace('_results', '')
+            html_filename = f"{base_name}_report.html"
+            output_path = os.path.join(output_dir, html_filename)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(modified_html)
+                
+            return jsonify({
+                "status": "success",
+                "message": f"Report saved to {output_path}",
+                "file_path": output_path.replace('\\', '/')
+            })
+
+        # Create response for download
         response = make_response(modified_html)
         response.headers['Content-Disposition'] = f'attachment; filename={report_type}_offline_report.html'
         response.headers['Content-Type'] = 'text/html; charset=utf-8'

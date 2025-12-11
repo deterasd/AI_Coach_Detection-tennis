@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "analysis_time": "2025-12-05T18:34:23.142086",
-    "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed)_fixed.json",
+    "analysis_time": "2025-12-11T21:39:58.511417",
+    "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json",
     "total_frames": 141,
     "analysis_type": "Bone Consistency Analysis"
   },
@@ -2797,75 +2797,75 @@
   "joint_depth_stability": {
     "nose": {
       "sample_count": 141,
-      "mean_z_cm": -223.4930413422958,
+      "mean_z_cm": 223.4930413422958,
       "std_z_cm": 2.249313836714803,
-      "cv_percent": 0.0,
-      "min_z_cm": -229.22281216817987,
-      "max_z_cm": -217.93359260322958
+      "cv_percent": 1.0064357365247072,
+      "min_z_cm": 217.93359260322958,
+      "max_z_cm": 229.22281216817987
     },
     "left_shoulder": {
       "sample_count": 141,
-      "mean_z_cm": -245.32021151314186,
+      "mean_z_cm": 245.32021151314186,
       "std_z_cm": 7.505701201383095,
-      "cv_percent": 0.0,
-      "min_z_cm": -260.73874250623504,
-      "max_z_cm": -235.65876792864293
+      "cv_percent": 3.0595527189087774,
+      "min_z_cm": 235.65876792864293,
+      "max_z_cm": 260.73874250623504
     },
     "right_shoulder": {
       "sample_count": 141,
-      "mean_z_cm": -245.83266650275016,
+      "mean_z_cm": 245.83266650275016,
       "std_z_cm": 5.489662259986115,
-      "cv_percent": 0.0,
-      "min_z_cm": -260.8610819250392,
-      "max_z_cm": -235.853637788367
+      "cv_percent": 2.2330890105382726,
+      "min_z_cm": 235.853637788367,
+      "max_z_cm": 260.8610819250392
     },
     "left_hip": {
       "sample_count": 141,
-      "mean_z_cm": -248.4205650566254,
+      "mean_z_cm": 248.4205650566254,
       "std_z_cm": 4.690721142199428,
-      "cv_percent": 0.0,
-      "min_z_cm": -255.9807896116393,
-      "max_z_cm": -237.8933558298066
+      "cv_percent": 1.8882177251026773,
+      "min_z_cm": 237.8933558298066,
+      "max_z_cm": 255.9807896116393
     },
     "right_hip": {
       "sample_count": 141,
-      "mean_z_cm": -247.45099767153056,
+      "mean_z_cm": 247.45099767153056,
       "std_z_cm": 5.522358742320084,
-      "cv_percent": 0.0,
-      "min_z_cm": -257.67594612074447,
-      "max_z_cm": -236.16312705046226
+      "cv_percent": 2.2316979096000775,
+      "min_z_cm": 236.16312705046226,
+      "max_z_cm": 257.67594612074447
     },
     "left_wrist": {
       "sample_count": 141,
-      "mean_z_cm": -245.49255465563152,
+      "mean_z_cm": 245.49255465563152,
       "std_z_cm": 5.524920120594491,
-      "cv_percent": 0.0,
-      "min_z_cm": -260.13707934652206,
-      "max_z_cm": -236.03844679497973
+      "cv_percent": 2.250544880411814,
+      "min_z_cm": 236.03844679497973,
+      "max_z_cm": 260.13707934652206
     },
     "right_wrist": {
       "sample_count": 141,
-      "mean_z_cm": -233.36652609441845,
+      "mean_z_cm": 233.36652609441845,
       "std_z_cm": 9.420248084549371,
-      "cv_percent": 0.0,
-      "min_z_cm": -252.82698294269454,
-      "max_z_cm": -213.79615392662018
+      "cv_percent": 4.036674943148447,
+      "min_z_cm": 213.79615392662018,
+      "max_z_cm": 252.82698294269454
     },
     "left_ankle": {
       "sample_count": 141,
-      "mean_z_cm": -263.6724003687075,
+      "mean_z_cm": 263.6724003687075,
       "std_z_cm": 3.458680026883114,
-      "cv_percent": 0.0,
-      "min_z_cm": -269.96695567408204,
-      "max_z_cm": -251.97131596740533
+      "cv_percent": 1.3117338113684456,
+      "min_z_cm": 251.97131596740533,
+      "max_z_cm": 269.96695567408204
     },
     "right_ankle": {
       "sample_count": 141,
-      "mean_z_cm": -252.26632373361434,
+      "mean_z_cm": 252.26632373361434,
       "std_z_cm": 3.0248064061146454,
-      "cv_percent": 0.0,
-      "min_z_cm": -258.31632161533537,
-      "max_z_cm": -246.53930008180447
+      "cv_percent": 1.1990527952152463,
+      "min_z_cm": 246.53930008180447,
+      "max_z_cm": 258.31632161533537
     }
   },
   "joint_angle_analysis": {

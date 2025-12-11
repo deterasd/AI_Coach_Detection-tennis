@@ -17,6 +17,7 @@ Step 1: 重投影誤差驗證分析
 import numpy as np
 from datetime import datetime
 import sys
+import os
 from typing import Optional, Tuple
 
 # 引入共用模組
@@ -878,9 +879,12 @@ def validate_reprojection_analysis(
     
     # 保存結果
     if output_json_path is None:
-        output_json_path = generate_output_path(
-            json_3d_path, '_step1_reprojection_error_results'
-        )
+        # 建立 results 資料夾
+        results_dir = os.path.join(os.path.dirname(json_3d_path), 'Verification Result')
+        os.makedirs(results_dir, exist_ok=True)
+        
+        base_name = os.path.splitext(os.path.basename(json_3d_path))[0]
+        output_json_path = os.path.join(results_dir, f"{base_name}_step1_reprojection_error_results.json")
     
     save_json_results(results, output_json_path)
     print(f"\n[OK] 結果已儲存至: {output_json_path}")

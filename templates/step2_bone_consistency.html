@@ -147,6 +147,155 @@
             font-weight: 500;
         }
 
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
         .section-title {
             font-size: 1.5rem;
             font-weight: 700;
@@ -386,6 +535,8 @@
             .grid { grid-template-columns: 1fr; }
             .info-item { grid-template-columns: 1fr; gap: 6px; }
             .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
         }
     </style>
 </head>
@@ -403,6 +554,31 @@
     <!-- Summary Stats -->
     <div id="summaryStats" class="summary-grid">
         <!-- Injected by JS -->
+    </div>
+
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <h2 class="section-title">📊 視覺化圖表分析</h2>
@@ -604,6 +780,131 @@
         return `<span class="status-badge status-${status}">${text}</span>`;
     }
 
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">所有骨長/對稱檢查皆通過</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep2(data) {
+        if (!data || !data.overall_summary) return null;
+
+        let workingScore = 100;
+        const breakdown = [];
+        const summary = data.overall_summary;
+        const bones = data.bone_statistics || {};
+        const symmetry = Array.isArray(data.symmetry_analysis) ? data.symmetry_analysis : [];
+        const spikesTotal = (data.spike_detection && data.spike_detection.total_spikes) || summary.total_spikes_detected || 0;
+        const heightWarning = data.body_height_analysis && data.body_height_analysis.scale_warning;
+
+        const register = (label, value, detail, penalty) => {
+            const safePenalty = penalty > 0 && Number.isFinite(penalty) ? penalty : 0;
+            if (safePenalty > 0) workingScore -= safePenalty;
+            breakdown.push({ label, value, detail, impact: safePenalty });
+        };
+
+        const avgCv = summary.average_cv || summary.average_cv_percent || 0;
+        const avgCvPenalty = avgCv > 4 ? clamp((avgCv - 4) * 2.2, 0, 22) : 0;
+        register('平均骨長 CV', `${avgCv.toFixed(2)}%`, '整體穩定度，建議小於 4%', avgCvPenalty);
+
+        let worstBone = null;
+        Object.keys(bones).forEach(key => {
+            const stat = bones[key];
+            if (!worstBone || stat.cv > worstBone.cv) {
+                worstBone = { name: key, cv: stat.cv };
+            }
+        });
+        if (worstBone) {
+            const worstPenalty = worstBone.cv > 8 ? clamp((worstBone.cv - 8) * 1.8, 0, 20) : 0;
+            register(`最高 CV 骨段 (${worstBone.name})`, `${worstBone.cv.toFixed(2)}%`, '單一骨段的離散程度 (建議 < 8%)', worstPenalty);
+        } else {
+            register('最高 CV 骨段', 'N/A', '缺少骨段統計資料', 0);
+        }
+
+        let worstSym = null;
+        symmetry.forEach(pair => {
+            if (!worstSym || pair.difference_percent > worstSym.difference_percent) {
+                worstSym = pair;
+            }
+        });
+        if (worstSym) {
+            const symPenalty = worstSym.difference_percent > 5 ? clamp((worstSym.difference_percent - 5) * 1.8, 0, 20) : 0;
+            register(`最差對稱組 (${worstSym.pair_name})`, `${worstSym.difference_percent.toFixed(2)}%`, '左右差異 (建議 ≦ 5%)', symPenalty);
+        } else {
+            register('對稱性', 'N/A', '未提供對稱分析', 0);
+        }
+
+        const spikePenalty = spikesTotal > 0 ? clamp(spikesTotal * 0.7, 0, 15) : 0;
+        register('突波檢測', `${spikesTotal} 次`, '突然拉長/縮短的次數 (0 次為佳)', spikePenalty);
+
+        if (heightWarning) {
+            register('身高尺規偏移', '警示', heightWarning, 5);
+        } else {
+            register('身高尺規偏移', '正常', '比例合理，未扣分', 0);
+        }
+
+        workingScore = clamp(workingScore, 0, 100);
+        const totalPenalty = breakdown.reduce((sum, item) => sum + item.impact, 0);
+        const leading = breakdown.reduce((max, item) => item.impact > max.impact ? item : max, breakdown[0] || { impact: 0 });
+        const summaryText = totalPenalty > 0 && leading
+            ? `主要扣分來自「${leading.label}」：${leading.value} 導致 -${leading.impact.toFixed(1)} 分`
+            : '骨長、對稱、身高校準皆維持在建議範圍。';
+
+        return {
+            score: workingScore,
+            level: describeScoreLevel(workingScore),
+            summary: summaryText,
+            breakdown
+        };
+    }
+
     function renderDashboard(data) {
         dashboardGrid.innerHTML = ''; // Clear previous charts
         
@@ -637,6 +938,8 @@
                 <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
             </div>
         `).join('');
+
+        renderCompositeScoreCard(calculateCompositeScoreStep2(data));
 
 
         // --- 2. Populate Bone Statistics Table ---
