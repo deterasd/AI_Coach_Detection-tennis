@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>step5. 空間一致性驗證儀表板</title>
+    <title>step5. 空間一致性偵測面板</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
@@ -26,7 +26,7 @@
         body {
             font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
             background-color: var(--bg-color);
-            background-image: 
+            background-image:
                 radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
                 radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
             background-attachment: fixed;
@@ -78,7 +78,7 @@
             font-weight: 800;
             position: relative;
         }
-        
+
         h1 span::after {
             content: 'BETA';
             position: absolute;
@@ -92,27 +92,13 @@
             font-weight: 600;
         }
 
-        .header-controls {
+        .upload-section {
             display: flex;
             align-items: center;
-            gap: 20px;
         }
 
-        .styled-select {
-            background: rgba(20, 20, 20, 0.6);
-            border: 1px solid var(--card-border);
-            color: var(--text-main);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 0.9rem;
-            cursor: pointer;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        .styled-select:hover {
-            border-color: var(--accent-primary);
+        input[type="file"] {
+            display: none;
         }
 
         .file-upload-btn {
@@ -137,13 +123,22 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        .upload-section {
-            display: flex;
-            align-items: center;
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
         }
 
-        input[type="file"] {
-            display: none;
+        .styled-select:focus,
+        .styled-select:hover {
+            border-color: var(--accent-primary);
         }
 
         .summary-grid {
@@ -165,12 +160,6 @@
             gap: 8px;
             position: relative;
             overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .summary-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
         }
 
         .summary-card::before {
@@ -346,9 +335,34 @@
             font-weight: 600;
         }
 
-        .dashboard-grid {
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
             gap: 24px;
         }
 
@@ -425,7 +439,7 @@
 
         .info-item {
             display: grid;
-            grid-template-columns: 85px 1fr;
+            grid-template-columns: 90px 1fr;
             gap: 16px;
             align-items: baseline;
         }
@@ -454,19 +468,70 @@
         .text-criteria { color: #e5e7eb; font-weight: 500; }
         .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
 
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
         }
 
-        .status-success { background: rgba(52, 211, 153, 0.1); color: #34d399; }
-        .status-warning { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
-        .status-danger { background: rgba(248, 113, 113, 0.1); color: #f87171; }
-        .status-neutral { background: rgba(156, 163, 175, 0.1); color: #9ca3af; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
 
-        /* Scrollbar */
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .placeholder-cell {
+            text-align: center;
+            color: var(--text-sub);
+            padding: 24px 0;
+            font-style: italic;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            margin-top: 6px;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border-color: rgba(156, 163, 175, 0.3); }
+
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
@@ -474,71 +539,62 @@
 
         @media (max-width: 768px) {
             header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
-            .dashboard-grid { grid-template-columns: 1fr; }
+            .grid { grid-template-columns: 1fr; }
+            .two-col-grid { grid-template-columns: 1fr; }
             .info-item { grid-template-columns: 1fr; gap: 6px; }
             .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
         }
-
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>AI Coach <span>空間一致性驗證 (Step 5)</span></h1>
-        <div class="header-controls">
-            <div class="upload-section">
-                <label for="fileInput" class="file-upload-btn">
-                    📂 載入 JSON
-                </label>
-                <input type="file" id="fileInput" accept=".json">
-            </div>
+        <h1>AI Coach <span>空間一致性偵測</span></h1>
+        <div class="upload-section">
+            <label for="fileInput" class="file-upload-btn">
+                📂 選擇 JSON 分析檔案
+            </label>
+            <input type="file" id="fileInput" accept=".json">
         </div>
     </header>
 
-    <!-- Summary Stats -->
-    <div class="summary-grid" id="summaryStats">
-        <!-- Populated by JS -->
-    </div>
+    <div id="summaryStats" class="summary-grid"></div>
 
-    <!-- Score Card -->
-    <div id="scoreCard" class="score-card" style="display:none;">
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
         <div class="score-main">
             <div class="score-label">綜合評分</div>
-            <div class="score-value" id="scoreValue">--</div>
-            <div class="score-level" id="scoreLevel">--</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
             <div class="score-progress">
-                <div id="scoreProgress" class="score-progress-fill" style="width:0%;"></div>
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
             </div>
-            <p class="score-summary" id="scoreSummary">載入資料後將自動計算動作評分。</p>
+            <p id="compositeScoreSummary" class="score-summary">載入資料後會顯示綜合狀態摘要。</p>
         </div>
         <div class="score-details">
             <div class="score-detail-header">
                 <h3>評分說明</h3>
-                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+                <span class="score-detail-subtitle">顯示各檢查項目對總分的影響。</span>
             </div>
-            <div id="scoreIssues" class="score-detail-list">
+            <div id="compositeScoreDetails" class="score-detail-list">
                 <div class="score-detail-item score-empty">
                     <div class="score-detail-label">尚未載入資料</div>
-                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                    <div class="score-detail-desc">上傳 JSON 後會顯示扣分項目。</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Charts Grid -->
-    <div class="dashboard-grid" id="dashboardGrid">
-        <!-- Populated by JS -->
-    </div>
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+    <div class="grid" id="dashboardGrid"></div>
 </div>
-
 <script>
-    // Chart.js Global Defaults
     Chart.defaults.color = '#9ca3af';
     Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
     Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
     Chart.defaults.font.size = 11;
-    
     Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
     Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
     Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
@@ -550,34 +606,31 @@
     const fileInput = document.getElementById('fileInput');
     const dashboardGrid = document.getElementById('dashboardGrid');
     const summaryStats = document.getElementById('summaryStats');
-    const scoreCard = document.getElementById('scoreCard');
-    const scoreValueEl = document.getElementById('scoreValue');
-    const scoreLevelEl = document.getElementById('scoreLevel');
-    const scoreProgressEl = document.getElementById('scoreProgress');
-    const scoreSummaryEl = document.getElementById('scoreSummary');
-    const scoreIssuesEl = document.getElementById('scoreIssues');
+    const compositeScoreCard = document.getElementById('compositeScoreCard');
+    const compositeScoreValue = document.getElementById('compositeScoreValue');
+    const compositeScoreLevel = document.getElementById('compositeScoreLevel');
+    const compositeScoreProgress = document.getElementById('compositeScoreProgress');
+    const compositeScoreSummary = document.getElementById('compositeScoreSummary');
+    const compositeScoreDetails = document.getElementById('compositeScoreDetails');
 
-    fileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = (event) => {
             try {
-                const data = JSON.parse(e.target.result);
-                // Handle both single view (Global) and multi-view structure
-                // If "Global" key exists, use it. Otherwise assume root is data.
+                const data = JSON.parse(event.target.result);
                 const viewData = data.Global ? data.Global : data;
                 renderDashboard(viewData);
             } catch (error) {
-                alert('解析 JSON 失敗，請確認檔案格式正確。');
+                alert('解析 JSON 失敗，請確認檔案格式。');
                 console.error(error);
             }
         };
         reader.readAsText(file);
     });
 
-    // Auto-load from URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const src = urlParams.get('src');
     if (src) {
@@ -591,9 +644,8 @@
     }
 
     function createCardHTML(id, title, description, criteria, params, selectId) {
-        const selectHTML = selectId ? 
-            `<select id="${selectId}" class="styled-select" style="padding: 4px 12px; font-size: 0.8rem; margin-left: auto;">
-            </select>` : '';
+        const selectHTML = selectId ?
+            `<select id="${selectId}" class="styled-select" style="padding: 4px 12px; font-size: 0.8rem; margin-left: auto;"></select>` : '';
 
         return `
             <div class="card">
@@ -612,7 +664,7 @@
                         <p class="info-text">${description}</p>
                     </div>
                     <div class="info-item">
-                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <div class="info-badge badge-criteria">判準</div>
                         <p class="info-text text-criteria">${criteria}</p>
                     </div>
                     <div class="info-item">
@@ -625,49 +677,56 @@
     }
 
     let charts = {};
+    const safeNumber = (value) => (typeof value === 'number' && !Number.isNaN(value) ? value : null);
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const formatMetric = (value, suffix = '', digits = 1) => {
+        const num = safeNumber(value);
+        if (num === null) return '--';
+        return `${num.toFixed(digits)}${suffix}`;
+    };
 
     function renderDashboard(data) {
         summaryStats.innerHTML = '';
         dashboardGrid.innerHTML = '';
-        
-        // --- 1. Summary Stats ---
-        const scoreData = data.score || { total_score: 0, deductions: {} };
+
+        Object.values(charts).forEach(chart => chart && chart.destroy && chart.destroy());
+        charts = {};
+
+        const scoreData = data.score || {};
         const ground = data.ground_plane_consistency || {};
-        const symmetry = data.body_symmetry || [];
-        const relative = data.relative_position_consistency || {};
         const penetration = data.penetration_detection || {};
         const topology = data.topology_validation || {};
 
-        // Update Score Card
-        scoreCard.style.display = 'grid';
-        scoreValueEl.textContent = scoreData.total_score;
-        
-        let level = '需改善';
-        if (scoreData.total_score >= 90) level = '優秀';
-        else if (scoreData.total_score >= 75) level = '良好';
-        else if (scoreData.total_score >= 60) level = '需留意';
-        scoreLevelEl.textContent = level;
-        
-        scoreProgressEl.style.width = `${scoreData.total_score}%`;
-        
-        // Generate deductions list
+        const scoreValue = safeNumber(scoreData.total_score);
+        compositeScoreCard.style.display = 'grid';
+        const displayScore = scoreValue !== null ? scoreValue : 0;
+        compositeScoreValue.textContent = scoreValue !== null ? displayScore.toFixed(1).replace(/\.0$/, '') : '--';
+
+        let levelText = '等待資料';
+        if (scoreValue !== null) {
+            if (displayScore >= 90) levelText = '卓越';
+            else if (displayScore >= 75) levelText = '良好';
+            else if (displayScore >= 60) levelText = '可接受';
+            else levelText = '需改善';
+            compositeScoreProgress.style.width = `${clamp(displayScore, 0, 100)}%`;
+        } else {
+            compositeScoreProgress.style.width = '0%';
+        }
+        compositeScoreLevel.textContent = levelText;
+
         const deductionsMap = {
-            'ground_plane': { label: '地面一致性', desc: '左右腳踝高度差過大' },
-            'symmetry': { label: '身體對稱性', desc: '左右肢體不對稱' },
-            'relative_position': { label: '相對位置', desc: '違反人體工學位置' },
-            'rigid_body': { label: '剛體組', desc: '骨骼長度變異過大' },
-            'penetration': { label: '穿透檢測', desc: '肢體穿透地面' },
-            'topology': { label: '拓撲結構', desc: '骨架結構不完整' }
+            'ground_plane': { label: '地面一致性', desc: '左右腳踝高度差偏大。' },
+            'penetration': { label: '穿透檢測', desc: '偵測到地面穿透事件。' },
+            'topology': { label: '拓撲結構', desc: '骨架拓撲關係異常。' }
         };
 
         let issuesHTML = '';
         let hasIssues = false;
-        
         if (scoreData.deductions) {
             for (const [key, points] of Object.entries(scoreData.deductions)) {
-                if (points > 0) {
+                if (typeof points === 'number' && points > 0) {
                     hasIssues = true;
-                    const info = deductionsMap[key] || { label: key, desc: '檢測異常' };
+                    const info = deductionsMap[key] || { label: key, desc: '檢測項目' };
                     issuesHTML += `
                         <div class="score-detail-item">
                             <div>
@@ -683,38 +742,29 @@
             }
         }
 
-        if (!hasIssues) {
+        if (issuesHTML === '') {
+            const label = scoreValue === null ? '等待資料' : '完美表現';
+            const desc = scoreValue === null ? '載入 JSON 後顯示扣分細節。' : '未檢測到扣分項目。';
             issuesHTML = `
                 <div class="score-detail-item score-empty">
-                    <div class="score-detail-label">完美表現</div>
-                    <div class="score-detail-desc">未偵測到明顯異常，持續維持！</div>
+                    <div class="score-detail-label">${label}</div>
+                    <div class="score-detail-desc">${desc}</div>
                 </div>
             `;
-            scoreSummaryEl.textContent = '整體表現優異，無明顯異常。';
+        }
+
+        if (scoreValue === null) {
+            compositeScoreSummary.textContent = '載入資料後會自動計算綜合評分。';
+        } else if (!hasIssues) {
+            compositeScoreSummary.textContent = '綜合表現穩定，暫無異常扣分。';
         } else {
-            scoreSummaryEl.textContent = '檢測到部分異常，請參考下方扣分說明。';
+            compositeScoreSummary.textContent = '偵測到異常，請檢視扣分細節。';
         }
-        
-        scoreIssuesEl.innerHTML = issuesHTML;
-
-        // Calculate max asymmetry
-        let maxAsymmetry = 0;
-        symmetry.forEach(s => maxAsymmetry = Math.max(maxAsymmetry, s.mean_asymmetry_percent || 0));
-
-        // Count relative violations
-        let violations = 0;
-        if (relative) {
-            violations += (relative.head_below_shoulder_count || 0);
-            violations += (relative.shoulder_below_hip_count || 0);
-            violations += (relative.hip_below_knee_count || 0);
-            violations += (relative.knee_below_ankle_count || 0);
-        }
+        compositeScoreDetails.innerHTML = issuesHTML;
 
         const summaryItems = [
-            { label: '地面一致性 (Ground)', value: `${(ground.mean_diff_mm || 0).toFixed(1)} mm`, sub: ground.assessment || 'N/A' },
-            { label: '最大不對稱 (Max Asym)', value: `${maxAsymmetry.toFixed(1)}%`, sub: 'Across all pairs' },
-            { label: '相對位置異常 (Pos Viol)', value: violations, sub: 'Total violations' },
-            { label: '穿透次數 (Penetrations)', value: penetration.total_penetrations || 0, sub: `Rate: ${(penetration.penetration_rate || 0).toFixed(1)}%` }
+            { label: '地面一致性 (Ground)', value: `${formatMetric(ground.mean_diff_mm, ' mm')}`, sub: ground.assessment || '尚無評估' },
+            { label: '座標穿透地板事件 (Penetrations)', value: penetration.total_penetrations || 0, sub: `Rate: ${formatMetric(penetration.penetration_rate, '%')}` }
         ];
 
         summaryStats.innerHTML = summaryItems.map(item => `
@@ -725,44 +775,20 @@
             </div>
         `).join('');
 
-        // --- 2. Define Charts ---
         const blocks = [
-            { 
-                id: 'chart1', 
-                title: '地面平面一致性 (Ground Plane)', 
-                desc: '左右腳踝的高度差，理想情況下應接近 0。', 
-                criteria: '平均差異 < 50mm 為合理範圍。',
-                params: 'X軸: Frame | Y軸: Diff (mm)'
+            {
+                id: 'chart1',
+                title: '地面平面一致性 (Ground Plane Consistency)',
+                desc: '顯示左右腳踝接觸地面時的高度差異 (絕對值)。',
+                criteria: '差異應保持在綠色區域內 (< 30mm)。',
+                params: 'X 軸 Frame | Y 軸 Diff (mm)'
             },
-            { 
-                id: 'chart2', 
-                title: '身體對稱性 (Body Symmetry)', 
-                desc: '左右對稱部位相對於中線的距離差異百分比。', 
-                criteria: '差異 < 20% 為優良，> 40% 為異常。',
-                params: 'X軸: Frame | Y軸: Asymmetry (%)',
-                selectId: 'chart2Select'
-            },
-            { 
-                id: 'chart3', 
-                title: '重心穩定性 (Center Stability)', 
-                desc: '身體重心 (COM) 在空間中的位移變化。', 
-                criteria: '應呈現平滑軌跡，無劇烈跳動。',
-                params: 'X軸: Frame | Y軸: Position (mm)' 
-            },
-            { 
-                id: 'chart4', 
-                title: '剛體組距離 (Rigid Body)', 
-                desc: '同一肢體兩端點（如肩-肘）的距離應保持恆定。', 
-                criteria: '變異係數 (CV) < 10% 為合理。',
-                params: 'X軸: Frame | Y軸: Distance (mm)',
-                selectId: 'chart4Select'
-            },
-            { 
-                id: 'chart5', 
-                title: '穿透檢測 (Penetration)', 
-                desc: '手腕低於地面的深度。', 
-                criteria: '深度應為 0，大於 0 代表穿透異常。',
-                params: 'X軸: Frame | Y軸: Depth (mm)' 
+            {
+                id: 'chart5',
+                title: '離地高度檢測 (Height from Ground)',
+                desc: '各物件距離地面的高度 (紅色區域代表穿透)。',
+                criteria: '應保持 >= 0 (負值代表穿透)。',
+                params: 'X 軸 Frame | Y 軸 Height (mm)'
             }
         ];
 
@@ -770,159 +796,137 @@
             dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId);
         });
 
-        // --- Chart 1: Ground Plane ---
         if (ground.series) {
-            new Chart(document.getElementById('chart1'), {
+            // 計算高度差數據
+            const diffData = ground.series.frames.map((_, i) => {
+                const left = ground.series.left_ankle_y[i];
+                const right = ground.series.right_ankle_y[i];
+                if (left === null || right === null) return null;
+                return Math.abs(left - right);
+            });
+
+            charts['chart1'] = new Chart(document.getElementById('chart1'), {
                 type: 'line',
                 data: {
                     labels: ground.series.frames,
-                    datasets: [{
-                        label: 'Ankle Height Diff (mm)',
-                        data: ground.series.diff_mm,
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0
-                    }]
+                    datasets: [
+                        {
+                            label: 'Ankle Height Diff (|L-R|)',
+                            data: diffData,
+                            borderColor: '#f472b6',
+                            backgroundColor: 'rgba(244, 114, 182, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            fill: true
+                        },
+                        {
+                            label: 'Tolerance Limit (30mm)',
+                            data: Array(ground.series.frames.length).fill(30),
+                            borderColor: 'rgba(52, 211, 153, 0.8)',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: {
+                                target: 'origin',
+                                above: 'rgba(52, 211, 153, 0.05)'
+                            }
+                        }
+                    ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
-            });
-        }
-
-        // --- Chart 2: Symmetry ---
-        const chart2Select = document.getElementById('chart2Select');
-        symmetry.forEach((item, index) => {
-            const opt = document.createElement('option');
-            opt.value = index;
-            opt.textContent = item.pair_name;
-            chart2Select.appendChild(opt);
-        });
-
-        function updateChart2(index) {
-            const ctx = document.getElementById('chart2');
-            if (charts['chart2']) charts['chart2'].destroy();
-            
-            const sData = symmetry[index];
-            if (!sData || !sData.series) return;
-
-            charts['chart2'] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: sData.series.frames,
-                    datasets: [{
-                        label: `${sData.pair_name} Asymmetry (%)`,
-                        data: sData.series.asymmetry_percent,
-                        borderColor: '#a855f7',
-                        tension: 0.4,
-                        pointRadius: 0
-                    }]
-                },
-                options: { 
-                    responsive: true, 
+                options: {
+                    responsive: true,
                     maintainAspectRatio: false,
-                    scales: { 
-                        y: { min: 0, max: 100 },
-                        x: { ticks: { maxTicksLimit: 20 } }
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 20 } },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Difference (mm)' }
+                        }
                     }
                 }
             });
         }
-        if (symmetry.length > 0) updateChart2(0);
-        chart2Select.addEventListener('change', (e) => updateChart2(e.target.value));
 
-        // --- Chart 3: Center Stability ---
-        const center = data.center_stability || {};
-        if (center.series) {
-            new Chart(document.getElementById('chart3'), {
+        if (penetration.series) {
+            const frames = penetration.series.frames || [];
+            const len = frames.length;
+            
+            charts['chart5'] = new Chart(document.getElementById('chart5'), {
                 type: 'line',
                 data: {
-                    labels: center.series.frames,
+                    labels: frames,
                     datasets: [
                         {
-                            label: 'X',
-                            data: center.series.x,
-                            borderColor: '#f87171',
-                            pointRadius: 0
+                            label: 'Left Ankle Height',
+                            data: penetration.series.left_ankle_height || Array(len).fill(0),
+                            borderColor: '#6366f1',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: {
+                                target: 'origin',
+                                below: 'rgba(239, 68, 68, 0.5)' // 紅色填充代表穿透
+                            }
                         },
                         {
-                            label: 'Y',
-                            data: center.series.y,
-                            borderColor: '#34d399',
-                            pointRadius: 0
+                            label: 'Right Ankle Height',
+                            data: penetration.series.right_ankle_height || Array(len).fill(0),
+                            borderColor: '#a855f7',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: {
+                                target: 'origin',
+                                below: 'rgba(239, 68, 68, 0.5)' // 紅色填充代表穿透
+                            }
                         },
                         {
-                            label: 'Z',
-                            data: center.series.z,
-                            borderColor: '#60a5fa',
+                            label: 'Tennis Ball Height',
+                            data: penetration.series.tennis_ball_height || Array(len).fill(0),
+                            borderColor: '#fbbf24',
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            borderDash: [2, 2] // 虛線區分
+                        },
+                        {
+                            label: 'Ground Level',
+                            data: Array(len).fill(0),
+                            borderColor: '#ef4444',
+                            borderWidth: 1,
                             pointRadius: 0
                         }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
-            });
-        }
-
-        // --- Chart 4: Rigid Body ---
-        const rigid = data.rigid_body_groups || {};
-        const chart4Select = document.getElementById('chart4Select');
-        
-        // Flatten groups to list of pairs
-        let rigidPairs = [];
-        Object.keys(rigid).forEach(group => {
-            rigid[group].forEach(pair => {
-                rigidPairs.push({ name: `${group}: ${pair.pair}`, data: pair });
-            });
-        });
-
-        rigidPairs.forEach((item, index) => {
-            const opt = document.createElement('option');
-            opt.value = index;
-            opt.textContent = item.name;
-            chart4Select.appendChild(opt);
-        });
-
-        function updateChart4(index) {
-            const ctx = document.getElementById('chart4');
-            if (charts['chart4']) charts['chart4'].destroy();
-            
-            const rData = rigidPairs[index].data;
-            if (!rData || !rData.series) return;
-
-            charts['chart4'] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: rData.series.frames,
-                    datasets: [{
-                        label: 'Distance (mm)',
-                        data: rData.series.distance_mm,
-                        borderColor: '#fbbf24',
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
-            });
-        }
-        if (rigidPairs.length > 0) updateChart4(0);
-        chart4Select.addEventListener('change', (e) => updateChart4(e.target.value));
-
-        // --- Chart 5: Penetration ---
-        if (penetration.series) {
-            new Chart(document.getElementById('chart5'), {
-                type: 'line',
-                data: {
-                    labels: penetration.series.frames,
-                    datasets: [{
-                        label: 'Penetration Depth (mm)',
-                        data: penetration.series.penetration_depth_mm,
-                        borderColor: '#f43f5e',
-                        backgroundColor: 'rgba(244, 63, 94, 0.1)',
-                        fill: true,
-                        pointRadius: 0
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 20 } } } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 20 } },
+                        y: {
+                            // 限制 Y 軸範圍以專注於地面附近，避免被高飛的球拉大比例
+                            min: -150,
+                            max: 600,
+                            title: { display: true, text: 'Height (mm)' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(1) + ' mm';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
             });
         }
     }

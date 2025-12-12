@@ -1,4 +1,508 @@
-{
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step6. 時間平滑度驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        .anomaly-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .anomaly-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .anomaly-item.severe { border-left: 4px solid var(--danger); }
+        .anomaly-item.moderate { border-left: 4px solid var(--warning); }
+
+        .anomaly-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .anomaly-frame {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+        }
+
+        .anomaly-value {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
   "metadata": {
     "analysis_time": "2025-12-12T22:56:17.475747",
     "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json",
@@ -10682,4 +11186,373 @@
     }
   },
   "frequency_domain_analysis": {}
-}
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Coach <span>時間平滑度驗證</span></h1>
+            <div class="upload-section">
+                <label for="fileInput" class="file-upload-btn">
+                    📂 選擇 JSON 分析報告
+                </label>
+                <input type="file" id="fileInput" accept=".json">
+            </div>
+        </header>
+
+        <!-- Summary Grid -->
+        <div class="summary-grid" id="summaryGrid">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Score Section -->
+        <div class="score-card" id="scoreCard" style="display: none;">
+            <div class="score-main">
+                <div class="score-label">綜合評分 (Overall Score)</div>
+                <div class="score-value" id="scoreValue">--</div>
+                <div class="score-level" id="scoreLevel">--</div>
+                <div class="score-progress">
+                    <div class="score-progress-fill" id="scoreProgress" style="width: 0%"></div>
+                </div>
+                <p class="score-summary" id="scoreSummary">載入數據以查看評分...</p>
+            </div>
+            <div class="score-details">
+                <div class="score-detail-header">
+                    <h3>扣分詳情</h3>
+                    <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+                </div>
+                <div class="score-detail-list" id="scoreDetailList">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div id="chartsSection" style="display: none;">
+            
+            <h2 class="section-title">📊 視覺化圖表分析</h2>
+            
+            <div class="grid">
+                <!-- Velocity Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">速度變化分析 (Velocity)</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <div class="chart-container">
+                            <canvas id="velocityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-item">
+                            <div class="info-badge badge-desc">說明</div>
+                            <p class="info-text">顯示關鍵關節（如手腕）在每一幀的移動速度。速度應保持連續，不應有異常尖峰。</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-badge badge-criteria">判斷標準</div>
+                            <p class="info-text text-criteria">速度曲線應平滑。突發的尖峰通常代表追蹤錯誤或抖動。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acceleration Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">加速度異常分析 (Acceleration)</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <div class="chart-container">
+                            <canvas id="accelerationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-item">
+                            <div class="info-badge badge-desc">說明</div>
+                            <p class="info-text">顯示速度的變化率。過高的加速度在物理上是不合理的。</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-badge badge-criteria">判斷標準</div>
+                            <p class="info-text text-criteria">加速度超過閾值（如 30,000 mm/s²）將被標記為異常。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Smoothness Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">軌跡平滑度 (Smoothness)</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <div class="chart-container">
+                            <canvas id="smoothnessChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-item">
+                            <div class="info-badge badge-desc">說明</div>
+                            <p class="info-text">使用二階差分（曲率）來評估軌跡的平滑程度。</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-badge badge-criteria">判斷標準</div>
+                            <p class="info-text text-criteria">數值越低代表軌跡越平滑。持續的高數值代表軌跡充滿噪聲。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Anomalies List Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">異常事件列表 (Anomalies)</h3>
+                    </div>
+                    <div class="anomaly-list" id="anomalyListContainer">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="info-section" style="margin-top: 24px;">
+                        <div class="info-item">
+                            <div class="info-badge badge-desc">說明</div>
+                            <p class="info-text">列出所有檢測到的嚴重異常事件，包含加速度異常與位置跳變。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        let charts = {};
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        renderDashboard(data);
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                        alert('無法解析 JSON 檔案');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function renderDashboard(data) {
+            // 1. Summary Grid
+            const summaryGrid = document.getElementById('summaryGrid');
+            const totalFrames = data.metadata.total_frames;
+            const totalAnomalies = data.detailed_anomalies?.summary?.total_anomaly_count || 0;
+            const maxAccel = data.acceleration_anomalies?.max_acceleration_mm_s2 || 0;
+            const smoothness = data.smoothness_analysis?.mean_second_diff_mm || 0;
+
+            summaryGrid.innerHTML = `
+                <div class="summary-card">
+                    <div class="summary-value">${totalFrames}</div>
+                    <div class="summary-label">總幀數 (Frames)</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" style="color: ${totalAnomalies > 0 ? 'var(--danger)' : 'var(--success)'}">${totalAnomalies}</div>
+                    <div class="summary-label">總異常數 (Anomalies)</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">${maxAccel.toFixed(1)}</div>
+                    <div class="summary-label">最大加速度 (mm/s²)</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">${smoothness.toFixed(2)}</div>
+                    <div class="summary-label">平滑度 (Mean 2nd Diff)</div>
+                </div>
+            `;
+
+            // 2. Score Card
+            document.getElementById('scoreCard').style.display = 'grid';
+            const scoreData = data.score || { total_score: 0, level: 'N/A', deductions: [] };
+            
+            document.getElementById('scoreValue').textContent = scoreData.total_score.toFixed(1);
+            document.getElementById('scoreLevel').textContent = scoreData.level;
+            document.getElementById('scoreProgress').style.width = `${scoreData.total_score}%`;
+            
+            // Score Summary Text
+            let summaryText = `分析完成。評級為 ${scoreData.level}。`;
+            if (scoreData.total_score < 60) summaryText += " 建議檢查數據品質或濾波參數。";
+            else if (scoreData.total_score >= 90) summaryText += " 數據品質優良。";
+            document.getElementById('scoreSummary').textContent = summaryText;
+
+            // Deductions List
+            const detailList = document.getElementById('scoreDetailList');
+            detailList.innerHTML = '';
+            
+            if (scoreData.deductions && scoreData.deductions.length > 0) {
+                scoreData.deductions.forEach(d => {
+                    const item = document.createElement('div');
+                    item.className = 'score-detail-item';
+                    item.innerHTML = `
+                        <div>
+                            <div class="score-detail-label">${d.reason}</div>
+                        </div>
+                        <div class="score-detail-value impact-negative">-${d.points.toFixed(1)}</div>
+                    `;
+                    detailList.appendChild(item);
+                });
+            } else {
+                detailList.innerHTML = `
+                    <div class="score-detail-item score-empty">
+                        <div>完美！沒有發現明顯扣分項。</div>
+                    </div>
+                `;
+            }
+
+            // 3. Charts & Lists
+            document.getElementById('chartsSection').style.display = 'block';
+            renderCharts(data);
+            renderAnomalyLists(data);
+        }
+
+        function renderCharts(data) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => chart.destroy());
+
+            const labels = Array.from({length: data.metadata.total_frames}, (_, i) => i + 1);
+
+            // Velocity Chart
+            const velData = data.velocity_analysis?.right_wrist?.series_data || [];
+            const velLabels = labels.slice(1); 
+
+            const ctxVel = document.getElementById('velocityChart').getContext('2d');
+            charts.velocity = new Chart(ctxVel, {
+                type: 'line',
+                data: {
+                    labels: velLabels,
+                    datasets: [{
+                        label: 'Right Wrist Velocity (mm/s)',
+                        data: velData,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('Velocity Profile')
+            });
+
+            // Acceleration Chart
+            const accData = data.acceleration_anomalies?.series_data || [];
+            const accLabels = labels.slice(2);
+
+            const ctxAcc = document.getElementById('accelerationChart').getContext('2d');
+            charts.acceleration = new Chart(ctxAcc, {
+                type: 'line',
+                data: {
+                    labels: accLabels,
+                    datasets: [{
+                        label: 'Right Wrist Acceleration (mm/s²)',
+                        data: accData,
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('Acceleration Profile')
+            });
+
+            // Smoothness Chart (2nd Diff)
+            const smoothData = data.smoothness_analysis?.series_data || [];
+            const smoothLabels = labels.slice(1, -1); 
+
+            const ctxSmooth = document.getElementById('smoothnessChart').getContext('2d');
+            charts.smoothness = new Chart(ctxSmooth, {
+                type: 'line',
+                data: {
+                    labels: smoothLabels,
+                    datasets: [{
+                        label: '2nd Derivative Magnitude (mm)',
+                        data: smoothData,
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('Smoothness (Curvature)')
+            });
+        }
+
+        function renderAnomalyLists(data) {
+            const listContainer = document.getElementById('anomalyListContainer');
+            listContainer.innerHTML = '';
+
+            // Combine and sort anomalies
+            const anomalies = [
+                ...(data.detailed_anomalies?.acceleration_anomalies?.severe || []).map(x => ({...x, type: 'severe', label: '加速度異常'})),
+                ...(data.detailed_anomalies?.acceleration_anomalies?.moderate || []).map(x => ({...x, type: 'moderate', label: '加速度異常'})),
+                ...(data.detailed_anomalies?.jump_anomalies?.severe || []).map(x => ({...x, type: 'severe', label: '異常跳躍', val: x.displacement})),
+                ...(data.detailed_anomalies?.jump_anomalies?.moderate || []).map(x => ({...x, type: 'moderate', label: '異常跳躍', val: x.displacement}))
+            ].sort((a, b) => a.frame - b.frame);
+
+            if (anomalies.length === 0) {
+                listContainer.innerHTML = '<div style="color: var(--text-sub); text-align: center; padding: 20px;">無嚴重或中等異常</div>';
+            } else {
+                anomalies.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = `anomaly-item ${item.type}`;
+                    
+                    let valueText = '';
+                    if (item.acceleration) valueText = `${item.acceleration.toFixed(1)} mm/s²`;
+                    else if (item.displacement) valueText = `${item.displacement.toFixed(1)} mm`;
+                    else if (item.val) valueText = `${item.val.toFixed(1)} mm`;
+
+                    div.innerHTML = `
+                        <div class="anomaly-info">
+                            <span class="anomaly-frame">Frame ${item.frame} - ${item.label}</span>
+                            <span class="anomaly-value">${valueText}</span>
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--text-sub)">${item.type.toUpperCase()}</span>
+                    `;
+                    listContainer.appendChild(div);
+                });
+            }
+        }
+
+        function getChartOptions(title) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#9ca3af' }
+                    },
+                    title: {
+                        display: false,
+                        text: title,
+                        color: '#f3f4f6'
+                    }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#9ca3af' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#9ca3af' }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            };
+        }
+    </script>
+</body>
+</html>

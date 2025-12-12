@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>step6. 時間平滑度驗證儀表板</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
 
@@ -101,28 +102,6 @@
             display: none;
         }
 
-        .file-upload-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--card-border);
-            color: var(--text-main);
-            padding: 10px 24px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .file-upload-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -200,7 +179,6 @@
             font-weight: 800;
             background: var(--accent-gradient);
             -webkit-background-clip: text;
-            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -240,8 +218,6 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            max-height: 300px;
-            overflow-y: auto;
         }
 
         .score-detail-header {
@@ -315,11 +291,6 @@
             font-weight: 600;
         }
 
-        .impact-positive {
-            color: var(--success);
-            font-weight: 600;
-        }
-
         .section-title {
             font-size: 1.5rem;
             font-weight: 700;
@@ -339,9 +310,31 @@
             border-radius: 2px;
         }
 
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            grid-template-columns: 1fr;
             gap: 24px;
         }
 
@@ -404,6 +397,41 @@
             height: 300px;
             width: 100%;
         }
+        
+        .anomaly-summary {
+            background: rgba(255,255,255,0.03);
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .anomaly-summary-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin-bottom: 12px;
+        }
+
+        .anomaly-counts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            text-align: center;
+        }
+        .anomaly-count-item .count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+         .anomaly-count-item .count.severe { color: var(--danger); }
+         .anomaly-count-item .count.moderate { color: var(--warning); }
+         .anomaly-count-item .count.mild { color: var(--success); }
+        .anomaly-count-item .label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+        }
+
 
         .info-section {
             margin-top: auto;
@@ -446,43 +474,22 @@
 
         .text-criteria { color: #e5e7eb; font-weight: 500; }
         .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
-
-        .anomaly-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .anomaly-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .anomaly-item.severe { border-left: 4px solid var(--danger); }
-        .anomaly-item.moderate { border-left: 4px solid var(--warning); }
-
-        .anomaly-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .anomaly-frame {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            color: var(--text-sub);
-        }
-
-        .anomaly-value {
-            font-weight: 600;
+        
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
             color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-primary);
         }
 
         /* Scrollbar */
@@ -497,372 +504,454 @@
             .info-item { grid-template-columns: 1fr; gap: 6px; }
             .info-badge { width: fit-content; padding: 4px 10px; }
             .score-card { grid-template-columns: 1fr; }
-            .score-detail-value { align-items: flex-start; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>AI Coach <span>時間平滑度驗證</span></h1>
-            <div class="upload-section">
-                <label for="fileInput" class="file-upload-btn">
-                    📂 選擇 JSON 分析報告
-                </label>
-                <input type="file" id="fileInput" accept=".json">
-            </div>
-        </header>
 
-        <!-- Summary Grid -->
-        <div class="summary-grid" id="summaryGrid">
-            <!-- Populated by JS -->
+<div class="container">
+    <header>
+        <h1>AI Coach <span>時間平滑度驗證</span></h1>
+        <div class="upload-section">
+            <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+            <input type="file" id="fileInput" accept=".json">
         </div>
+    </header>
 
-        <!-- Score Section -->
-        <div class="score-card" id="scoreCard" style="display: none;">
-            <div class="score-main">
-                <div class="score-label">綜合評分 (Overall Score)</div>
-                <div class="score-value" id="scoreValue">--</div>
-                <div class="score-level" id="scoreLevel">--</div>
-                <div class="score-progress">
-                    <div class="score-progress-fill" id="scoreProgress" style="width: 0%"></div>
-                </div>
-                <p class="score-summary" id="scoreSummary">載入數據以查看評分...</p>
-            </div>
-            <div class="score-details">
-                <div class="score-detail-header">
-                    <h3>扣分詳情</h3>
-                    <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
-                </div>
-                <div class="score-detail-list" id="scoreDetailList">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Charts Section -->
-        <div id="chartsSection" style="display: none;">
-            
-            <h2 class="section-title">📊 視覺化圖表分析</h2>
-            
-            <div class="grid">
-                <!-- Velocity Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">速度變化分析 (Velocity)</h3>
-                    </div>
-                    <div class="chart-wrapper">
-                        <div class="chart-container">
-                            <canvas id="velocityChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="info-section">
-                        <div class="info-item">
-                            <div class="info-badge badge-desc">說明</div>
-                            <p class="info-text">顯示關鍵關節（如手腕）在每一幀的移動速度。速度應保持連續，不應有異常尖峰。</p>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-badge badge-criteria">判斷標準</div>
-                            <p class="info-text text-criteria">速度曲線應平滑。突發的尖峰通常代表追蹤錯誤或抖動。</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Acceleration Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">加速度異常分析 (Acceleration)</h3>
-                    </div>
-                    <div class="chart-wrapper">
-                        <div class="chart-container">
-                            <canvas id="accelerationChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="info-section">
-                        <div class="info-item">
-                            <div class="info-badge badge-desc">說明</div>
-                            <p class="info-text">顯示速度的變化率。過高的加速度在物理上是不合理的。</p>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-badge badge-criteria">判斷標準</div>
-                            <p class="info-text text-criteria">加速度超過閾值（如 30,000 mm/s²）將被標記為異常。</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Smoothness Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">軌跡平滑度 (Smoothness)</h3>
-                    </div>
-                    <div class="chart-wrapper">
-                        <div class="chart-container">
-                            <canvas id="smoothnessChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="info-section">
-                        <div class="info-item">
-                            <div class="info-badge badge-desc">說明</div>
-                            <p class="info-text">使用二階差分（曲率）來評估軌跡的平滑程度。</p>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-badge badge-criteria">判斷標準</div>
-                            <p class="info-text text-criteria">數值越低代表軌跡越平滑。持續的高數值代表軌跡充滿噪聲。</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Anomalies List Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">異常事件列表 (Anomalies)</h3>
-                    </div>
-                    <div class="anomaly-list" id="anomalyListContainer">
-                        <!-- Populated by JS -->
-                    </div>
-                    <div class="info-section" style="margin-top: 24px;">
-                        <div class="info-item">
-                            <div class="info-badge badge-desc">說明</div>
-                            <p class="info-text">列出所有檢測到的嚴重異常事件，包含加速度異常與位置跳變。</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Populated by JS -->
     </div>
 
-    <script>
-        const fileInput = document.getElementById('fileInput');
-        let charts = {};
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">載入資料後將自動計算平滑度評分。</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
 
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        renderDashboard(data);
-                    } catch (error) {
-                        console.error('Error parsing JSON:', error);
-                        alert('無法解析 JSON 檔案');
-                    }
-                };
-                reader.readAsText(file);
+    <!-- Charts Grid -->
+    <div class="grid" id="dashboardGrid">
+        <!-- Populated by JS -->
+    </div>
+</div>
+
+<script>
+    // Chart.js Global Defaults
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    const CHART_COLORS = [
+        '#34d399', '#f87171', '#60a5fa', '#fbbf24', '#a78bfa',
+        '#c084fc', '#818cf8', '#f472b6', '#4ade80', '#22d3ee'
+    ];
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    const summaryStats = document.getElementById('summaryStats');
+    const compositeScoreCard = document.getElementById('compositeScoreCard');
+    const compositeScoreValueEl = document.getElementById('compositeScoreValue');
+    const compositeScoreLevelEl = document.getElementById('compositeScoreLevel');
+    const compositeScoreProgressEl = document.getElementById('compositeScoreProgress');
+    const compositeScoreSummaryEl = document.getElementById('compositeScoreSummary');
+    const compositeScoreDetailsEl = document.getElementById('compositeScoreDetails');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let jsonString = e.target.result;
+                jsonString = jsonString.replace(/:\s*NaN/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity/g, ': null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('解析 JSON 失敗，請確認檔案格式正確。\n錯誤: ' + error.message);
+                console.error(error);
             }
-        });
+        };
+        reader.readAsText(file);
+    });
 
-        function renderDashboard(data) {
-            // 1. Summary Grid
-            const summaryGrid = document.getElementById('summaryGrid');
-            const totalFrames = data.metadata.total_frames;
-            const totalAnomalies = data.detailed_anomalies?.summary?.total_anomaly_count || 0;
-            const maxAccel = data.acceleration_anomalies?.max_acceleration_mm_s2 || 0;
-            const smoothness = data.smoothness_analysis?.mean_second_diff_mm || 0;
+    if (window.OFFLINE_DATA) {
+        renderDashboard(window.OFFLINE_DATA);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(text => {
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    alert('無法從 URL 載入 JSON 檔案: ' + src);
+                });
+        }
+    }
 
-            summaryGrid.innerHTML = `
-                <div class="summary-card">
-                    <div class="summary-value">${totalFrames}</div>
-                    <div class="summary-label">總幀數 (Frames)</div>
+    function createCardHTML(id, title, description, criteria, params, selectId = null, options = []) {
+        const selectHTML = selectId ? `
+            <select id="${selectId}" class="styled-select">
+                ${options.map(op => `<option value="${op.value}">${op.text}</option>`).join('')}
+            </select>
+        ` : '';
+
+        return `
+            <div class="card" id="card_${id}">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
                 </div>
-                <div class="summary-card">
-                    <div class="summary-value" style="color: ${totalAnomalies > 0 ? 'var(--danger)' : 'var(--success)'}">${totalAnomalies}</div>
-                    <div class="summary-label">總異常數 (Anomalies)</div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
                 </div>
-                <div class="summary-card">
-                    <div class="summary-value">${maxAccel.toFixed(1)}</div>
-                    <div class="summary-label">最大加速度 (mm/s²)</div>
+                <div id="info_${id}">
+                    <div class="info-section">
+                        <div class="info-item">
+                            <div class="info-badge badge-desc">說明</div>
+                            <p class="info-text">${description}</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-badge badge-criteria">判斷標準</div>
+                            <p class="info-text text-criteria">${criteria}</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-badge badge-params">參數定義</div>
+                            <p class="info-text text-params">${params}</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="summary-card">
-                    <div class="summary-value">${smoothness.toFixed(2)}</div>
-                    <div class="summary-label">平滑度 (Mean 2nd Diff)</div>
+            </div>
+        `;
+    }
+
+    let charts = {};
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+    
+    function calculateCompositeScoreStep6(data) {
+        if (!data || !data.overall_summary) return null;
+
+        let score = 100.0;
+        const deductions = [];
+        const jumpAnomalies = data.jump_anomalies || {};
+        const accelAnomalies = data.acceleration_anomalies || {};
+        const smoothness = data.smoothness_analysis || {};
+
+        const register = (reason, points) => {
+            const p = Math.max(0, points);
+            if (p > 0) {
+                score -= p;
+                deductions.push({ reason, points: p });
+            }
+        };
+
+        const totalJumps = Object.values(jumpAnomalies).reduce((sum, item) => sum + (item.large_jump_count || 0), 0);
+        register(`異常跳躍 (${totalJumps} 次)`, Math.min(40.0, totalJumps * 8.0));
+        
+        const totalAccelOutliers = Object.values(accelAnomalies).reduce((sum, item) => sum + (item.outlier_count || 0), 0);
+        register(`加速度異常 (${totalAccelOutliers} 次)`, Math.min(30.0, totalAccelOutliers * 1.5));
+
+        const meanSmoothness = Object.values(smoothness).reduce((sum, item) => sum + (item.mean_jerk_mm_s3 || 0), 0) / (Object.keys(smoothness).length || 1);
+        if (meanSmoothness > 50000) { // Example threshold for high jerk
+             register(`整體平滑度不佳 (Jerk: ${meanSmoothness.toFixed(0)})`, 15.0);
+        } else if (meanSmoothness > 20000) {
+            register(`整體平滑度普通 (Jerk: ${meanSmoothness.toFixed(0)})`, 5.0);
+        }
+        
+        score = clamp(score, 0, 100);
+
+        let level;
+        if (score >= 90) level = "Excellent";
+        else if (score >= 80) level = "Good";
+        else if (score >= 60) level = "Fair";
+        else level = "Poor";
+        
+        const leading = deductions.sort((a,b) => b.points - a.points)[0];
+        const summaryText = leading
+            ? `主要扣分來自「${leading.reason}」：-${leading.points.toFixed(1)} 分。`
+            : '軌跡整體平滑流暢，未發現明顯異常。';
+
+        return { score, level, summary: summaryText, breakdown: deductions };
+    }
+
+    function renderCompositeScoreCard(result) {
+        if (!result) {
+            compositeScoreCard.style.display = 'none';
+            return;
+        }
+
+        compositeScoreCard.style.display = 'grid';
+        compositeScoreValueEl.textContent = result.score.toFixed(1);
+        compositeScoreLevelEl.textContent = result.level;
+        compositeScoreProgressEl.style.width = `${result.score}%`;
+        compositeScoreSummaryEl.textContent = result.summary;
+        
+        const deductions = (result.breakdown || []).filter(item => item.points > 0);
+        if (deductions.length > 0) {
+            compositeScoreDetailsEl.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.reason.split('(')[0].trim()}</div>
+                        <div class="score-detail-desc">${item.reason.includes('(') ? item.reason.split('(')[1].replace(')','') : ''}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span class="impact-negative">-${item.points.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            compositeScoreDetailsEl.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">完美表現</div>
+                    <div class="score-detail-desc">未偵測到明顯異常，持續維持！</div>
                 </div>
             `;
+        }
+    }
 
-            // 2. Score Card
-            document.getElementById('scoreCard').style.display = 'grid';
-            const scoreData = data.score || { total_score: 0, level: 'N/A', deductions: [] };
-            
-            document.getElementById('scoreValue').textContent = scoreData.total_score.toFixed(1);
-            document.getElementById('scoreLevel').textContent = scoreData.level;
-            document.getElementById('scoreProgress').style.width = `${scoreData.total_score}%`;
-            
-            // Score Summary Text
-            let summaryText = `分析完成。評級為 ${scoreData.level}。`;
-            if (scoreData.total_score < 60) summaryText += " 建議檢查數據品質或濾波參數。";
-            else if (scoreData.total_score >= 90) summaryText += " 數據品質優良。";
-            document.getElementById('scoreSummary').textContent = summaryText;
+    function renderDashboard(data) {
+        summaryStats.innerHTML = '';
+        dashboardGrid.innerHTML = '';
+        
+        const summary = data.overall_summary || {};
+        const summaryItems = [
+            { label: '總異常數 (Anomalies)', value: (summary.total_acceleration_outliers || 0) + (summary.total_large_jumps || 0), sub: 'Jumps & Accel Outliers', danger: ((summary.total_acceleration_outliers || 0) + (summary.total_large_jumps || 0)) > 10 },
+            { label: '總異常跳躍 (Jumps)', value: summary.total_large_jumps || 0, sub: 'Frames > 150mm displacement', danger: (summary.total_large_jumps || 0) > 0 },
+            { label: '總加速度異常 (Accel)', value: summary.total_acceleration_outliers || 0, sub: 'Frames > 3-sigma', danger: (summary.total_acceleration_outliers || 0) > 5 },
+            { label: '總幀數', value: data.metadata?.total_frames || 'N/A', sub: 'Analyzed Frames' }
+        ];
 
-            // Deductions List
-            const detailList = document.getElementById('scoreDetailList');
-            detailList.innerHTML = '';
+        summaryStats.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value" style="${item.danger ? 'color: var(--danger);' : ''}">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+        
+        renderCompositeScoreCard(calculateCompositeScoreStep6(data));
+
+        // --- Define & Create Chart Cards ---
+        const keypointOptions = [
+            {value: 'all', text: '顯示全部 (All)'},
+            ...Object.keys(data.acceleration_anomalies || data.smoothness_analysis || {}).map(kp => ({value: kp, text: kp}))
+        ];
+
+        const blocks = [
+            { 
+                id: 'chart_accel', 
+                title: '加速度分析 (Acceleration)', 
+                desc: '顯示所選關節的加速度變化。加速度反映了速度變化的快慢。', 
+                criteria: '正常人體動作加速度通常在 ±5000 mm/s² 以內。若出現極端尖峰（如超過 10000），通常代表追蹤點發生了抖動或錯誤。', 
+                params: 'X軸: Frame (幀數) | Y軸: Acceleration (加速度 mm/s²)', 
+                selectId: 'select_accel', 
+                options: keypointOptions 
+            },
+            { 
+                id: 'chart_jumps', 
+                title: '幀間位移 (Displacement)', 
+                desc: '檢測連續兩幀之間，關節點移動的距離。', 
+                criteria: '正常運動下，單幀位移不應過大。若超過紅色虛線閾值 (150mm)，即視為「異常跳躍」，代表追蹤點瞬間飛離了原位。', 
+                params: 'X軸: Frame (幀數) | Y軸: Displacement (位移距離 mm)', 
+                selectId: 'select_jumps', 
+                options: keypointOptions 
+            },
+            { 
+                id: 'chart_smoothness', 
+                title: '平滑度分析 (Jerk)', 
+                desc: 'Jerk (加加速度) 是加速度的變化率，用來衡量動作的「頓挫感」。', 
+                criteria: '數值越低代表動作越流暢。若數值持續過高 (如 > 50000)，代表軌跡充滿噪聲，看起來會很不自然。', 
+                params: 'X軸: Frame (幀數) | Y軸: Jerk (加加速度 mm/s³)', 
+                selectId: 'select_smoothness', 
+                options: keypointOptions 
+            },
+        ];
+
+        blocks.forEach(block => {
+            dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId, block.options);
+        });
+        
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+        
+        function updateChart(chartId, selectId, dataKey, yLabel, threshold) {
+            const selectEl = document.getElementById(selectId);
+            if (!selectEl) return;
+            const selectedKp = selectEl.value;
+            const chart = charts[chartId];
             
-            if (scoreData.deductions && scoreData.deductions.length > 0) {
-                scoreData.deductions.forEach(d => {
-                    const item = document.createElement('div');
-                    item.className = 'score-detail-item';
-                    item.innerHTML = `
-                        <div>
-                            <div class="score-detail-label">${d.reason}</div>
-                        </div>
-                        <div class="score-detail-value impact-negative">-${d.points.toFixed(1)}</div>
-                    `;
-                    detailList.appendChild(item);
+            // Reset datasets
+            chart.data.datasets = [];
+
+            const infoEl = document.getElementById(`info_${chartId}`);
+            let summaryEl = infoEl.querySelector('.anomaly-summary');
+
+            if (selectedKp === 'all') {
+                const allKeys = Object.keys(data[dataKey] || {});
+                allKeys.forEach((kp, index) => {
+                    const kpData = data[dataKey][kp];
+                    if (!kpData) return;
+                    
+                    chart.data.datasets.push({
+                        label: kp,
+                        data: kpData.series_data.map((val, i) => ({ x: i, y: val })),
+                        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+                        backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                        tension: 0.4,
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                        fill: false
+                    });
                 });
+                
+                if (summaryEl) summaryEl.style.display = 'none';
             } else {
-                detailList.innerHTML = `
-                    <div class="score-detail-item score-empty">
-                        <div>完美！沒有發現明顯扣分項。</div>
+                const kpData = data[dataKey]?.[selectedKp];
+                if (!kpData) return;
+
+                chart.data.datasets.push({
+                    label: `${selectedKp} ${yLabel}`,
+                    data: kpData.series_data.map((val, i) => ({ x: i, y: val })),
+                    borderColor: CHART_COLORS[2],
+                    tension: 0.4,
+                    pointRadius: 0,
+                    fill: false
+                });
+
+                // Update anomaly summary if it exists
+                if (!summaryEl) {
+                    summaryEl = document.createElement('div');
+                    summaryEl.className = 'anomaly-summary';
+                    infoEl.appendChild(summaryEl);
+                }
+                summaryEl.style.display = 'block';
+                
+                let outlier_count = 0;
+                if (dataKey === 'acceleration_anomalies') outlier_count = kpData.outlier_count || 0;
+                if (dataKey === 'jump_anomalies') outlier_count = kpData.large_jump_count || 0;
+
+                summaryEl.innerHTML = `
+                    <div class="anomaly-summary-title">異常統計 (${selectedKp})</div>
+                    <div class="anomaly-counts">
+                        <div class="anomaly-count-item">
+                            <div class="count severe">${outlier_count}</div>
+                            <div class="label">異常點</div>
+                        </div>
+                         <div class="anomaly-count-item">
+                            <div class="count moderate">${kpData.max_series_value?.toFixed(0) || kpData.max_displacement_mm?.toFixed(0) || kpData.max_acceleration_mm_s2?.toFixed(0) || 0}</div>
+                            <div class="label">最大值</div>
+                        </div>
+                         <div class="anomaly-count-item">
+                            <div class="count mild">${kpData.mean_series_value?.toFixed(0) || kpData.mean_displacement_mm?.toFixed(0) || kpData.mean_acceleration_mm_s2?.toFixed(0) || 0}</div>
+                            <div class="label">平均值</div>
+                        </div>
                     </div>
                 `;
             }
 
-            // 3. Charts & Lists
-            document.getElementById('chartsSection').style.display = 'block';
-            renderCharts(data);
-            renderAnomalyLists(data);
-        }
-
-        function renderCharts(data) {
-            // Destroy existing charts
-            Object.values(charts).forEach(chart => chart.destroy());
-
-            const labels = Array.from({length: data.metadata.total_frames}, (_, i) => i + 1);
-
-            // Velocity Chart
-            const velData = data.velocity_analysis?.right_wrist?.series_data || [];
-            const velLabels = labels.slice(1); 
-
-            const ctxVel = document.getElementById('velocityChart').getContext('2d');
-            charts.velocity = new Chart(ctxVel, {
-                type: 'line',
-                data: {
-                    labels: velLabels,
-                    datasets: [{
-                        label: 'Right Wrist Velocity (mm/s)',
-                        data: velData,
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: getChartOptions('Velocity Profile')
-            });
-
-            // Acceleration Chart
-            const accData = data.acceleration_anomalies?.series_data || [];
-            const accLabels = labels.slice(2);
-
-            const ctxAcc = document.getElementById('accelerationChart').getContext('2d');
-            charts.acceleration = new Chart(ctxAcc, {
-                type: 'line',
-                data: {
-                    labels: accLabels,
-                    datasets: [{
-                        label: 'Right Wrist Acceleration (mm/s²)',
-                        data: accData,
-                        borderColor: '#a855f7',
-                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: getChartOptions('Acceleration Profile')
-            });
-
-            // Smoothness Chart (2nd Diff)
-            const smoothData = data.smoothness_analysis?.series_data || [];
-            const smoothLabels = labels.slice(1, -1); 
-
-            const ctxSmooth = document.getElementById('smoothnessChart').getContext('2d');
-            charts.smoothness = new Chart(ctxSmooth, {
-                type: 'line',
-                data: {
-                    labels: smoothLabels,
-                    datasets: [{
-                        label: '2nd Derivative Magnitude (mm)',
-                        data: smoothData,
-                        borderColor: '#34d399',
-                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: getChartOptions('Smoothness (Curvature)')
-            });
-        }
-
-        function renderAnomalyLists(data) {
-            const listContainer = document.getElementById('anomalyListContainer');
-            listContainer.innerHTML = '';
-
-            // Combine and sort anomalies
-            const anomalies = [
-                ...(data.detailed_anomalies?.acceleration_anomalies?.severe || []).map(x => ({...x, type: 'severe', label: '加速度異常'})),
-                ...(data.detailed_anomalies?.acceleration_anomalies?.moderate || []).map(x => ({...x, type: 'moderate', label: '加速度異常'})),
-                ...(data.detailed_anomalies?.jump_anomalies?.severe || []).map(x => ({...x, type: 'severe', label: '異常跳躍', val: x.displacement})),
-                ...(data.detailed_anomalies?.jump_anomalies?.moderate || []).map(x => ({...x, type: 'moderate', label: '異常跳躍', val: x.displacement}))
-            ].sort((a, b) => a.frame - b.frame);
-
-            if (anomalies.length === 0) {
-                listContainer.innerHTML = '<div style="color: var(--text-sub); text-align: center; padding: 20px;">無嚴重或中等異常</div>';
-            } else {
-                anomalies.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = `anomaly-item ${item.type}`;
-                    
-                    let valueText = '';
-                    if (item.acceleration) valueText = `${item.acceleration.toFixed(1)} mm/s²`;
-                    else if (item.displacement) valueText = `${item.displacement.toFixed(1)} mm`;
-                    else if (item.val) valueText = `${item.val.toFixed(1)} mm`;
-
-                    div.innerHTML = `
-                        <div class="anomaly-info">
-                            <span class="anomaly-frame">Frame ${item.frame} - ${item.label}</span>
-                            <span class="anomaly-value">${valueText}</span>
-                        </div>
-                        <span style="font-size: 0.8rem; color: var(--text-sub)">${item.type.toUpperCase()}</span>
-                    `;
-                    listContainer.appendChild(div);
-                });
+            if (chart.options.plugins && 
+                chart.options.plugins.annotation && 
+                chart.options.plugins.annotation.annotations && 
+                chart.options.plugins.annotation.annotations.threshold) {
+                chart.options.plugins.annotation.annotations.threshold.yMin = threshold;
+                chart.options.plugins.annotation.annotations.threshold.yMax = threshold;
             }
+            
+            chart.update();
         }
+        
+        // --- Chart: Acceleration ---
+        charts['chart_accel'] = new Chart(document.getElementById('chart_accel'), {
+            type: 'line',
+            data: { datasets: [] },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { x: { type: 'linear', title: { text: 'Frame', display: true } }, y: { title: {text: 'Acceleration (mm/s²)', display: true} } },
+                plugins: { annotation: { annotations: { threshold: { type: 'line', yMin: 10000, yMax: 10000, borderColor: 'rgba(251, 191, 36, 0.7)', borderWidth: 2, borderDash: [5, 5], label: { content: '異常警戒 (10000)', enabled: true, position: 'end' } } } } }
+            }
+        });
+        document.getElementById('select_accel').addEventListener('change', () => updateChart('chart_accel', 'select_accel', 'acceleration_anomalies', 'Acceleration', 10000));
+        updateChart('chart_accel', 'select_accel', 'acceleration_anomalies', 'Acceleration', 10000);
 
-        function getChartOptions(title) {
-            return {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: '#9ca3af' }
-                    },
-                    title: {
-                        display: false,
-                        text: title,
-                        color: '#f3f4f6'
-                    }
-                },
-                scales: {
-                    y: {
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#9ca3af' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#9ca3af' }
-                    }
-                },
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                }
-            };
-        }
-    </script>
+        // --- Chart: Jumps ---
+        charts['chart_jumps'] = new Chart(document.getElementById('chart_jumps'), {
+            type: 'line',
+            data: { datasets: [] },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { x: { type: 'linear', title: { text: 'Frame', display: true } }, y: { title: {text: 'Displacement (mm)', display: true} } },
+                plugins: { annotation: { annotations: { threshold: { type: 'line', yMin: 150, yMax: 150, borderColor: 'rgba(248, 113, 113, 0.7)', borderWidth: 2, borderDash: [5, 5], label: { content: '跳躍閾值 (150mm)', enabled: true, position: 'end' } } } } }
+            }
+        });
+        document.getElementById('select_jumps').addEventListener('change', () => updateChart('chart_jumps', 'select_jumps', 'jump_anomalies', 'Displacement', 150));
+        updateChart('chart_jumps', 'select_jumps', 'jump_anomalies', 'Displacement', 150);
+
+        // --- Chart: Smoothness (Jerk) ---
+        charts['chart_smoothness'] = new Chart(document.getElementById('chart_smoothness'), {
+            type: 'line',
+            data: { datasets: [] },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { x: { type: 'linear', title: { text: 'Frame', display: true } }, y: { title: {text: 'Jerk (mm/s³)', display: true} } },
+                plugins: { annotation: { annotations: { threshold: { type: 'line', yMin: 50000, yMax: 50000, borderColor: 'rgba(251, 191, 36, 0.7)', borderWidth: 2, borderDash: [5, 5], label: { content: '平滑度警戒 (50000)', enabled: true, position: 'end' } } } } }
+            }
+        });
+        document.getElementById('select_smoothness').addEventListener('change', () => updateChart('chart_smoothness', 'select_smoothness', 'smoothness_analysis', 'Jerk', 50000));
+        updateChart('chart_smoothness', 'select_smoothness', 'smoothness_analysis', 'Jerk', 50000);
+    }
+</script>
+
 </body>
 </html>

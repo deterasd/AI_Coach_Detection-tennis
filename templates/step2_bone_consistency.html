@@ -905,7 +905,13 @@
         };
     }
 
+    let charts = {}; // Store chart instances
+
     function renderDashboard(data) {
+        // Clear existing charts to prevent memory leaks
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
         dashboardGrid.innerHTML = ''; // Clear previous charts
         
         // --- 1. Populate Summary Stats ---
@@ -1312,75 +1318,72 @@
             const select = document.getElementById('seriesBoneSelect');
             
             if (select) {
-                // Populate dropdown
-                select.innerHTML = boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
-                
-                let seriesChart = null;
-
-                const updateSeriesChart = (boneName) => {
+                // Initial render with all datasets
+                const ctx = document.getElementById('chart_series').getContext('2d');
+                const datasets = boneNames.map((boneName, index) => {
                     const stat = boneStats[boneName];
-                    if (!stat || !stat.series_data) return;
+                    if (!stat || !stat.series_data) return null;
+                    return {
+                        label: boneName,
+                        data: stat.series_data.map((val, i) => ({ x: i, y: val })),
+                        borderColor: Chart.defaults.color, // Default color, will be changed
+                        hidden: true, // Initially hide all but the first few
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    };
+                }).filter(Boolean);
+                
+                // Assign unique colors and show first few
+                const colors = ['#6366f1', '#a855f7', '#34d399', '#fbbf24', '#f87171', '#4ade80', '#c084fc', '#818cf8', '#f472b6', '#22d3ee'];
+                datasets.forEach((ds, i) => {
+                    ds.borderColor = colors[i % colors.length];
+                    if (i < 5) ds.hidden = false; // Show first 5 by default
+                });
 
-                    const ctx = document.getElementById('chart_series').getContext('2d');
-                    const seriesDataCm = stat.series_data; // Already in cm
-                    const labels = seriesDataCm.map((_, i) => i);
 
-                    if (seriesChart) seriesChart.destroy();
-
-                    seriesChart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: `${boneName} Length (cm)`,
-                                data: seriesDataCm,
-                                borderColor: '#6366f1',
-                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                                borderWidth: 2,
-                                pointRadius: 0,
-                                pointHoverRadius: 4,
-                                fill: true,
-                                tension: 0.1
-                            }]
+                const seriesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Frame' },
+                                ticks: { precision: 0 }
+                            },
+                            y: { title: { display: true, text: 'Length (cm)' } }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: {
-                                mode: 'index',
-                                intersect: false,
-                            },
-                            scales: {
-                                x: {
-                                    title: { display: true, text: 'Frame' },
-                                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                                },
-                                y: {
-                                    title: { display: true, text: 'Length (cm)' },
-                                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                                }
-                            },
-                            plugins: {
-                                tooltip: {
-                                    callbacks: {
-                                        label: function(context) {
-                                            return `Length: ${context.parsed.y.toFixed(2)} cm`;
-                                        }
-                                    }
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: { size: 10 }
                                 }
                             }
                         }
-                    });
-                };
-
-                // Initial render
-                if (boneNames.length > 0) {
-                    updateSeriesChart(boneNames[0]);
-                }
+                    }
+                });
+                charts['chart_series'] = seriesChart; // Store chart instance
+                
+                // Populate dropdown
+                select.innerHTML = '<option value="all">顯示前5 (Show Top 5)</option>' + boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
                 // Event listener
                 select.addEventListener('change', (e) => {
-                    updateSeriesChart(e.target.value);
+                    const val = e.target.value;
+                    seriesChart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== val);
+                        if (val === 'all') {
+                            // Re-apply default visibility
+                            const index = seriesChart.data.datasets.indexOf(ds);
+                            ds.hidden = index >= 5;
+                        }
+                    });
+                    seriesChart.update();
                 });
             }
         }
@@ -1392,10 +1395,6 @@
             const selectCV = document.getElementById('cvSeriesBoneSelect');
             
             if (selectCV) {
-                selectCV.innerHTML = boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
-                
-                let cvChart = null;
-
                 const calculateRollingCV = (data, windowSize) => {
                     let result = [];
                     for (let i = 0; i < data.length; i++) {
@@ -1404,8 +1403,7 @@
                         let windowData = data.slice(start, end);
                         
                         if (windowData.length < 2) {
-                            result.push(0);
-                            continue;
+                            result.push(0); continue;
                         }
 
                         let mean = windowData.reduce((a, b) => a + b, 0) / windowData.length;
@@ -1417,55 +1415,65 @@
                     return result;
                 };
 
-                const updateCVChart = (boneName) => {
-                    const stat = boneStats[boneName];
-                    if (!stat || !stat.series_data) return;
+                const ctx = document.getElementById('chart_cv_series').getContext('2d');
+                const datasets = boneNames.map((boneName, index) => {
+                     const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return null;
+                     const rollingCV = calculateRollingCV(stat.series_data, 30);
+                     return {
+                        label: `${boneName} Rolling CV`,
+                        data: rollingCV.map((val, i) => ({ x: i, y: val })),
+                        borderColor: Chart.defaults.color,
+                        hidden: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    };
+                }).filter(Boolean);
 
-                    const ctx = document.getElementById('chart_cv_series').getContext('2d');
-                    const rollingCV = calculateRollingCV(stat.series_data, 30); // Window 30
-                    const labels = rollingCV.map((_, i) => i);
-
-                    if (cvChart) cvChart.destroy();
-
-                    cvChart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: `${boneName} Rolling CV (%)`,
-                                data: rollingCV,
-                                borderColor: '#a855f7',
-                                backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                                borderWidth: 2,
-                                pointRadius: 0,
-                                pointHoverRadius: 4,
-                                fill: true,
-                                tension: 0.1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: { mode: 'index', intersect: false },
-                            scales: {
-                                x: { title: { display: true, text: 'Frame' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                                y: { title: { display: true, text: 'CV (%)' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                const colors = ['#6366f1', '#a855f7', '#34d399', '#fbbf24', '#f87171', '#4ade80', '#c084fc', '#818cf8', '#f472b6', '#22d3ee'];
+                datasets.forEach((ds, i) => {
+                    ds.borderColor = colors[i % colors.length];
+                    if (i < 5) ds.hidden = false;
+                });
+                
+                const cvChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Frame' },
+                                ticks: { precision: 0 }
                             },
-                            plugins: {
-                                tooltip: {
-                                    callbacks: {
-                                        label: function(context) {
-                                            return `CV: ${context.parsed.y.toFixed(2)}%`;
-                                        }
-                                    }
-                                }
+                            y: { title: { display: true, text: 'CV (%)' }, beginAtZero: true }
+                        },
+                         plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { font: { size: 10 } }
                             }
                         }
-                    });
-                };
+                    }
+                });
+                charts['chart_cv_series'] = cvChart;
 
-                if (boneNames.length > 0) updateCVChart(boneNames[0]);
-                selectCV.addEventListener('change', (e) => updateCVChart(e.target.value));
+                selectCV.innerHTML = '<option value="all">顯示前5 (Show Top 5)</option>' + boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                selectCV.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    cvChart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== `${val} Rolling CV`);
+                        if (val === 'all') {
+                            const index = cvChart.data.datasets.indexOf(ds);
+                            ds.hidden = index >= 5;
+                        }
+                    });
+                    cvChart.update();
+                });
             }
         }
 
