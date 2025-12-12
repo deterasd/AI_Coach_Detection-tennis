@@ -129,9 +129,11 @@ def analyze_motion_kinematics(data: list, config: ValidationConfig) -> dict:
         dict: 運動學分析結果
     """
     keypoints_to_analyze = [
-        "left_wrist", "right_wrist",
-        "left_ankle", "right_ankle",
-        "tennis_ball"
+        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
+        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+        "left_wrist", "right_wrist", "left_hip", "right_hip",
+        "left_knee", "right_knee", "left_ankle", "right_ankle",
+        "neck", "left_hand", "right_hand", "tennis_ball"
     ]
     
     results = {}
@@ -284,7 +286,8 @@ def analyze_torso_stability(data: list, config: ValidationConfig) -> dict:
         return {}
     
     centers = np.array(torso_centers)
-    displacements = np.linalg.norm(np.diff(centers, axis=0), axis=1)
+    diffs = np.diff(centers, axis=0)
+    displacements = np.linalg.norm(diffs, axis=1)
     
     mean_displacement = float(np.mean(displacements))
     max_displacement = float(np.max(displacements))
@@ -302,55 +305,61 @@ def analyze_torso_stability(data: list, config: ValidationConfig) -> dict:
         "assessment": assessment,
         "series": {
             "frames": frame_indices[1:], # diff reduces length by 1
-            "displacement": displacements.tolist()
+            "displacement": displacements.tolist(),
+            "displacement_x": diffs[:, 0].tolist(),
+            "displacement_y": diffs[:, 1].tolist(),
+            "displacement_z": diffs[:, 2].tolist()
         }
     }
 
 
 def analyze_ball_racket_contact(data: list, config: ValidationConfig) -> dict:
     """
-    分析球拍接觸檢測（碰撞檢測 - 新增）
-    
-    參數:
-        data: 3D 軌跡數據
-        config: 驗證配置
+    分析球拍接觸檢測（碰撞檢測 - 增強版 V2）
+    檢查球與手腕或球拍子點（paddle）的距離
     
     返回:
         dict: 球拍接觸分析結果
     """
     contact_frames = []
     min_distances = []
-    all_distances = [] # Store all for plotting
+    all_distances = [] 
     all_frames = []
-    contact_threshold = getattr(config, 'racket_contact_threshold', 200.0)  # mm
-    
+    contact_threshold = getattr(config, 'racket_contact_threshold', 200.0)
+
     for frame_idx, frame in enumerate(data):
         ball = get_keypoint_safely(frame, "tennis_ball")
-        left_wrist = get_keypoint_safely(frame, "left_wrist")
-        right_wrist = get_keypoint_safely(frame, "right_wrist")
-        
         if ball is None:
             continue
+
+        # 檢查點：手腕和球拍
+        contact_keypoints = ["left_wrist", "right_wrist"]
+        current_distances = []
+
+        # 處理手腕
+        for kp_name in contact_keypoints:
+            keypoint = get_keypoint_safely(frame, kp_name)
+            if keypoint is not None:
+                dist = calculate_distance(ball, keypoint)
+                if dist is not None:
+                    current_distances.append(dist)
         
-        # 檢查球與手腕的距離
-        distances = []
-        if left_wrist is not None:
-            dist = calculate_distance(ball, left_wrist)
-            if dist is not None:
-                distances.append(dist)
-        
-        if right_wrist is not None:
-            dist = calculate_distance(ball, right_wrist)
-            if dist is not None:
-                distances.append(dist)
-        
-        if distances:
-            min_dist = min(distances)
+        # 專門處理 'paddle' 物件
+        paddle_obj = frame.get("paddle")
+        if isinstance(paddle_obj, dict):
+            for sub_point_name, sub_point_data in paddle_obj.items():
+                if isinstance(sub_point_data, dict) and all(k in sub_point_data for k in ['x', 'y', 'z']):
+                    paddle_point = np.array([sub_point_data['x'], sub_point_data['y'], sub_point_data['z']])
+                    dist = calculate_distance(ball, paddle_point)
+                    if dist is not None:
+                        current_distances.append(dist)
+
+        if current_distances:
+            min_dist = min(current_distances)
             min_distances.append(min_dist)
             all_distances.append(min_dist)
             all_frames.append(frame_idx)
             
-            # 使用配置的接觸距離閾值
             if min_dist < contact_threshold:
                 contact_frames.append({
                     "frame": frame_idx,
@@ -360,12 +369,14 @@ def analyze_ball_racket_contact(data: list, config: ValidationConfig) -> dict:
     if not min_distances:
         return {}
     
+    min_overall_distance = float(np.min(min_distances)) if min_distances else None
+
     return {
         "total_frames_analyzed": len(min_distances),
         "contact_count": len(contact_frames),
-        "min_distance_mm": float(np.min(min_distances)),
-        "mean_distance_mm": float(np.mean(min_distances)),
-        "contact_frames": contact_frames[:10],  # 只返回前 10 個接觸幀
+        "min_distance_mm": min_overall_distance,
+        "mean_distance_mm": float(np.mean(min_distances)) if min_distances else None,
+        "contact_frames": contact_frames[:10],
         "series": {
             "frames": all_frames,
             "min_distance": all_distances
@@ -375,11 +386,7 @@ def analyze_ball_racket_contact(data: list, config: ValidationConfig) -> dict:
 
 def analyze_gravity_compliance(data: list, config: ValidationConfig) -> dict:
     """
-    分析重力加速度合理性（新增）
-    
-    參數:
-        data: 3D 軌跡數據
-        config: 驗證配置
+    分析重力加速度合理性（增強版，自動檢測重力軸）
     
     返回:
         dict: 重力分析結果
@@ -389,63 +396,133 @@ def analyze_gravity_compliance(data: list, config: ValidationConfig) -> dict:
     
     for frame_idx, frame in enumerate(data):
         ball = get_keypoint_safely(frame, "tennis_ball")
-        left_wrist = get_keypoint_safely(frame, "left_wrist")
-        right_wrist = get_keypoint_safely(frame, "right_wrist")
-        
         if ball is not None:
-            # 檢查是否在飛行階段（遠離手腕）
-            is_flying = True
-            if left_wrist is not None:
-                dist = calculate_distance(ball, left_wrist)
-                if dist is not None and dist < 300:  # 300mm 閾值
-                    is_flying = False
-            
-            if right_wrist is not None:
-                dist = calculate_distance(ball, right_wrist)
-                if dist is not None and dist < 300:
-                    is_flying = False
-            
-            if is_flying:
-                ball_positions.append(ball)
-                frame_indices.append(frame_idx)
+            # 簡化邏輯，只要有球就納入計算，噪聲會在平均中被平滑
+            ball_positions.append(ball)
+            frame_indices.append(frame_idx)
     
     if len(ball_positions) < 5:
-        return {}
+        return {"assessment": "數據不足"}
     
     positions = np.array(ball_positions)
     indices = np.array(frame_indices)
     
-    # 計算垂直軸加速度（Y 軸通常是垂直方向，正向向下）
-    # 注意：根據座標系統，Y 軸正向可能向下，因此重力加速度為正值
-    vertical_axis = getattr(config, 'gravity_axis', 1)  # 預設 Y 軸 (index 1)
-    vel_y, vel_indices = calculate_velocity(positions[:, [vertical_axis]], config.fps, indices)
-    acc_y, _ = calculate_acceleration(vel_y, config.fps, vel_indices)
+    vel, vel_indices = calculate_velocity(positions, config.fps, indices)
+    acc, acc_indices = calculate_acceleration(vel, config.fps, vel_indices)
     
-    if len(acc_y) == 0:
-        return {}
+    if len(acc) == 0:
+        return {"assessment": "無法計算加速度"}
     
-    mean_acc_y = float(np.mean(acc_y))
+    expected_gravity = abs(config.gravity_acceleration)
+    axes = ['X', 'Y', 'Z']
+    best_axis_info = {
+        "deviation": float('inf'),
+        "axis_index": -1,
+        "mean_acc": 0,
+        "acc_series": []
+    }
+
+    # 遍歷三個軸，找到最接近重力的那一個
+    for i in range(3):
+        acc_axis = acc[:, i]
+        mean_acc = np.mean(acc_axis)
+        deviation = abs(abs(mean_acc) - expected_gravity)
+        
+        if deviation < best_axis_info["deviation"]:
+            best_axis_info = {
+                "deviation": deviation,
+                "axis_index": i,
+                "mean_acc": float(mean_acc),
+                "acc_series": acc_axis.flatten().tolist()
+            }
+            
+    deviation_ratio = best_axis_info["deviation"] / expected_gravity
     
-    # 檢查是否接近重力加速度（考慮座標系統方向）
-    expected_gravity = config.gravity_acceleration  # -9810 mm/s² 或 +9810 mm/s²
-    deviation = abs(abs(mean_acc_y) - abs(expected_gravity)) / abs(expected_gravity)
-    
-    if deviation < config.gravity_tolerance:
-        assessment = "[OK] 重力加速度合理"
+    if deviation_ratio < config.gravity_tolerance:
+        assessment = f"[OK] 重力加速度合理 (檢測到垂直軸: {axes[best_axis_info['axis_index']]})"
     else:
-        assessment = "[!] 重力加速度偏差較大"
+        assessment = f"[!] 重力加速度偏差較大 (檢測到垂直軸: {axes[best_axis_info['axis_index']]})"
     
     return {
-        "sample_count": len(acc_y),
-        "mean_y_acceleration_mm_s2": mean_acc_y,
-        "expected_gravity_mm_s2": float(expected_gravity),
-        "deviation_ratio": float(deviation),
+        "sample_count": len(acc),
+        "detected_gravity_axis": axes[best_axis_info["axis_index"]],
+        "mean_acceleration_mm_s2": best_axis_info["mean_acc"],
+        "expected_gravity_mm_s2": float(config.gravity_acceleration),
+        "deviation_ratio": float(deviation_ratio),
         "assessment": assessment,
         "series": {
-            "frames": vel_indices[1:].tolist(), # acc indices
-            "acc_y": acc_y.flatten().tolist()
+            "frames": acc_indices.tolist(),
+            "acceleration": best_axis_info["acc_series"]
         }
     }
+
+
+def analyze_motion_continuity(data: list, config: ValidationConfig) -> dict:
+    """
+    分析運動連續性，檢測幀之間的跳躍
+    
+    參數:
+        data: 3D 軌跡數據
+        config: 驗證配置
+    
+    返回:
+        dict: 連續性分析結果
+    """
+    # 從 utils 或 config 引入所有關節點名稱
+    try:
+        from .utils import ALL_KEYPOINTS
+    except ImportError:
+        from utils import ALL_KEYPOINTS
+
+    results = {}
+    total_jumps = 0
+    
+    for kp in ALL_KEYPOINTS:
+        positions = []
+        frame_indices = []
+        for i, frame in enumerate(data):
+            point = get_keypoint_safely(frame, kp)
+            if point is not None:
+                positions.append(point)
+                frame_indices.append(i)
+        
+        if len(positions) < 2:
+            continue
+            
+        pos_arr = np.array(positions)
+        idx_arr = np.array(frame_indices)
+        
+        # 僅計算連續幀之間的位移
+        displacements = []
+        jump_frames = []
+        
+        for i in range(len(pos_arr) - 1):
+            # 檢查幀號是否連續
+            if idx_arr[i+1] == idx_arr[i] + 1:
+                dist = np.linalg.norm(pos_arr[i+1] - pos_arr[i])
+                displacements.append(dist)
+                if dist > config.max_inter_frame_distance:
+                    jump_frames.append(idx_arr[i+1])
+
+        if not displacements:
+            continue
+        
+        jump_count = len(jump_frames)
+        total_jumps += jump_count
+        
+        results[kp] = {
+            "max_displacement_mm": float(np.max(displacements)) if displacements else 0.0,
+            "mean_displacement_mm": float(np.mean(displacements)) if displacements else 0.0,
+            "jump_count": jump_count,
+            "jump_rate": float(jump_count / len(displacements) * 100) if displacements else 0.0,
+            "jump_frames": jump_frames[:20], # 最多顯示 20 個
+            "series": {
+                "frames": idx_arr[1:].tolist(),
+                "displacements": displacements
+            }
+        }
+        
+    return {"total_jumps": total_jumps, "details": results}
 
 
 def print_analysis_report(
@@ -454,6 +531,7 @@ def print_analysis_report(
     torso_stability: dict,
     ball_contact: dict,
     gravity_analysis: dict,
+    motion_continuity: dict,
     config: ValidationConfig
 ) -> None:
     """列印分析報告"""
@@ -495,16 +573,30 @@ def print_analysis_report(
         print("【4. 球拍接觸檢測】")
         print("=" * 100)
         print(f"檢測到接觸次數: {ball_contact['contact_count']}")
-        print(f"最小距離: {ball_contact['min_distance_mm']:.2f} mm")
+        if ball_contact.get('min_distance_mm') is not None:
+            print(f"偵測到的最小距離: {ball_contact['min_distance_mm']:.2f} mm")
     
-    if gravity_analysis:
+    if gravity_analysis and "mean_acceleration_mm_s2" in gravity_analysis:
         print("\n" + "=" * 100)
         print("【5. 重力加速度檢查】")
         print("=" * 100)
-        print(f"平均垂直軸加速度: {gravity_analysis['mean_y_acceleration_mm_s2']:.1f} mm/s^2")
+        print(f"檢測到的垂直軸: {gravity_analysis['detected_gravity_axis']}")
+        print(f"平均垂直軸加速度: {gravity_analysis['mean_acceleration_mm_s2']:.1f} mm/s^2")
         print(f"預期重力加速度: {abs(gravity_analysis['expected_gravity_mm_s2']):.1f} mm/s^2")
         print(f"偏差: {gravity_analysis['deviation_ratio']*100:.1f}%")
         print(f"評估: {gravity_analysis['assessment']}")
+
+    print("\n" + "=" * 100)
+    print("【6. 運動連續性檢查 (跳躍檢測)】")
+    print("=" * 100)
+    if motion_continuity and motion_continuity['total_jumps'] > 0:
+        print(f"偵測到總跳躍次數: {motion_continuity['total_jumps']}")
+        for kp, stats in motion_continuity['details'].items():
+            if stats['jump_count'] > 0:
+                zh_name = get_keypoint_name_zh(kp)
+                print(f"  - {zh_name}: {stats['jump_count']} 次跳躍 (最大位移: {stats['max_displacement_mm']:.1f} mm)")
+    else:
+        print("未偵測到連續性跳躍，軌跡平滑。")
 
 
 def validate_physical_motion_analysis(
@@ -547,10 +639,13 @@ def validate_physical_motion_analysis(
     print("執行重力檢查...")
     gravity_analysis = analyze_gravity_compliance(data, config)
     
+    print("執行運動連續性檢查...")
+    motion_continuity = analyze_motion_continuity(data, config)
+
     # 列印報告
     print_analysis_report(
         kinematics, joint_angles, torso_stability,
-        ball_contact, gravity_analysis, config
+        ball_contact, gravity_analysis, motion_continuity, config
     )
     
     # 整合結果
@@ -562,15 +657,18 @@ def validate_physical_motion_analysis(
             "analysis_type": "Physical Motion Logic Analysis"
         },
         "overall_summary": {
-            "total_joints_analyzed": len(kinematics),
+            "total_unreasonable_speed": sum(stats.get('unreasonable_speed_count', 0) for stats in kinematics.values()),
             "total_abnormal_angles": sum(stats.get('abnormal_count', 0) for stats in joint_angles.values()),
-            "gravity_compliant": gravity_analysis.get('assessment', '').startswith('[OK]') if gravity_analysis else None
+            "total_continuity_jumps": motion_continuity.get('total_jumps', 0),
+            "gravity_compliant": gravity_analysis.get('assessment', '').startswith('[OK]') if gravity_analysis else None,
+            "contact_detected": ball_contact.get('contact_count', 0) > 0 if ball_contact else None,
         },
         "motion_kinematics": kinematics,
         "joint_angles": joint_angles,
         "torso_stability": torso_stability,
         "ball_racket_contact": ball_contact,
-        "gravity_compliance": gravity_analysis
+        "gravity_compliance": gravity_analysis,
+        "motion_continuity": motion_continuity
     }
     
     # 保存結果
@@ -604,7 +702,7 @@ if __name__ == "__main__":
             if arg == '--output' and i + 1 < len(sys.argv):
                 output_json_path = sys.argv[i + 1]
     else:
-        json_3d_path = "0306_3__trajectory/trajectory__2/0306_3__2(3D_trajectory_smoothed).json"
+        json_3d_path = "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json"
         config_path = None
         output_json_path = None
         print("提示: 可使用命令列參數:")

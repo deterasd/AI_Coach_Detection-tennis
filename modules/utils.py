@@ -451,6 +451,14 @@ KEYPOINT_NAMES_EN = [
     'tennis_ball'
 ]
 
+ALL_KEYPOINTS = [
+    'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
+    'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+    'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
+    'left_knee', 'right_knee', 'left_ankle', 'right_ankle',
+    'neck', 'left_hand', 'right_hand', 'tennis_ball', 'tennis_racket'
+]
+
 KEYPOINT_NAMES_ZH = {
     'nose': '鼻子',
     'left_eye': '左眼',

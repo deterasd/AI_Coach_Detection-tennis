@@ -76,6 +76,8 @@ class ValidationConfig:
     
     racket_contact_threshold: float = 200.0  # mm - 球拍接觸判定距離
     
+    max_inter_frame_distance: float = 150.0 # mm - 連續幀之間的最大合理位移
+
     gravity_acceleration: float = -9810.0  # mm/s² - 重力加速度（負值表示向下）
     gravity_axis: int = 1                  # 重力軸索引 (0=X, 1=Y, 2=Z)
     gravity_tolerance: float = 0.5         # 重力偏差容許比例

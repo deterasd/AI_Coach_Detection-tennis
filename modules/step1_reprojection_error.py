@@ -20,8 +20,12 @@ import sys
 import os
 from typing import Optional, Tuple
 
+# 修正路徑問題，確保能夠正確引入模組
+# Add the project root directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 引入共用模組
-from .utils import (
+from modules.utils import (
     get_keypoint_safely,
     get_keypoint_2d,
     is_valid_keypoint,
@@ -919,9 +923,9 @@ if __name__ == "__main__":
         config_path = sys.argv[5] if len(sys.argv) > 5 else None
     else:
         # 預設測試路徑
-        json_3d_path = "trajectory__2/0306_3__2(3D_trajectory_smoothed).json"
-        json_2d_side_path = "trajectory__2/0306_3__2_side(2D_trajectory_smoothed).json"
-        json_2d_45_path = "trajectory__2/0306_3__2_45(2D_trajectory_smoothed).json"
+        json_3d_path = "data/trajectory__old/0306_3__2(3D_trajectory_smoothed).json"
+        json_2d_side_path = "data/trajectory__old/0306_3__2_side(2D_trajectory_smoothed).json"
+        json_2d_45_path = "data/trajectory__old/0306_3__2_45(2D_trajectory_smoothed).json"
         output_json_path = None
         config_path = None
         print("提示: 可使用命令列參數:")

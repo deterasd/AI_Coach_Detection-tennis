@@ -1,7 +1,7 @@
 {
   "Global": {
     "metadata": {
-      "analysis_time": "2025-12-11T21:39:59.204319",
+      "analysis_time": "2025-12-12T22:45:25.925934",
       "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json",
       "total_frames": 141,
       "analysis_type": "Depth Reasonableness Analysis",
@@ -11,14 +11,17 @@
       "average_cv": 2.7861926687098975,
       "quality_level": "良好",
       "total_keypoints_analyzed": 18,
-      "total_logic_violations": 65,
+      "total_logic_violations": 5,
       "mean_depth_mm": 2366.4031724546894,
       "quality_score": {
-        "score": 88.47517730496455,
+        "score": 98.22695035460993,
         "deductions": [
-          "手腕深度異常 (23.0%) -11.5"
+          {
+            "reason": "手肘反向彎曲 (1.8%)",
+            "points": 1.773049645390071
+          }
         ],
-        "level": "Good"
+        "level": "Excellent"
       }
     },
     "depth_range_analysis": {
@@ -293,584 +296,71 @@
         "outlier_rate": 0.0
       }
     },
-    "depth_symmetry": [
-      {
-        "pair_name": "肩膀",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 89.38859695780042,
-        "std_depth_diff_mm": 61.15458923464901,
-        "max_depth_diff_mm": 232.26911849681937,
-        "median_depth_diff_mm": 75.23646956639823,
-        "assessment": "Acceptable"
-      },
-      {
-        "pair_name": "髖部",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 47.243934044964874,
-        "std_depth_diff_mm": 33.36615798756269,
-        "max_depth_diff_mm": 132.24761737524068,
-        "median_depth_diff_mm": 36.87368096205773,
-        "assessment": "Good"
-      },
-      {
-        "pair_name": "膝蓋",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 56.515597668678865,
-        "std_depth_diff_mm": 37.768139800611344,
-        "max_depth_diff_mm": 135.01392746754073,
-        "median_depth_diff_mm": 54.13909820993922,
-        "assessment": "Acceptable"
-      },
-      {
-        "pair_name": "腳踝",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 114.68465550579117,
-        "std_depth_diff_mm": 57.08221174033803,
-        "max_depth_diff_mm": 194.60693570854846,
-        "median_depth_diff_mm": 117.05031196832533,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "手腕",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 155.80740838014208,
-        "std_depth_diff_mm": 75.9988774098959,
-        "max_depth_diff_mm": 337.1534562228512,
-        "median_depth_diff_mm": 140.71615317794112,
-        "assessment": "Poor"
-      }
-    ],
     "depth_logic_check": {
-      "total_frames": 141,
-      "wrist_checks": 282,
-      "wrist_behind_shoulder_count": 65,
-      "wrist_behind_shoulder_rate": 23.04964539007092,
-      "wrist_anomalies": [
-        {
-          "frame": 0,
-          "side": "right",
-          "wrist_z": 2244.43,
-          "shoulder_z": 2407.65,
-          "depth_diff": 163.22,
-          "severity": "mild"
-        },
-        {
-          "frame": 1,
-          "side": "right",
-          "wrist_z": 2250.58,
-          "shoulder_z": 2413.18,
-          "depth_diff": 162.6,
-          "severity": "mild"
-        },
-        {
-          "frame": 2,
-          "side": "right",
-          "wrist_z": 2252.91,
-          "shoulder_z": 2417.52,
-          "depth_diff": 164.61,
-          "severity": "mild"
-        },
-        {
-          "frame": 3,
-          "side": "right",
-          "wrist_z": 2252.18,
-          "shoulder_z": 2420.84,
-          "depth_diff": 168.66,
-          "severity": "mild"
-        },
-        {
-          "frame": 4,
-          "side": "right",
-          "wrist_z": 2249.14,
-          "shoulder_z": 2423.29,
-          "depth_diff": 174.15,
-          "severity": "mild"
-        },
-        {
-          "frame": 5,
-          "side": "right",
-          "wrist_z": 2244.56,
-          "shoulder_z": 2425.04,
-          "depth_diff": 180.48,
-          "severity": "mild"
-        },
-        {
-          "frame": 6,
-          "side": "right",
-          "wrist_z": 2239.18,
-          "shoulder_z": 2426.24,
-          "depth_diff": 187.06,
-          "severity": "mild"
-        },
-        {
-          "frame": 7,
-          "side": "right",
-          "wrist_z": 2233.76,
-          "shoulder_z": 2427.04,
-          "depth_diff": 193.28,
-          "severity": "mild"
-        },
-        {
-          "frame": 8,
-          "side": "right",
-          "wrist_z": 2230.96,
-          "shoulder_z": 2428.08,
-          "depth_diff": 197.11,
-          "severity": "mild"
-        },
-        {
-          "frame": 9,
-          "side": "right",
-          "wrist_z": 2229.68,
-          "shoulder_z": 2428.74,
-          "depth_diff": 199.06,
-          "severity": "mild"
-        },
-        {
-          "frame": 10,
-          "side": "right",
-          "wrist_z": 2229.95,
-          "shoulder_z": 2429.51,
-          "depth_diff": 199.57,
-          "severity": "mild"
-        },
-        {
-          "frame": 11,
-          "side": "right",
-          "wrist_z": 2231.88,
-          "shoulder_z": 2429.96,
-          "depth_diff": 198.08,
-          "severity": "mild"
-        },
-        {
-          "frame": 12,
-          "side": "right",
-          "wrist_z": 2235.04,
-          "shoulder_z": 2430.69,
-          "depth_diff": 195.65,
-          "severity": "mild"
-        },
-        {
-          "frame": 13,
-          "side": "right",
-          "wrist_z": 2239.68,
-          "shoulder_z": 2431.82,
-          "depth_diff": 192.14,
-          "severity": "mild"
-        },
-        {
-          "frame": 14,
-          "side": "right",
-          "wrist_z": 2244.44,
-          "shoulder_z": 2433.12,
-          "depth_diff": 188.68,
-          "severity": "mild"
-        },
-        {
-          "frame": 15,
-          "side": "right",
-          "wrist_z": 2249.27,
-          "shoulder_z": 2434.38,
-          "depth_diff": 185.1,
-          "severity": "mild"
-        },
-        {
-          "frame": 16,
-          "side": "right",
-          "wrist_z": 2253.54,
-          "shoulder_z": 2435.31,
-          "depth_diff": 181.77,
-          "severity": "mild"
-        },
-        {
-          "frame": 17,
-          "side": "right",
-          "wrist_z": 2256.91,
-          "shoulder_z": 2436.44,
-          "depth_diff": 179.53,
-          "severity": "mild"
-        },
-        {
-          "frame": 18,
-          "side": "right",
-          "wrist_z": 2259.97,
-          "shoulder_z": 2437.61,
-          "depth_diff": 177.64,
-          "severity": "mild"
-        },
-        {
-          "frame": 19,
-          "side": "right",
-          "wrist_z": 2263.92,
-          "shoulder_z": 2438.75,
-          "depth_diff": 174.82,
-          "severity": "mild"
-        },
-        {
-          "frame": 20,
-          "side": "right",
-          "wrist_z": 2269.7,
-          "shoulder_z": 2439.82,
-          "depth_diff": 170.12,
-          "severity": "mild"
-        },
-        {
-          "frame": 21,
-          "side": "right",
-          "wrist_z": 2277.44,
-          "shoulder_z": 2441.04,
-          "depth_diff": 163.6,
-          "severity": "mild"
-        },
-        {
-          "frame": 22,
-          "side": "right",
-          "wrist_z": 2285.87,
-          "shoulder_z": 2441.76,
-          "depth_diff": 155.9,
-          "severity": "mild"
-        },
-        {
-          "frame": 42,
-          "side": "right",
-          "wrist_z": 2297.04,
-          "shoulder_z": 2449.83,
-          "depth_diff": 152.78,
-          "severity": "mild"
-        },
-        {
-          "frame": 43,
-          "side": "right",
-          "wrist_z": 2295.69,
-          "shoulder_z": 2454.1,
-          "depth_diff": 158.41,
-          "severity": "mild"
-        },
-        {
-          "frame": 44,
-          "side": "right",
-          "wrist_z": 2294.73,
-          "shoulder_z": 2458.4,
-          "depth_diff": 163.68,
-          "severity": "mild"
-        },
-        {
-          "frame": 45,
-          "side": "right",
-          "wrist_z": 2293.36,
-          "shoulder_z": 2462.58,
-          "depth_diff": 169.22,
-          "severity": "mild"
-        },
-        {
-          "frame": 46,
-          "side": "right",
-          "wrist_z": 2291.66,
-          "shoulder_z": 2466.53,
-          "depth_diff": 174.87,
-          "severity": "mild"
-        },
-        {
-          "frame": 47,
-          "side": "right",
-          "wrist_z": 2290.63,
-          "shoulder_z": 2470.47,
-          "depth_diff": 179.84,
-          "severity": "mild"
-        },
-        {
-          "frame": 48,
-          "side": "right",
-          "wrist_z": 2289.96,
-          "shoulder_z": 2474.31,
-          "depth_diff": 184.36,
-          "severity": "mild"
-        },
-        {
-          "frame": 49,
-          "side": "right",
-          "wrist_z": 2289.87,
-          "shoulder_z": 2478.11,
-          "depth_diff": 188.25,
-          "severity": "mild"
-        },
-        {
-          "frame": 50,
-          "side": "right",
-          "wrist_z": 2290.85,
-          "shoulder_z": 2482.06,
-          "depth_diff": 191.21,
-          "severity": "mild"
-        },
-        {
-          "frame": 51,
-          "side": "right",
-          "wrist_z": 2292.66,
-          "shoulder_z": 2485.82,
-          "depth_diff": 193.17,
-          "severity": "mild"
-        },
-        {
-          "frame": 52,
-          "side": "right",
-          "wrist_z": 2295.36,
-          "shoulder_z": 2488.96,
-          "depth_diff": 193.61,
-          "severity": "mild"
-        },
-        {
-          "frame": 53,
-          "side": "right",
-          "wrist_z": 2300.54,
-          "shoulder_z": 2492.22,
-          "depth_diff": 191.68,
-          "severity": "mild"
-        },
-        {
-          "frame": 54,
-          "side": "right",
-          "wrist_z": 2306.79,
-          "shoulder_z": 2494.52,
-          "depth_diff": 187.73,
-          "severity": "mild"
-        },
-        {
-          "frame": 55,
-          "side": "right",
-          "wrist_z": 2314.55,
-          "shoulder_z": 2496.05,
-          "depth_diff": 181.5,
-          "severity": "mild"
-        },
-        {
-          "frame": 56,
-          "side": "right",
-          "wrist_z": 2322.79,
-          "shoulder_z": 2495.95,
-          "depth_diff": 173.16,
-          "severity": "mild"
-        },
-        {
-          "frame": 57,
-          "side": "right",
-          "wrist_z": 2331.86,
-          "shoulder_z": 2494.42,
-          "depth_diff": 162.56,
-          "severity": "mild"
-        },
-        {
-          "frame": 58,
-          "side": "right",
-          "wrist_z": 2340.32,
-          "shoulder_z": 2491.73,
-          "depth_diff": 151.41,
-          "severity": "mild"
-        },
-        {
-          "frame": 90,
-          "side": "right",
-          "wrist_z": 2412.61,
-          "shoulder_z": 2574.92,
-          "depth_diff": 162.31,
-          "severity": "mild"
-        },
-        {
-          "frame": 91,
-          "side": "right",
-          "wrist_z": 2383.81,
-          "shoulder_z": 2564.94,
-          "depth_diff": 181.13,
-          "severity": "mild"
-        },
-        {
-          "frame": 92,
-          "side": "right",
-          "wrist_z": 2360.81,
-          "shoulder_z": 2554.87,
-          "depth_diff": 194.05,
-          "severity": "mild"
-        },
-        {
-          "frame": 93,
-          "side": "right",
-          "wrist_z": 2343.41,
-          "shoulder_z": 2545.23,
-          "depth_diff": 201.81,
-          "severity": "mild"
-        },
-        {
-          "frame": 94,
-          "side": "right",
-          "wrist_z": 2333.45,
-          "shoulder_z": 2536.35,
-          "depth_diff": 202.9,
-          "severity": "mild"
-        },
-        {
-          "frame": 95,
-          "side": "right",
-          "wrist_z": 2328.46,
-          "shoulder_z": 2526.81,
-          "depth_diff": 198.34,
-          "severity": "mild"
-        },
-        {
-          "frame": 96,
-          "side": "right",
-          "wrist_z": 2328.79,
-          "shoulder_z": 2516.54,
-          "depth_diff": 187.75,
-          "severity": "mild"
-        },
-        {
-          "frame": 97,
-          "side": "right",
-          "wrist_z": 2333.44,
-          "shoulder_z": 2505.09,
-          "depth_diff": 171.64,
-          "severity": "mild"
-        },
-        {
-          "frame": 98,
-          "side": "right",
-          "wrist_z": 2337.62,
-          "shoulder_z": 2491.96,
-          "depth_diff": 154.34,
-          "severity": "mild"
-        },
-        {
-          "frame": 103,
-          "side": "right",
-          "wrist_z": 2280.01,
-          "shoulder_z": 2440.15,
-          "depth_diff": 160.14,
-          "severity": "mild"
-        },
-        {
-          "frame": 104,
-          "side": "right",
-          "wrist_z": 2252.06,
-          "shoulder_z": 2434.56,
-          "depth_diff": 182.5,
-          "severity": "mild"
-        },
-        {
-          "frame": 105,
-          "side": "right",
-          "wrist_z": 2222.58,
-          "shoulder_z": 2429.69,
-          "depth_diff": 207.11,
-          "severity": "mild"
-        },
-        {
-          "frame": 106,
-          "side": "right",
-          "wrist_z": 2195.75,
-          "shoulder_z": 2424.13,
-          "depth_diff": 228.39,
-          "severity": "mild"
-        },
-        {
-          "frame": 107,
-          "side": "right",
-          "wrist_z": 2170.69,
-          "shoulder_z": 2418.64,
-          "depth_diff": 247.95,
-          "severity": "mild"
-        },
-        {
-          "frame": 108,
-          "side": "right",
-          "wrist_z": 2151.54,
-          "shoulder_z": 2413.28,
-          "depth_diff": 261.74,
-          "severity": "mild"
-        },
-        {
-          "frame": 109,
-          "side": "right",
-          "wrist_z": 2139.43,
-          "shoulder_z": 2407.05,
-          "depth_diff": 267.62,
-          "severity": "mild"
-        },
-        {
-          "frame": 110,
-          "side": "right",
-          "wrist_z": 2137.96,
-          "shoulder_z": 2401.14,
-          "depth_diff": 263.18,
-          "severity": "mild"
-        },
-        {
-          "frame": 111,
-          "side": "right",
-          "wrist_z": 2143.46,
-          "shoulder_z": 2395.7,
-          "depth_diff": 252.23,
-          "severity": "mild"
-        },
-        {
-          "frame": 112,
-          "side": "right",
-          "wrist_z": 2153.65,
-          "shoulder_z": 2391.4,
-          "depth_diff": 237.75,
-          "severity": "mild"
-        },
-        {
-          "frame": 113,
-          "side": "right",
-          "wrist_z": 2164.5,
-          "shoulder_z": 2389.09,
-          "depth_diff": 224.59,
-          "severity": "mild"
-        },
-        {
-          "frame": 114,
-          "side": "right",
-          "wrist_z": 2177.22,
-          "shoulder_z": 2389.14,
-          "depth_diff": 211.92,
-          "severity": "mild"
-        },
-        {
-          "frame": 115,
-          "side": "right",
-          "wrist_z": 2192.47,
-          "shoulder_z": 2391.61,
-          "depth_diff": 199.14,
-          "severity": "mild"
-        },
-        {
-          "frame": 116,
-          "side": "right",
-          "wrist_z": 2208.98,
-          "shoulder_z": 2396.03,
-          "depth_diff": 187.05,
-          "severity": "mild"
-        },
-        {
-          "frame": 117,
-          "side": "right",
-          "wrist_z": 2226.75,
-          "shoulder_z": 2401.37,
-          "depth_diff": 174.62,
-          "severity": "mild"
-        },
-        {
-          "frame": 118,
-          "side": "right",
-          "wrist_z": 2245.95,
-          "shoulder_z": 2407.79,
-          "depth_diff": 161.84,
-          "severity": "mild"
-        }
-      ],
-      "knee_checks": 282,
-      "knee_behind_hip_count": 0,
-      "knee_behind_hip_rate": 0.0,
-      "knee_anomalies": []
+      "elbow_hyperextension": {
+        "checks": {
+          "total": 282,
+          "left": 141,
+          "right": 141
+        },
+        "violations": {
+          "total": 5,
+          "left": 5,
+          "right": 0
+        },
+        "rate": 1.773049645390071,
+        "anomalies": [
+          {
+            "frame": 113,
+            "side": "left",
+            "val_z": 2719.0,
+            "ref_z": 2511.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 114,
+            "side": "left",
+            "val_z": 2743.6,
+            "ref_z": 2525.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 115,
+            "side": "left",
+            "val_z": 2759.2,
+            "ref_z": 2538.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 116,
+            "side": "left",
+            "val_z": 2762.9,
+            "ref_z": 2547.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 117,
+            "side": "left",
+            "val_z": 2754.3,
+            "ref_z": 2552.3,
+            "severity": "moderate"
+          }
+        ]
+      },
+      "knee_hyperextension": {
+        "checks": {
+          "total": 282,
+          "left": 141,
+          "right": 141
+        },
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
+        },
+        "rate": 0.0,
+        "anomalies": []
+      }
     },
     "overall_statistics": {
       "overall_mean_depth_mm": 2366.4031724546894,
@@ -884,18 +374,157 @@
     "temporal_stability": {
       "mean_frame_change_mm": 4.767400557815388,
       "max_frame_change_mm": 10.71798050819114,
-      "unstable_frames": [
-        {
-          "frame_index": 112,
-          "avg_depth_change_mm": 10.71798050819114
-        }
-      ],
-      "threshold_mm": 10.644053672231966
+      "unstable_frames": [],
+      "unstable_frame_count": 0,
+      "unstable_rate": 0.0,
+      "threshold_mm": 50.0,
+      "series_data": [
+        9.119282122155415,
+        7.090775198879034,
+        5.340053943343478,
+        4.031840141516113,
+        3.137789543500757,
+        2.7881979518533093,
+        2.8480522916595286,
+        2.89658122486681,
+        2.8187957342140235,
+        2.998671208040752,
+        3.231758046843371,
+        3.1809468123681066,
+        3.0096953274527927,
+        3.1397466329040875,
+        3.1180136752674277,
+        3.050743351795999,
+        2.8406267912379435,
+        2.622385387667156,
+        2.6424127220100617,
+        2.760386345401029,
+        2.7899010607056614,
+        2.928388384548752,
+        2.8050221056747056,
+        2.842922236718069,
+        2.815368131923793,
+        2.623367860886527,
+        2.2799543153519153,
+        2.0298326572909473,
+        2.027575060228013,
+        2.0687152759262917,
+        2.0694843976468347,
+        2.458824341677508,
+        3.0404065716198225,
+        3.4978624200624675,
+        3.80445867606509,
+        3.669952695411961,
+        3.6347221067785274,
+        3.1291156175757884,
+        2.649973779585386,
+        2.1180065820417973,
+        2.0161213304245127,
+        2.158799179331361,
+        2.2158754436252233,
+        3.1612706306010017,
+        3.3452048448759037,
+        3.2430548369649665,
+        2.8848077511266106,
+        2.7785782918869018,
+        3.0054327166371877,
+        3.182792060040558,
+        3.4971775337712896,
+        4.083343414727602,
+        4.631885886559429,
+        4.625131793959351,
+        4.628208211700768,
+        4.458014022821645,
+        4.58201072824934,
+        4.570132919337943,
+        4.741719781891687,
+        4.925281837831601,
+        4.859979355405396,
+        4.88009556832272,
+        4.821113257873865,
+        4.63044582944796,
+        4.311918104849939,
+        3.960740427208217,
+        3.8575080355170335,
+        3.4402836270404578,
+        3.22942709011372,
+        3.205500162979888,
+        3.464781492004047,
+        4.428571185480526,
+        5.554248115290458,
+        6.605760346914154,
+        7.28744660170734,
+        7.182791420375604,
+        6.625576880255191,
+        6.402020607038316,
+        7.210863770614272,
+        7.871040205712613,
+        7.939020250453546,
+        7.041967638393,
+        6.100389462057466,
+        4.936766611628589,
+        4.255132412588207,
+        4.143435990153573,
+        4.0975902842747525,
+        4.249959848951751,
+        5.66834491859581,
+        6.627831612173155,
+        7.067002901741237,
+        7.153912783975367,
+        7.07049914101391,
+        6.857293282827515,
+        7.161639174852275,
+        7.354873049635797,
+        7.707571895952153,
+        7.389859544004505,
+        6.223168951907862,
+        5.350757616267755,
+        6.185893706185147,
+        6.918821613867901,
+        8.2202391048378,
+        8.808271991581769,
+        8.46444675405371,
+        8.338756668113117,
+        7.901250671334399,
+        7.078454733607348,
+        7.498719012272975,
+        8.135981959246275,
+        9.587851345231241,
+        10.71798050819114,
+        8.195141060001868,
+        7.97474871788713,
+        7.641339467138657,
+        6.44630782926475,
+        5.876898727803778,
+        6.1992024942760775,
+        6.491126065698127,
+        6.43832045646781,
+        5.871076583503054,
+        4.96506651624371,
+        4.123683878798281,
+        3.4779859157375435,
+        3.58774211761385,
+        3.8912404572295816,
+        3.987262212430511,
+        4.372300943258779,
+        4.536953328134507,
+        4.577890500565739,
+        4.612216761156721,
+        4.5568571845434125,
+        4.44882513240271,
+        4.340938600093389,
+        4.152525093559983,
+        3.9069399974751993,
+        3.7930968052660585,
+        3.750802513245109,
+        3.944482211992074,
+        4.505857051181251
+      ]
     }
   },
   "45": {
     "metadata": {
-      "analysis_time": "2025-12-11T21:39:59.222119",
+      "analysis_time": "2025-12-12T22:45:25.939335",
       "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json",
       "total_frames": 141,
       "analysis_type": "Depth Reasonableness Analysis",
@@ -905,13 +534,15 @@
       "average_cv": 20.9298961389316,
       "quality_level": "需改進",
       "total_keypoints_analyzed": 18,
-      "total_logic_violations": 50,
+      "total_logic_violations": 0,
       "mean_depth_mm": -394.8769477428359,
       "quality_score": {
-        "score": 69.27495949518645,
+        "score": 70.0,
         "deductions": [
-          "平均 CV 過高 (20.9%) -21.9",
-          "手腕深度異常 (17.7%) -8.9"
+          {
+            "reason": "深度極度不穩定 (CV 20.9%)",
+            "points": 30
+          }
         ],
         "level": "Acceptable"
       }
@@ -1188,464 +819,35 @@
         "outlier_rate": 2.857142857142857
       }
     },
-    "depth_symmetry": [
-      {
-        "pair_name": "肩膀",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 306.1048151138813,
-        "std_depth_diff_mm": 15.051825928857285,
-        "max_depth_diff_mm": 342.36676793052675,
-        "median_depth_diff_mm": 303.05032008252056,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "髖部",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 206.97711051896852,
-        "std_depth_diff_mm": 11.481907451896756,
-        "max_depth_diff_mm": 232.96402495983784,
-        "median_depth_diff_mm": 206.08113969505666,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "膝蓋",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 235.18678023992157,
-        "std_depth_diff_mm": 13.16036105020957,
-        "max_depth_diff_mm": 263.0100780061007,
-        "median_depth_diff_mm": 238.02487348539353,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "腳踝",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 242.62498409101113,
-        "std_depth_diff_mm": 27.29275459209446,
-        "max_depth_diff_mm": 276.33960201898253,
-        "median_depth_diff_mm": 253.26472299739726,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "手腕",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 486.60302038809334,
-        "std_depth_diff_mm": 183.55538420915784,
-        "max_depth_diff_mm": 700.2853558484844,
-        "median_depth_diff_mm": 538.2630158291972,
-        "assessment": "Poor"
-      }
-    ],
     "depth_logic_check": {
-      "total_frames": 141,
-      "wrist_checks": 282,
-      "wrist_behind_shoulder_count": 50,
-      "wrist_behind_shoulder_rate": 17.73049645390071,
-      "wrist_anomalies": [
-        {
-          "frame": 3,
-          "side": "left",
-          "wrist_z": -601.45,
-          "shoulder_z": -448.44,
-          "depth_diff": 153.01,
-          "severity": "mild"
+      "elbow_hyperextension": {
+        "checks": {
+          "total": 282,
+          "left": 141,
+          "right": 141
         },
-        {
-          "frame": 4,
-          "side": "left",
-          "wrist_z": -604.52,
-          "shoulder_z": -449.13,
-          "depth_diff": 155.39,
-          "severity": "mild"
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
         },
-        {
-          "frame": 5,
-          "side": "left",
-          "wrist_z": -607.09,
-          "shoulder_z": -450.65,
-          "depth_diff": 156.44,
-          "severity": "mild"
+        "rate": 0.0,
+        "anomalies": []
+      },
+      "knee_hyperextension": {
+        "checks": {
+          "total": 282,
+          "left": 141,
+          "right": 141
         },
-        {
-          "frame": 6,
-          "side": "left",
-          "wrist_z": -609.25,
-          "shoulder_z": -452.86,
-          "depth_diff": 156.39,
-          "severity": "mild"
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
         },
-        {
-          "frame": 7,
-          "side": "left",
-          "wrist_z": -611.05,
-          "shoulder_z": -455.63,
-          "depth_diff": 155.42,
-          "severity": "mild"
-        },
-        {
-          "frame": 8,
-          "side": "left",
-          "wrist_z": -612.74,
-          "shoulder_z": -458.91,
-          "depth_diff": 153.83,
-          "severity": "mild"
-        },
-        {
-          "frame": 9,
-          "side": "left",
-          "wrist_z": -614.14,
-          "shoulder_z": -462.42,
-          "depth_diff": 151.72,
-          "severity": "mild"
-        },
-        {
-          "frame": 23,
-          "side": "left",
-          "wrist_z": -647.53,
-          "shoulder_z": -494.05,
-          "depth_diff": 153.47,
-          "severity": "mild"
-        },
-        {
-          "frame": 24,
-          "side": "left",
-          "wrist_z": -652.35,
-          "shoulder_z": -494.85,
-          "depth_diff": 157.5,
-          "severity": "mild"
-        },
-        {
-          "frame": 25,
-          "side": "left",
-          "wrist_z": -656.88,
-          "shoulder_z": -495.45,
-          "depth_diff": 161.43,
-          "severity": "mild"
-        },
-        {
-          "frame": 26,
-          "side": "left",
-          "wrist_z": -660.81,
-          "shoulder_z": -495.87,
-          "depth_diff": 164.93,
-          "severity": "mild"
-        },
-        {
-          "frame": 27,
-          "side": "left",
-          "wrist_z": -663.97,
-          "shoulder_z": -496.03,
-          "depth_diff": 167.94,
-          "severity": "mild"
-        },
-        {
-          "frame": 28,
-          "side": "left",
-          "wrist_z": -666.3,
-          "shoulder_z": -496.0,
-          "depth_diff": 170.3,
-          "severity": "mild"
-        },
-        {
-          "frame": 29,
-          "side": "left",
-          "wrist_z": -667.8,
-          "shoulder_z": -495.94,
-          "depth_diff": 171.86,
-          "severity": "mild"
-        },
-        {
-          "frame": 30,
-          "side": "left",
-          "wrist_z": -668.46,
-          "shoulder_z": -495.96,
-          "depth_diff": 172.49,
-          "severity": "mild"
-        },
-        {
-          "frame": 31,
-          "side": "left",
-          "wrist_z": -668.43,
-          "shoulder_z": -496.35,
-          "depth_diff": 172.08,
-          "severity": "mild"
-        },
-        {
-          "frame": 32,
-          "side": "left",
-          "wrist_z": -667.48,
-          "shoulder_z": -497.0,
-          "depth_diff": 170.49,
-          "severity": "mild"
-        },
-        {
-          "frame": 33,
-          "side": "left",
-          "wrist_z": -665.56,
-          "shoulder_z": -498.13,
-          "depth_diff": 167.44,
-          "severity": "mild"
-        },
-        {
-          "frame": 34,
-          "side": "left",
-          "wrist_z": -662.79,
-          "shoulder_z": -499.66,
-          "depth_diff": 163.13,
-          "severity": "mild"
-        },
-        {
-          "frame": 35,
-          "side": "left",
-          "wrist_z": -659.2,
-          "shoulder_z": -501.37,
-          "depth_diff": 157.82,
-          "severity": "mild"
-        },
-        {
-          "frame": 36,
-          "side": "left",
-          "wrist_z": -655.46,
-          "shoulder_z": -502.99,
-          "depth_diff": 152.47,
-          "severity": "mild"
-        },
-        {
-          "frame": 112,
-          "side": "right",
-          "wrist_z": -420.46,
-          "shoulder_z": -269.01,
-          "depth_diff": 151.45,
-          "severity": "mild"
-        },
-        {
-          "frame": 113,
-          "side": "right",
-          "wrist_z": -437.99,
-          "shoulder_z": -268.62,
-          "depth_diff": 169.36,
-          "severity": "mild"
-        },
-        {
-          "frame": 114,
-          "side": "right",
-          "wrist_z": -454.63,
-          "shoulder_z": -268.91,
-          "depth_diff": 185.72,
-          "severity": "mild"
-        },
-        {
-          "frame": 115,
-          "side": "right",
-          "wrist_z": -470.4,
-          "shoulder_z": -269.83,
-          "depth_diff": 200.56,
-          "severity": "mild"
-        },
-        {
-          "frame": 116,
-          "side": "right",
-          "wrist_z": -485.1,
-          "shoulder_z": -271.17,
-          "depth_diff": 213.93,
-          "severity": "mild"
-        },
-        {
-          "frame": 117,
-          "side": "right",
-          "wrist_z": -498.68,
-          "shoulder_z": -272.71,
-          "depth_diff": 225.96,
-          "severity": "mild"
-        },
-        {
-          "frame": 118,
-          "side": "right",
-          "wrist_z": -511.46,
-          "shoulder_z": -274.41,
-          "depth_diff": 237.04,
-          "severity": "mild"
-        },
-        {
-          "frame": 119,
-          "side": "right",
-          "wrist_z": -523.01,
-          "shoulder_z": -276.0,
-          "depth_diff": 247.01,
-          "severity": "mild"
-        },
-        {
-          "frame": 120,
-          "side": "right",
-          "wrist_z": -533.46,
-          "shoulder_z": -277.22,
-          "depth_diff": 256.24,
-          "severity": "mild"
-        },
-        {
-          "frame": 121,
-          "side": "right",
-          "wrist_z": -542.11,
-          "shoulder_z": -278.17,
-          "depth_diff": 263.93,
-          "severity": "mild"
-        },
-        {
-          "frame": 122,
-          "side": "right",
-          "wrist_z": -549.75,
-          "shoulder_z": -278.6,
-          "depth_diff": 271.15,
-          "severity": "mild"
-        },
-        {
-          "frame": 123,
-          "side": "right",
-          "wrist_z": -556.21,
-          "shoulder_z": -278.47,
-          "depth_diff": 277.75,
-          "severity": "mild"
-        },
-        {
-          "frame": 124,
-          "side": "right",
-          "wrist_z": -561.87,
-          "shoulder_z": -277.86,
-          "depth_diff": 284.01,
-          "severity": "mild"
-        },
-        {
-          "frame": 125,
-          "side": "right",
-          "wrist_z": -566.3,
-          "shoulder_z": -276.93,
-          "depth_diff": 289.37,
-          "severity": "mild"
-        },
-        {
-          "frame": 126,
-          "side": "right",
-          "wrist_z": -569.36,
-          "shoulder_z": -275.65,
-          "depth_diff": 293.71,
-          "severity": "mild"
-        },
-        {
-          "frame": 127,
-          "side": "right",
-          "wrist_z": -570.99,
-          "shoulder_z": -274.18,
-          "depth_diff": 296.81,
-          "severity": "mild"
-        },
-        {
-          "frame": 128,
-          "side": "right",
-          "wrist_z": -572.0,
-          "shoulder_z": -272.54,
-          "depth_diff": 299.46,
-          "severity": "mild"
-        },
-        {
-          "frame": 129,
-          "side": "right",
-          "wrist_z": -572.59,
-          "shoulder_z": -270.75,
-          "depth_diff": 301.85,
-          "severity": "moderate"
-        },
-        {
-          "frame": 130,
-          "side": "right",
-          "wrist_z": -572.76,
-          "shoulder_z": -268.78,
-          "depth_diff": 303.98,
-          "severity": "moderate"
-        },
-        {
-          "frame": 131,
-          "side": "right",
-          "wrist_z": -572.67,
-          "shoulder_z": -266.68,
-          "depth_diff": 305.99,
-          "severity": "moderate"
-        },
-        {
-          "frame": 132,
-          "side": "right",
-          "wrist_z": -572.4,
-          "shoulder_z": -264.55,
-          "depth_diff": 307.84,
-          "severity": "moderate"
-        },
-        {
-          "frame": 133,
-          "side": "right",
-          "wrist_z": -571.73,
-          "shoulder_z": -262.35,
-          "depth_diff": 309.38,
-          "severity": "moderate"
-        },
-        {
-          "frame": 134,
-          "side": "right",
-          "wrist_z": -570.69,
-          "shoulder_z": -260.13,
-          "depth_diff": 310.57,
-          "severity": "moderate"
-        },
-        {
-          "frame": 135,
-          "side": "right",
-          "wrist_z": -569.23,
-          "shoulder_z": -257.94,
-          "depth_diff": 311.29,
-          "severity": "moderate"
-        },
-        {
-          "frame": 136,
-          "side": "right",
-          "wrist_z": -567.32,
-          "shoulder_z": -255.84,
-          "depth_diff": 311.48,
-          "severity": "moderate"
-        },
-        {
-          "frame": 137,
-          "side": "right",
-          "wrist_z": -564.95,
-          "shoulder_z": -253.88,
-          "depth_diff": 311.07,
-          "severity": "moderate"
-        },
-        {
-          "frame": 138,
-          "side": "right",
-          "wrist_z": -562.1,
-          "shoulder_z": -252.09,
-          "depth_diff": 310.01,
-          "severity": "moderate"
-        },
-        {
-          "frame": 139,
-          "side": "right",
-          "wrist_z": -558.75,
-          "shoulder_z": -250.52,
-          "depth_diff": 308.23,
-          "severity": "moderate"
-        },
-        {
-          "frame": 140,
-          "side": "right",
-          "wrist_z": -554.88,
-          "shoulder_z": -249.22,
-          "depth_diff": 305.66,
-          "severity": "moderate"
-        }
-      ],
-      "knee_checks": 282,
-      "knee_behind_hip_count": 0,
-      "knee_behind_hip_rate": 0.0,
-      "knee_anomalies": []
+        "rate": 0.0,
+        "anomalies": []
+      }
     },
     "overall_statistics": {
       "overall_mean_depth_mm": -394.8769477428359,
@@ -1660,12 +862,156 @@
       "mean_frame_change_mm": 2.444965483415525,
       "max_frame_change_mm": 7.022770150666184,
       "unstable_frames": [],
-      "threshold_mm": 7.101491486036421
+      "unstable_frame_count": 0,
+      "unstable_rate": 0.0,
+      "threshold_mm": 50.0,
+      "series_data": [
+        3.425522062324891,
+        2.8960364929967803,
+        2.3951689865850634,
+        2.0212644420034045,
+        1.9254965205428454,
+        1.9066294650861249,
+        1.889136384360293,
+        1.8710566715406671,
+        1.789268316380939,
+        1.7562430994285558,
+        1.7765190014889038,
+        1.8933635442455639,
+        1.9386694699983575,
+        1.837828067475718,
+        1.7464107395907216,
+        1.5919288458699157,
+        1.5334592960907685,
+        1.5024064987450776,
+        1.518994113384478,
+        1.4784777057594938,
+        1.3868307443481438,
+        1.2432326835399394,
+        1.1155098979848201,
+        1.052553793036248,
+        0.929300156524652,
+        0.841695206971508,
+        0.7349868310774154,
+        0.653021850179571,
+        0.6347225830227217,
+        0.7078751713575805,
+        0.8507513322814809,
+        1.0776088747435524,
+        1.3375680689516818,
+        1.5591880573934385,
+        1.7278360748029145,
+        1.7044425556507175,
+        1.7205517508590513,
+        1.5841806489408607,
+        1.4057955395441883,
+        1.1614768010772958,
+        0.9782030513067772,
+        0.8394065771363945,
+        0.8460738455582406,
+        1.3955308909516537,
+        1.4647917772691192,
+        1.39386654885632,
+        1.235364811285068,
+        1.307481178842535,
+        1.4332832860761375,
+        1.5494269760155375,
+        1.6505070132080466,
+        1.954739130203633,
+        2.2411598208380306,
+        2.271677935045444,
+        2.2702293591232268,
+        2.1477614539424823,
+        1.9681518642118665,
+        1.960152406573924,
+        1.930173973992737,
+        1.8217884178586827,
+        1.8732146893746504,
+        1.9329106877530395,
+        1.9460789928530933,
+        1.8703765212604568,
+        1.8843030420354252,
+        1.7832344876942696,
+        1.7700671953192062,
+        1.8607937025664114,
+        1.9638310835246229,
+        2.0860296655817288,
+        2.3809073122272872,
+        2.6250686821781652,
+        2.8128416414077972,
+        3.0720366185637937,
+        3.35064797754487,
+        3.519904042774581,
+        3.6173327795668606,
+        3.5847646383954648,
+        3.4529378050489816,
+        3.241423638979629,
+        3.160572535936884,
+        2.9850042324560238,
+        2.8242357388874098,
+        2.688268745820425,
+        2.683827375985667,
+        2.7159085525846396,
+        2.8455394830465996,
+        2.8874131874545634,
+        2.948399480482206,
+        3.0021260707415345,
+        3.1150410168557605,
+        3.3067923317093775,
+        3.5001594563827516,
+        3.600624853484217,
+        3.7385029145017876,
+        3.9411105417919745,
+        3.9831239755971968,
+        3.5539437970973293,
+        3.550966769689088,
+        4.695277713827611,
+        5.807396358713138,
+        6.500115217753571,
+        6.854894029734485,
+        6.903420632431082,
+        6.726681619494532,
+        6.635799731492562,
+        6.492976643327539,
+        6.633884614305038,
+        6.674765521196845,
+        6.893255031493709,
+        7.022770150666184,
+        7.003716873245001,
+        3.010909006569337,
+        2.7729672669573335,
+        2.484827847215403,
+        2.4719251068757813,
+        2.5818688890845967,
+        2.93806686080659,
+        3.1971362984929916,
+        3.2270489270536284,
+        2.9882143245283848,
+        2.6154192141553883,
+        2.262718996271788,
+        1.9819244671544927,
+        1.5741300845420216,
+        1.2016121597450953,
+        0.9164279347629578,
+        0.8604073290935583,
+        0.9189007155230362,
+        0.9324067975294383,
+        0.9496777366854772,
+        1.1043310646824092,
+        1.2406925026555067,
+        1.3622905496355515,
+        1.3168280290808392,
+        1.2111995102970254,
+        1.1080218937571344,
+        1.1003900147163275,
+        1.22866936622955,
+        1.448155716752621
+      ]
     }
   },
   "Side": {
     "metadata": {
-      "analysis_time": "2025-12-11T21:39:59.239194",
+      "analysis_time": "2025-12-12T22:45:25.952676",
       "source_file": "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json",
       "total_frames": 141,
       "analysis_type": "Depth Reasonableness Analysis",
@@ -1675,15 +1021,17 @@
       "average_cv": 45.81714213536064,
       "quality_level": "需改進",
       "total_keypoints_analyzed": 18,
-      "total_logic_violations": 32,
+      "total_logic_violations": 0,
       "mean_depth_mm": -261.83530638733635,
       "quality_score": {
-        "score": 22.69195686403049,
+        "score": 70.0,
         "deductions": [
-          "平均 CV 過高 (45.8%) -71.6",
-          "手腕深度異常 (11.3%) -5.7"
+          {
+            "reason": "深度極度不穩定 (CV 45.8%)",
+            "points": 30
+          }
         ],
-        "level": "Poor"
+        "level": "Acceptable"
       }
     },
     "depth_range_analysis": {
@@ -1958,320 +1306,35 @@
         "outlier_rate": 1.4285714285714286
       }
     },
-    "depth_symmetry": [
-      {
-        "pair_name": "肩膀",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 296.89551067055623,
-        "std_depth_diff_mm": 18.87557902404232,
-        "max_depth_diff_mm": 320.2353312425953,
-        "median_depth_diff_mm": 302.4871711587666,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "髖部",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 197.28431188985567,
-        "std_depth_diff_mm": 9.1260374022213,
-        "max_depth_diff_mm": 213.70166614092523,
-        "median_depth_diff_mm": 198.59283517168524,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "膝蓋",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 213.2786346069931,
-        "std_depth_diff_mm": 7.67338762748562,
-        "max_depth_diff_mm": 227.00892632611158,
-        "median_depth_diff_mm": 214.1665871122268,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "腳踝",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 204.2625742462387,
-        "std_depth_diff_mm": 13.600099791800856,
-        "max_depth_diff_mm": 227.03793652190234,
-        "median_depth_diff_mm": 209.077729294665,
-        "assessment": "Poor"
-      },
-      {
-        "pair_name": "手腕",
-        "sample_count": 141,
-        "mean_depth_diff_mm": 435.63833465090926,
-        "std_depth_diff_mm": 196.77990829017068,
-        "max_depth_diff_mm": 704.209977522371,
-        "median_depth_diff_mm": 472.86361025305996,
-        "assessment": "Poor"
-      }
-    ],
     "depth_logic_check": {
-      "total_frames": 141,
-      "wrist_checks": 282,
-      "wrist_behind_shoulder_count": 32,
-      "wrist_behind_shoulder_rate": 11.347517730496454,
-      "wrist_anomalies": [
-        {
-          "frame": 109,
-          "side": "right",
-          "wrist_z": -294.34,
-          "shoulder_z": -138.61,
-          "depth_diff": 155.73,
-          "severity": "mild"
+      "elbow_hyperextension": {
+        "checks": {
+          "total": 282,
+          "left": 141,
+          "right": 141
         },
-        {
-          "frame": 110,
-          "side": "right",
-          "wrist_z": -311.46,
-          "shoulder_z": -138.46,
-          "depth_diff": 173.0,
-          "severity": "mild"
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
         },
-        {
-          "frame": 111,
-          "side": "right",
-          "wrist_z": -327.71,
-          "shoulder_z": -138.49,
-          "depth_diff": 189.22,
-          "severity": "mild"
+        "rate": 0.0,
+        "anomalies": []
+      },
+      "knee_hyperextension": {
+        "checks": {
+          "total": 282,
+          "left": 141,
+          "right": 141
         },
-        {
-          "frame": 112,
-          "side": "right",
-          "wrist_z": -343.01,
-          "shoulder_z": -138.63,
-          "depth_diff": 204.38,
-          "severity": "mild"
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
         },
-        {
-          "frame": 113,
-          "side": "right",
-          "wrist_z": -357.16,
-          "shoulder_z": -138.87,
-          "depth_diff": 218.29,
-          "severity": "mild"
-        },
-        {
-          "frame": 114,
-          "side": "right",
-          "wrist_z": -369.96,
-          "shoulder_z": -139.14,
-          "depth_diff": 230.82,
-          "severity": "mild"
-        },
-        {
-          "frame": 115,
-          "side": "right",
-          "wrist_z": -381.25,
-          "shoulder_z": -139.41,
-          "depth_diff": 241.85,
-          "severity": "mild"
-        },
-        {
-          "frame": 116,
-          "side": "right",
-          "wrist_z": -391.2,
-          "shoulder_z": -139.56,
-          "depth_diff": 251.63,
-          "severity": "mild"
-        },
-        {
-          "frame": 117,
-          "side": "right",
-          "wrist_z": -399.72,
-          "shoulder_z": -139.68,
-          "depth_diff": 260.04,
-          "severity": "mild"
-        },
-        {
-          "frame": 118,
-          "side": "right",
-          "wrist_z": -407.09,
-          "shoulder_z": -139.67,
-          "depth_diff": 267.42,
-          "severity": "mild"
-        },
-        {
-          "frame": 119,
-          "side": "right",
-          "wrist_z": -413.26,
-          "shoulder_z": -139.57,
-          "depth_diff": 273.69,
-          "severity": "mild"
-        },
-        {
-          "frame": 120,
-          "side": "right",
-          "wrist_z": -418.43,
-          "shoulder_z": -139.36,
-          "depth_diff": 279.07,
-          "severity": "mild"
-        },
-        {
-          "frame": 121,
-          "side": "right",
-          "wrist_z": -422.44,
-          "shoulder_z": -139.08,
-          "depth_diff": 283.36,
-          "severity": "mild"
-        },
-        {
-          "frame": 122,
-          "side": "right",
-          "wrist_z": -425.58,
-          "shoulder_z": -138.7,
-          "depth_diff": 286.88,
-          "severity": "mild"
-        },
-        {
-          "frame": 123,
-          "side": "right",
-          "wrist_z": -427.77,
-          "shoulder_z": -138.23,
-          "depth_diff": 289.54,
-          "severity": "mild"
-        },
-        {
-          "frame": 124,
-          "side": "right",
-          "wrist_z": -429.33,
-          "shoulder_z": -137.61,
-          "depth_diff": 291.72,
-          "severity": "mild"
-        },
-        {
-          "frame": 125,
-          "side": "right",
-          "wrist_z": -430.42,
-          "shoulder_z": -136.9,
-          "depth_diff": 293.53,
-          "severity": "mild"
-        },
-        {
-          "frame": 126,
-          "side": "right",
-          "wrist_z": -430.92,
-          "shoulder_z": -136.08,
-          "depth_diff": 294.84,
-          "severity": "mild"
-        },
-        {
-          "frame": 127,
-          "side": "right",
-          "wrist_z": -430.91,
-          "shoulder_z": -135.2,
-          "depth_diff": 295.71,
-          "severity": "mild"
-        },
-        {
-          "frame": 128,
-          "side": "right",
-          "wrist_z": -430.48,
-          "shoulder_z": -134.24,
-          "depth_diff": 296.24,
-          "severity": "mild"
-        },
-        {
-          "frame": 129,
-          "side": "right",
-          "wrist_z": -429.6,
-          "shoulder_z": -133.21,
-          "depth_diff": 296.39,
-          "severity": "mild"
-        },
-        {
-          "frame": 130,
-          "side": "right",
-          "wrist_z": -428.3,
-          "shoulder_z": -132.14,
-          "depth_diff": 296.16,
-          "severity": "mild"
-        },
-        {
-          "frame": 131,
-          "side": "right",
-          "wrist_z": -426.67,
-          "shoulder_z": -131.12,
-          "depth_diff": 295.56,
-          "severity": "mild"
-        },
-        {
-          "frame": 132,
-          "side": "right",
-          "wrist_z": -424.83,
-          "shoulder_z": -130.17,
-          "depth_diff": 294.66,
-          "severity": "mild"
-        },
-        {
-          "frame": 133,
-          "side": "right",
-          "wrist_z": -422.79,
-          "shoulder_z": -129.34,
-          "depth_diff": 293.44,
-          "severity": "mild"
-        },
-        {
-          "frame": 134,
-          "side": "right",
-          "wrist_z": -420.71,
-          "shoulder_z": -128.67,
-          "depth_diff": 292.03,
-          "severity": "mild"
-        },
-        {
-          "frame": 135,
-          "side": "right",
-          "wrist_z": -418.67,
-          "shoulder_z": -128.15,
-          "depth_diff": 290.52,
-          "severity": "mild"
-        },
-        {
-          "frame": 136,
-          "side": "right",
-          "wrist_z": -416.76,
-          "shoulder_z": -127.79,
-          "depth_diff": 288.97,
-          "severity": "mild"
-        },
-        {
-          "frame": 137,
-          "side": "right",
-          "wrist_z": -415.08,
-          "shoulder_z": -127.61,
-          "depth_diff": 287.47,
-          "severity": "mild"
-        },
-        {
-          "frame": 138,
-          "side": "right",
-          "wrist_z": -413.71,
-          "shoulder_z": -127.63,
-          "depth_diff": 286.08,
-          "severity": "mild"
-        },
-        {
-          "frame": 139,
-          "side": "right",
-          "wrist_z": -412.73,
-          "shoulder_z": -127.86,
-          "depth_diff": 284.87,
-          "severity": "mild"
-        },
-        {
-          "frame": 140,
-          "side": "right",
-          "wrist_z": -412.25,
-          "shoulder_z": -128.33,
-          "depth_diff": 283.92,
-          "severity": "mild"
-        }
-      ],
-      "knee_checks": 282,
-      "knee_behind_hip_count": 0,
-      "knee_behind_hip_rate": 0.0,
-      "knee_anomalies": []
+        "rate": 0.0,
+        "anomalies": []
+      }
     },
     "overall_statistics": {
       "overall_mean_depth_mm": -261.83530638733635,
@@ -2285,33 +1348,152 @@
     "temporal_stability": {
       "mean_frame_change_mm": 2.1247934394437773,
       "max_frame_change_mm": 7.433370705862217,
-      "unstable_frames": [
-        {
-          "frame_index": 102,
-          "avg_depth_change_mm": 7.008445273368971
-        },
-        {
-          "frame_index": 103,
-          "avg_depth_change_mm": 7.433370705862217
-        },
-        {
-          "frame_index": 104,
-          "avg_depth_change_mm": 7.395352799477552
-        },
-        {
-          "frame_index": 105,
-          "avg_depth_change_mm": 7.179287752424013
-        },
-        {
-          "frame_index": 106,
-          "avg_depth_change_mm": 7.052640444223243
-        },
-        {
-          "frame_index": 107,
-          "avg_depth_change_mm": 6.997564541570973
-        }
-      ],
-      "threshold_mm": 6.975040877973294
+      "unstable_frames": [],
+      "unstable_frame_count": 0,
+      "unstable_rate": 0.0,
+      "threshold_mm": 50.0,
+      "series_data": [
+        2.1478792376889193,
+        2.096542798853293,
+        2.0350789388188093,
+        1.9887517727981825,
+        1.9276958069523757,
+        1.8689028218229449,
+        1.817508897447731,
+        1.7366716215129225,
+        1.6075930048706302,
+        1.4883105444063511,
+        1.384099701172732,
+        1.346925603582911,
+        1.3765151209359185,
+        1.3832035515979708,
+        1.3829753209352287,
+        1.3415457415214191,
+        1.3221473879468837,
+        1.2840912884307192,
+        1.2348548239409438,
+        1.1639844587210546,
+        1.1090414124901946,
+        1.037014771239014,
+        0.9488311131865563,
+        0.8782892898586451,
+        0.821053804598598,
+        0.7641261361698471,
+        0.7318829460093506,
+        0.6952906014406942,
+        0.6617274894449164,
+        0.6232579433189772,
+        0.602179610516567,
+        0.6040902577601093,
+        0.6373086546194131,
+        0.7309420949769607,
+        0.8053844981771041,
+        0.8193640027378237,
+        0.838820653944715,
+        0.7949317761999469,
+        0.7343554249013965,
+        0.6642923117027856,
+        0.6517852357963366,
+        0.6547031924352429,
+        0.6993079796396106,
+        1.3598826468111662,
+        1.3636358191361448,
+        1.3220743440034666,
+        1.2707773029338543,
+        1.2552116630165149,
+        1.3136644629494565,
+        1.3906639566557715,
+        1.4485118853751955,
+        1.5926191026687775,
+        1.7744800529697815,
+        1.8492342923226488,
+        1.9430744617819629,
+        1.9915855008403014,
+        2.010003256408734,
+        2.0273449771562406,
+        2.133392398368402,
+        2.1891943041720956,
+        2.206699751077167,
+        2.2454964866552447,
+        2.2683518254361466,
+        2.286080054155554,
+        2.3113788131772455,
+        2.272287347047053,
+        2.267467137510519,
+        2.234235285436575,
+        2.1640115196443426,
+        2.042083406254897,
+        2.005576932388534,
+        2.1016456344151493,
+        2.1996437909664213,
+        2.3108186670427937,
+        2.4277583446011906,
+        2.44208841572375,
+        2.4892794839500234,
+        2.490109514950379,
+        2.5190984822294746,
+        2.507410469948417,
+        2.4819886279824206,
+        2.519676521061405,
+        2.6028853959699316,
+        2.7389154703688012,
+        2.8762745230059434,
+        3.006737877361906,
+        3.0997756983210567,
+        3.1471117758610867,
+        3.163826100400987,
+        3.110236946619668,
+        3.030820315127686,
+        2.8988314162647586,
+        2.7573425960491957,
+        2.5865550278557645,
+        2.494933139920123,
+        2.5660738706904516,
+        2.5805530249130775,
+        2.279236900420983,
+        2.4232359325411483,
+        4.121111143622873,
+        5.8545124119177165,
+        7.008445273368971,
+        7.433370705862217,
+        7.395352799477552,
+        7.179287752424013,
+        7.052640444223243,
+        6.997564541570973,
+        6.925239342265424,
+        6.78142483200371,
+        6.604320829400119,
+        6.529219183726961,
+        6.434564957328108,
+        1.9504316027685704,
+        1.9099010911501382,
+        1.8371188141247383,
+        1.8210282573957235,
+        1.8069073015510237,
+        1.7556870864212428,
+        1.6768886400730427,
+        1.5911307272113202,
+        1.4941615508918242,
+        1.4100133463239484,
+        1.3383787129363662,
+        1.2797567369526297,
+        1.214253807543494,
+        1.153743714787411,
+        1.1243579186515598,
+        1.1191417481884802,
+        1.1713738878445517,
+        1.20760018241767,
+        1.203246155904253,
+        1.155303258826547,
+        1.103038572625337,
+        1.0158401592566941,
+        0.9021382772436001,
+        0.7701885257918761,
+        0.6145288044221,
+        0.5339496987988187,
+        0.5475139488828384,
+        0.6112621799106284
+      ]
     }
   }
 }

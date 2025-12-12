@@ -9,6 +9,9 @@ import glob
 from modules.step1_reprojection_error import validate_reprojection_analysis
 from modules.step2_bone_consistency import validate_bone_consistency_analysis
 from modules.step3_depth_reasonableness import validate_depth_reasonableness_analysis
+from modules.step4_physical_motion import validate_physical_motion_analysis
+from modules.step5_spatial_consistency import validate_spatial_consistency_analysis
+from modules.step6_time_smoothness import validate_time_smoothness_analysis
 
 app = Flask(__name__, static_folder='templates')
 
@@ -182,6 +185,102 @@ def validate_step3():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/validate/step4', methods=['POST'])
+def validate_step4():
+    data = request.json
+    try:
+        json_3d = data.get('json_3d')
+
+        if not json_3d:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        output_dir = os.path.join(os.path.dirname(json_3d), 'Verification Result')
+        os.makedirs(output_dir, exist_ok=True)
+
+        base_name = os.path.splitext(os.path.basename(json_3d))[0]
+        output_filename = f"{base_name}_step4_physical_motion_results.json"
+        output_path = os.path.join(output_dir, output_filename)
+
+        validate_physical_motion_analysis(
+            json_3d,
+            output_json_path=output_path,
+            config_path=None
+        )
+
+        return jsonify({
+            "status": "success",
+            "result_file": output_path.replace('\\', '/')
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/validate/step5', methods=['POST'])
+def validate_step5():
+    data = request.json
+    try:
+        json_3d = data.get('json_3d')
+
+        if not json_3d:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        output_dir = os.path.join(os.path.dirname(json_3d), 'Verification Result')
+        os.makedirs(output_dir, exist_ok=True)
+
+        base_name = os.path.splitext(os.path.basename(json_3d))[0]
+        output_filename = f"{base_name}_step5_spatial_consistency_results.json"
+        output_path = os.path.join(output_dir, output_filename)
+
+        validate_spatial_consistency_analysis(
+            json_3d,
+            output_json_path=output_path,
+            config_path=None
+        )
+
+        return jsonify({
+            "status": "success",
+            "result_file": output_path.replace('\\', '/')
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/validate/step6', methods=['POST'])
+def validate_step6():
+    data = request.json
+    try:
+        json_3d = data.get('json_3d')
+
+        if not json_3d:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        output_dir = os.path.join(os.path.dirname(json_3d), 'Verification Result')
+        os.makedirs(output_dir, exist_ok=True)
+
+        base_name = os.path.splitext(os.path.basename(json_3d))[0]
+        output_filename = f"{base_name}_step6_time_smoothness_results.json"
+        output_path = os.path.join(output_dir, output_filename)
+
+        validate_time_smoothness_analysis(
+            json_3d,
+            output_json_path=output_path,
+            config_path=None
+        )
+
+        return jsonify({
+            "status": "success",
+            "result_file": output_path.replace('\\', '/')
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 def load_camera_configs():
     if not os.path.exists(CAMERA_CONFIG_FILE):
         return {}
@@ -262,6 +361,10 @@ def export_offline_report():
         template_file = 'templates/step2_bone_consistency.html'
     elif report_type == 'step3':
         template_file = 'templates/step3_depth_reasonableness.html'
+    elif report_type == 'step4':
+        template_file = 'templates/step4_physical_motion.html'
+    elif report_type == 'step6':
+        template_file = 'templates/step6_time_smoothness.html'
     else:
         return jsonify({"error": "Invalid report type"}), 400
         

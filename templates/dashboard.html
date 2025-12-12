@@ -335,6 +335,54 @@
         <!-- Right Column: Execution -->
         <div class="col-right">
             
+            <!-- Overview Card -->
+            <div class="card" id="overview-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="step-badge">Overview</span>
+                        分析結果總覽
+                    </div>
+                </div>
+                <div class="overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
+                    <!-- Step 1 -->
+                    <div class="overview-item" id="overview-step1" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px;">Step 1</div>
+                        <div class="score" style="font-size: 1.2rem; font-weight: 700;">--</div>
+                        <div class="status" style="font-size: 0.7rem;">Pending</div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="overview-item" id="overview-step2" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px;">Step 2</div>
+                        <div class="score" style="font-size: 1.2rem; font-weight: 700;">--</div>
+                        <div class="status" style="font-size: 0.7rem;">Pending</div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="overview-item" id="overview-step3" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px;">Step 3</div>
+                        <div class="score" style="font-size: 1.2rem; font-weight: 700;">--</div>
+                        <div class="status" style="font-size: 0.7rem;">Pending</div>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="overview-item" id="overview-step4" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px;">Step 4</div>
+                        <div class="score" style="font-size: 1.2rem; font-weight: 700;">--</div>
+                        <div class="status" style="font-size: 0.7rem;">Pending</div>
+                    </div>
+                    <!-- Step 5 -->
+                    <div class="overview-item" id="overview-step5" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px;">Step 5</div>
+                        <div class="score" style="font-size: 1.2rem; font-weight: 700;">--</div>
+                        <div class="status" style="font-size: 0.7rem;">Pending</div>
+                    </div>
+                    <!-- Step 6 -->
+                    <div class="overview-item" id="overview-step6" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px;">Step 6</div>
+                        <div class="score" style="font-size: 1.2rem; font-weight: 700;">--</div>
+                        <div class="status" style="font-size: 0.7rem;">Pending</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 3. Execution -->
             <div class="card">
                 <div class="card-header">
@@ -422,6 +470,75 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Step 4 Action -->
+                <div class="action-row">
+                    <div class="action-header">
+                        <div class="action-title">Step 4 物理運動合理性驗證</div>
+                    </div>
+                    <div class="action-desc">檢查速度、加速度是否符合人體極限，並偵測異常抖動 (Jitter)。</div>
+                    
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-run-step4" class="btn btn-primary" onclick="runStep4()">
+                            執行分析
+                        </button>
+                        <a id="btn-view-step4" class="btn btn-success view-btn" target="_blank">
+                            檢視報告
+                        </a>
+                        <button id="btn-download-step4" class="btn btn-secondary" style="display:none;" onclick="downloadReport(4)">
+                            下載離線報告
+                        </button>
+                        <div id="status-step4" class="status-indicator">
+                            <div class="spinner"></div> <span>執行中...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5 Action -->
+                <div class="action-row">
+                    <div class="action-header">
+                        <div class="action-title">Step 5 空間一致性驗證</div>
+                    </div>
+                    <div class="action-desc">驗證骨架在空間中的幾何關係，確保無穿模或異常扭曲。</div>
+                    
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-run-step5" class="btn btn-primary" onclick="runStep5()">
+                            執行分析
+                        </button>
+                        <a id="btn-view-step5" class="btn btn-success view-btn" target="_blank">
+                            檢視報告
+                        </a>
+                        <button id="btn-download-step5" class="btn btn-secondary" style="display:none;" onclick="downloadReport(5)">
+                            下載離線報告
+                        </button>
+                        <div id="status-step5" class="status-indicator">
+                            <div class="spinner"></div> <span>執行中...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6 Action -->
+                <div class="action-row">
+                    <div class="action-header">
+                        <div class="action-title">Step 6 時間平滑度驗證</div>
+                    </div>
+                    <div class="action-desc">分析動作在時間軸上的連續性，確保無瞬移或掉幀。</div>
+                    
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-run-step6" class="btn btn-primary" onclick="runStep6()">
+                            執行分析
+                        </button>
+                        <a id="btn-view-step6" class="btn btn-success view-btn" target="_blank">
+                            檢視報告
+                        </a>
+                        <button id="btn-download-step6" class="btn btn-secondary" style="display:none;" onclick="downloadReport(6)">
+                            下載離線報告
+                        </button>
+                        <div id="status-step6" class="status-indicator">
+                            <div class="spinner"></div> <span>執行中...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -433,6 +550,9 @@
     window.step1Result = null;
     window.step2Result = null;
     window.step3Result = null;
+    window.step4Result = null;
+    window.step5Result = null;
+    window.step6Result = null;
 
     async function loadConfigs() {
         try {
@@ -641,30 +761,86 @@
 
     function setCompleteState(step, resultFile) {
         const viewBtn = document.getElementById(`btn-view-step${step}`);
-        const reportPage = step === 1
-            ? 'step1_reprojection_error.html'
-            : step === 2
-                ? 'step2_bone_consistency.html'
-                : 'step3_depth_reasonableness.html';
+        let reportPage = '';
+        if (step === 1) reportPage = 'step1_reprojection_error.html';
+        else if (step === 2) reportPage = 'step2_bone_consistency.html';
+        else if (step === 3) reportPage = 'step3_depth_reasonableness.html';
+        else if (step === 4) reportPage = 'step4_physical_motion.html';
+        else if (step === 5) reportPage = 'step5_spatial_consistency.html';
+        else if (step === 6) reportPage = 'step6_time_smoothness.html';
         
         viewBtn.href = `${reportPage}?src=${encodeURIComponent(resultFile)}`;
         viewBtn.style.display = 'inline-flex';
 
-        // Store result for download and show button
-        if (step === 1) window.step1Result = resultFile;
-        if (step === 2) window.step2Result = resultFile;
-        if (step === 3) window.step3Result = resultFile;
+        // Store result for download
+        window[`step${step}Result`] = resultFile;
         
         const downloadBtn = document.getElementById(`btn-download-step${step}`);
         if (downloadBtn) downloadBtn.style.display = 'inline-flex';
+
+        // Update Overview
+        updateOverview(step, resultFile);
+    }
+
+    async function updateOverview(step, resultFile) {
+        const item = document.getElementById(`overview-step${step}`);
+        const scoreEl = item.querySelector('.score');
+        const statusEl = item.querySelector('.status');
+
+        try {
+            // Fetch the result JSON to get the score
+            // Since resultFile is a relative path like 'data/...', we can fetch it directly
+            const response = await fetch(resultFile);
+            if (!response.ok) throw new Error('Fetch failed');
+            const data = await response.json();
+
+            let score = '--';
+            let level = 'Unknown';
+            let color = '#9ca3af'; // Default gray
+
+            // Try to extract score based on standard structure
+            if (data.score && typeof data.score.total_score !== 'undefined') {
+                score = data.score.total_score.toFixed(1);
+                level = data.score.level || '';
+            } 
+            // Fallback for Step 1 (Reprojection Error might not have a "score" but "mean_error")
+            else if (step === 1 && data.summary && data.summary.mean_error_pixels) {
+                score = data.summary.mean_error_pixels.toFixed(2) + ' px';
+                level = 'Mean Error';
+            }
+
+            // Determine color based on score (rough heuristic)
+            if (score !== '--') {
+                const numScore = parseFloat(score);
+                if (step === 1) {
+                    // Lower is better for error
+                    if (numScore < 5) color = '#34d399'; // Green
+                    else if (numScore < 10) color = '#fbbf24'; // Yellow
+                    else color = '#f87171'; // Red
+                } else {
+                    // Higher is better for score (0-100)
+                    if (numScore >= 80) color = '#34d399';
+                    else if (numScore >= 60) color = '#fbbf24';
+                    else color = '#f87171';
+                }
+            }
+
+            scoreEl.textContent = score;
+            scoreEl.style.color = color;
+            statusEl.textContent = level;
+            statusEl.style.color = color;
+            item.style.border = `1px solid ${color}`;
+            item.style.background = `rgba(${color === '#34d399' ? '52, 211, 153' : color === '#fbbf24' ? '251, 191, 36' : '248, 113, 113'}, 0.1)`;
+
+        } catch (e) {
+            console.error(`Error updating overview for step ${step}:`, e);
+            statusEl.textContent = 'Error';
+            statusEl.style.color = '#f87171';
+        }
     }
 
     function downloadReport(step) {
-        const resultFile = step === 1
-            ? window.step1Result
-            : step === 2
-                ? window.step2Result
-                : window.step3Result;
+        const resultFile = window[`step${step}Result`];
         if (!resultFile) return;
         
         const url = `/api/export/offline-report?type=step${step}&file=${encodeURIComponent(resultFile)}`;
@@ -740,6 +916,84 @@
         }
     }
 
+    async function runStep4() {
+        const payload = { json_3d: document.getElementById('file-3d').value };
+        setRunningState(4, true);
+        try {
+            const res = await fetch('/api/validate/step4', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            setRunningState(4, false);
+            if (data.status === 'success') {
+                setCompleteState(4, data.result_file);
+                await fetch(`/api/export/offline-report?type=step4&file=${encodeURIComponent(data.result_file)}&save_to_disk=true`);
+                return true;
+            } else {
+                alert('錯誤: ' + data.error);
+                return false;
+            }
+        } catch (e) {
+            setRunningState(4, false);
+            alert('請求失敗: ' + e);
+            return false;
+        }
+    }
+
+    async function runStep5() {
+        const payload = { json_3d: document.getElementById('file-3d').value };
+        setRunningState(5, true);
+        try {
+            const res = await fetch('/api/validate/step5', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            setRunningState(5, false);
+            if (data.status === 'success') {
+                setCompleteState(5, data.result_file);
+                await fetch(`/api/export/offline-report?type=step5&file=${encodeURIComponent(data.result_file)}&save_to_disk=true`);
+                return true;
+            } else {
+                alert('錯誤: ' + data.error);
+                return false;
+            }
+        } catch (e) {
+            setRunningState(5, false);
+            alert('請求失敗: ' + e);
+            return false;
+        }
+    }
+
+    async function runStep6() {
+        const payload = { json_3d: document.getElementById('file-3d').value };
+        setRunningState(6, true);
+        try {
+            const res = await fetch('/api/validate/step6', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            setRunningState(6, false);
+            if (data.status === 'success') {
+                setCompleteState(6, data.result_file);
+                await fetch(`/api/export/offline-report?type=step6&file=${encodeURIComponent(data.result_file)}&save_to_disk=true`);
+                return true;
+            } else {
+                alert('錯誤: ' + data.error);
+                return false;
+            }
+        } catch (e) {
+            setRunningState(6, false);
+            alert('請求失敗: ' + e);
+            return false;
+        }
+    }
+
     // Clear all settings and reset UI
     function clearAllSettings() {
         // Reset file selections
@@ -747,33 +1001,37 @@
         document.getElementById('file-side').selectedIndex = -1;
         document.getElementById('file-45').selectedIndex = -1;
 
-        // Reset UI states for Step 1
-        document.getElementById('btn-run-step1').disabled = false;
-        document.getElementById('btn-run-step1').textContent = '執行分析';
-        document.getElementById('status-step1').classList.remove('visible');
-        document.getElementById('btn-view-step1').style.display = 'none';
-        document.getElementById('btn-view-step1').href = '#';
-        document.getElementById('btn-download-step1').style.display = 'none';
-
-        // Reset UI states for Step 2
-        document.getElementById('btn-run-step2').disabled = false;
-        document.getElementById('btn-run-step2').textContent = '執行分析';
-        document.getElementById('status-step2').classList.remove('visible');
-        document.getElementById('btn-view-step2').style.display = 'none';
-        document.getElementById('btn-view-step2').href = '#';
-        document.getElementById('btn-download-step2').style.display = 'none';
-
-        // Reset UI states for Step 3
-        document.getElementById('btn-run-step3').disabled = false;
-        document.getElementById('btn-run-step3').textContent = '執行分析';
-        document.getElementById('status-step3').classList.remove('visible');
-        document.getElementById('btn-view-step3').style.display = 'none';
-        document.getElementById('btn-view-step3').href = '#';
-        document.getElementById('btn-download-step3').style.display = 'none';
-
-        window.step1Result = null;
-        window.step2Result = null;
-        window.step3Result = null;
+        // Reset UI states for all steps
+        for (let i = 1; i <= 6; i++) {
+            const btn = document.getElementById(`btn-run-step${i}`);
+            const status = document.getElementById(`status-step${i}`);
+            const viewBtn = document.getElementById(`btn-view-step${i}`);
+            const dlBtn = document.getElementById(`btn-download-step${i}`);
+            const overviewItem = document.getElementById(`overview-step${i}`);
+            
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '執行分析';
+            }
+            if (status) status.classList.remove('visible');
+            if (viewBtn) {
+                viewBtn.style.display = 'none';
+                viewBtn.href = '#';
+            }
+            if (dlBtn) dlBtn.style.display = 'none';
+            
+            // Reset Overview
+            if (overviewItem) {
+                overviewItem.querySelector('.score').textContent = '--';
+                overviewItem.querySelector('.score').style.color = '';
+                overviewItem.querySelector('.status').textContent = 'Pending';
+                overviewItem.querySelector('.status').style.color = '';
+                overviewItem.style.border = '';
+                overviewItem.style.background = 'rgba(255,255,255,0.05)';
+            }
+            
+            window[`step${i}Result`] = null;
+        }
     }
 
     // Run all tests sequentially
@@ -784,28 +1042,33 @@
             return;
         }
 
+        const openReport = (step) => {
+            const btn = document.getElementById(`btn-view-step${step}`);
+            if (btn && btn.href) window.open(btn.href, '_blank');
+        };
+
         // Run Step 1
-        const step1Success = await runStep1();
-        if (!step1Success) return;
+        if (await runStep1()) openReport(1);
+        else return;
         
-        // Open Step 1 Report
-        const btn1 = document.getElementById('btn-view-step1');
-        if (btn1 && btn1.href) window.open(btn1.href, '_blank');
-
         // Run Step 2
-        const step2Success = await runStep2();
-        if (step2Success) {
-            // Open Step 2 Report
-            const btn2 = document.getElementById('btn-view-step2');
-            if (btn2 && btn2.href) window.open(btn2.href, '_blank');
+        if (await runStep2()) openReport(2);
+        else return;
 
-            // Run Step 3
-            const step3Success = await runStep3();
-            if (step3Success) {
-                const btn3 = document.getElementById('btn-view-step3');
-                if (btn3 && btn3.href) window.open(btn3.href, '_blank');
-            }
-        }
+        // Run Step 3
+        if (await runStep3()) openReport(3);
+        else return;
+
+        // Run Step 4
+        if (await runStep4()) openReport(4);
+        else return;
+
+        // Run Step 5
+        if (await runStep5()) openReport(5);
+        else return;
+
+        // Run Step 6
+        if (await runStep6()) openReport(6);
     }
 
     // Modified runStep1 to return success status

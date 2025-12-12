@@ -19,8 +19,12 @@ from datetime import datetime
 import os
 import sys
 
+# 修正路徑問題，確保能夠正確引入模組
+# Add the project root directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 引入共用模組
-from .utils import (
+from modules.utils import (
     get_keypoint_safely,
     calculate_distance,
     calculate_angle,
@@ -764,7 +768,7 @@ if __name__ == "__main__":
             if arg == '--output' and i + 1 < len(sys.argv):
                 output_json_path = sys.argv[i + 1]
     else:
-        json_3d_path = "trajectory__2/0306_3__2(3D_trajectory_smoothed).json"
+        json_3d_path = "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json"
         config_path = None
         output_json_path = None
         print("提示: 可使用命令列參數:")

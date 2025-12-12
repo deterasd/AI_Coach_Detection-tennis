@@ -63,51 +63,105 @@ def safe_percentage(numerator: float, denominator: float, epsilon: float) -> flo
 # 核心分析函數
 # ========================================================
 
+def detect_vertical_orientation(data: list) -> str:
+    """
+    自動檢測垂直軸方向 (Y-Up 或 Y-Down)
+    
+    返回:
+        'y_up': Y 軸向上 (頭部 Y > 腳部 Y)
+        'y_down': Y 軸向下 (頭部 Y < 腳部 Y)
+    """
+    nose_ys = []
+    ankle_ys = []
+    
+    for frame in data:
+        nose = get_keypoint_safely(frame, "nose")
+        la = get_keypoint_safely(frame, "left_ankle")
+        
+        if nose is not None: nose_ys.append(nose[1])
+        if la is not None: ankle_ys.append(la[1])
+        
+    if not nose_ys or not ankle_ys:
+        return 'y_down' # 預設
+        
+    mean_nose = np.mean(nose_ys)
+    mean_ankle = np.mean(ankle_ys)
+    
+    return 'y_up' if mean_nose > mean_ankle else 'y_down'
+
+
 def analyze_ground_plane_consistency(data: list, config: ValidationConfig) -> dict:
     """
     分析地面平面一致性
-    
-    參數:
-        data: 3D 軌跡數據
-        config: 驗證配置
-    
-    返回:
-        dict: 地面平面分析結果
     """
+    orientation = detect_vertical_orientation(data)
+    print(f"檢測到垂直座標方向: {orientation}")
+    
     ankle_diffs = []
     frame_indices = []
+    all_ankle_ys = []
     
+    left_ankle_ys = []
+    right_ankle_ys = []
+    
+    # 1. 收集數據與計算高度差
     for i, frame in enumerate(data):
         left_ankle = get_keypoint_safely(frame, "left_ankle")
         right_ankle = get_keypoint_safely(frame, "right_ankle")
         
+        if left_ankle is not None: 
+            all_ankle_ys.append(left_ankle[1])
+            left_ankle_ys.append(left_ankle[1])
+        else:
+            left_ankle_ys.append(None)
+            
+        if right_ankle is not None: 
+            all_ankle_ys.append(right_ankle[1])
+            right_ankle_ys.append(right_ankle[1])
+        else:
+            right_ankle_ys.append(None)
+        
         if left_ankle is not None and right_ankle is not None:
-            # Y 軸差異（高度差）
             diff = abs(left_ankle[1] - right_ankle[1])
             ankle_diffs.append(diff)
             frame_indices.append(i)
     
-    if not ankle_diffs:
+    if not ankle_diffs or not all_ankle_ys:
         return {}
     
+    # 2. 估計地面高度
+    if orientation == 'y_down':
+        # Y 向下，地面在數值最大處 (95%)
+        ground_y_est = float(np.percentile(all_ankle_ys, 95))
+    else:
+        # Y 向上，地面在數值最小處 (5%)
+        ground_y_est = float(np.percentile(all_ankle_ys, 5))
+    
+    # ... (其餘統計代碼不變)
     arr = np.array(ankle_diffs, dtype=float)
     mean_diff = float(np.mean(arr))
     
+    assessment_parts = []
     if mean_diff < config.ground_plane_tolerance:
-        assessment = "[OK] 地面平面一致"
+        assessment_parts.append("地面平整")
     else:
-        assessment = "[!] 地面平面偏差較大"
+        assessment_parts.append("地面起伏大")
+        
+    assessment = f"[{' | '.join(assessment_parts)}]"
     
     return {
         "sample_count": len(arr),
         "mean_diff_mm": mean_diff,
         "std_diff_mm": float(np.std(arr)),
         "max_diff_mm": float(np.max(arr)),
-        "median_diff_mm": float(np.median(arr)),
+        "estimated_ground_y": ground_y_est,
+        "orientation": orientation,
         "assessment": assessment,
         "series": {
             "frames": frame_indices,
-            "diff_mm": ankle_diffs
+            "diff_mm": ankle_diffs,
+            "left_ankle_y": left_ankle_ys,
+            "right_ankle_y": right_ankle_ys
         }
     }
 
@@ -172,14 +226,9 @@ def analyze_body_symmetry(data: list, config: ValidationConfig) -> list:
 def analyze_relative_position_consistency(data: list, config: ValidationConfig) -> dict:
     """
     分析相對位置一致性
-    
-    參數:
-        data: 3D 軌跡數據
-        config: 驗證配置
-    
-    返回:
-        dict: 相對位置分析結果
     """
+    orientation = detect_vertical_orientation(data)
+    
     violations = {
         "head_below_shoulder": 0,
         "shoulder_below_hip": 0,
@@ -188,15 +237,12 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
     }
     
     total = len(data)
-    
-    # For plotting, we can track the vertical distance (positive = good, negative = violation)
-    # e.g. Head - Shoulder Y (since Y is down, Head Y < Shoulder Y is good. So Shoulder Y - Head Y > 0 is good)
     series_data = {
         "frames": [],
-        "head_shoulder_diff": [], # Shoulder Y - Head Y
-        "shoulder_hip_diff": [],  # Hip Y - Shoulder Y
-        "hip_knee_diff": [],      # Knee Y - Hip Y
-        "knee_ankle_diff": []     # Ankle Y - Knee Y
+        "head_shoulder_diff": [],
+        "shoulder_hip_diff": [],
+        "hip_knee_diff": [],
+        "knee_ankle_diff": []
     }
 
     for i, frame in enumerate(data):
@@ -212,10 +258,17 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
         
         series_data["frames"].append(i)
         
+        # Helper to check "A below B"
+        def is_below(y_a, y_b):
+            if orientation == 'y_down':
+                return y_a > y_b # Y越大越低
+            else:
+                return y_a < y_b # Y越小越低
+
         # Head vs Shoulder
         if not any(p is None for p in [nose, ls, rs]):
             shoulder_y = (ls[1] + rs[1]) / 2
-            if nose[1] > shoulder_y:
+            if is_below(nose[1], shoulder_y):
                 violations["head_below_shoulder"] += 1
             series_data["head_shoulder_diff"].append(shoulder_y - nose[1])
         else:
@@ -225,7 +278,7 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
         if not any(p is None for p in [ls, rs, lh, rh]):
             shoulder_y = (ls[1] + rs[1]) / 2
             hip_y = (lh[1] + rh[1]) / 2
-            if shoulder_y > hip_y:
+            if is_below(shoulder_y, hip_y):
                 violations["shoulder_below_hip"] += 1
             series_data["shoulder_hip_diff"].append(hip_y - shoulder_y)
         else:
@@ -235,7 +288,7 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
         if not any(p is None for p in [lh, rh, lk, rk]):
             hip_y = (lh[1] + rh[1]) / 2
             knee_y = (lk[1] + rk[1]) / 2
-            if hip_y > knee_y:
+            if is_below(hip_y, knee_y):
                 violations["hip_below_knee"] += 1
             series_data["hip_knee_diff"].append(knee_y - hip_y)
         else:
@@ -245,7 +298,7 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
         if not any(p is None for p in [lk, rk, la, ra]):
             knee_y = (lk[1] + rk[1]) / 2
             ankle_y = (la[1] + ra[1]) / 2
-            if knee_y > ankle_y:
+            if is_below(knee_y, ankle_y):
                 violations["knee_below_ankle"] += 1
             series_data["knee_ankle_diff"].append(ankle_y - knee_y)
         else:
@@ -253,6 +306,7 @@ def analyze_relative_position_consistency(data: list, config: ValidationConfig) 
     
     return {
         "total_frames": total,
+        "orientation": orientation,
         "head_below_shoulder_count": violations["head_below_shoulder"],
         "head_below_shoulder_rate": float(violations["head_below_shoulder"] / total * 100),
         "shoulder_below_hip_count": violations["shoulder_below_hip"],
@@ -449,13 +503,15 @@ def analyze_topology_validation(data: list, config: ValidationConfig) -> dict:
     }
 
 
-def analyze_penetration_detection(data: list, config: ValidationConfig) -> dict:
+def analyze_penetration_detection(data: list, config: ValidationConfig, ground_y_ref: float = None, orientation: str = 'y_down') -> dict:
     """
     分析穿透檢測（新增強化）
     
     參數:
         data: 3D 軌跡數據
         config: 驗證配置
+        ground_y_ref: 外部傳入的參考地面高度 (可選)
+        orientation: 垂直軸方向 ('y_up' or 'y_down')
     
     返回:
         dict: 穿透檢測結果
@@ -464,63 +520,125 @@ def analyze_penetration_detection(data: list, config: ValidationConfig) -> dict:
     penetration_frames = []
     penetration_events = []  # 記錄穿透事件起始
     
+    # 如果沒有外部參考，則自行估計
+    if ground_y_ref is None:
+        # 這裡簡單處理，若無外部傳入則重新檢測方向
+        orientation = detect_vertical_orientation(data)
+        all_ys = []
+        for frame in data:
+            la = get_keypoint_safely(frame, "left_ankle")
+            ra = get_keypoint_safely(frame, "right_ankle")
+            if la is not None: all_ys.append(la[1])
+            if ra is not None: all_ys.append(ra[1])
+            
+        if orientation == 'y_down':
+            ground_y_ref = float(np.percentile(all_ys, 95)) if all_ys else 0.0
+        else:
+            ground_y_ref = float(np.percentile(all_ys, 5)) if all_ys else 0.0
+    
     # For plotting
     all_frames = []
     all_depths = [] # 0 if no penetration, >0 if penetration
     
+    # New: Store signed height from ground (Positive = Above, Negative = Penetration)
+    left_ankle_heights = []
+    right_ankle_heights = []
+    tennis_ball_heights = []
+
+    # 檢查所有關鍵點
+    check_joints = ["left_ankle", "right_ankle", "tennis_ball"]
+    
     for frame_idx, frame in enumerate(data):
         all_frames.append(frame_idx)
         max_depth = 0.0
+        frame_penetrated = False
         
-        # 檢查手腕是否穿透地面
-        for wrist_name in ["left_wrist", "right_wrist"]:
-            wrist = get_keypoint_safely(frame, wrist_name)
-            left_ankle = get_keypoint_safely(frame, "left_ankle")
-            right_ankle = get_keypoint_safely(frame, "right_ankle")
+        # Individual heights for plotting
+        la_height = 0.0
+        ra_height = 0.0
+        tb_height = 0.0
+
+        for joint_name in check_joints:
+            kp = get_keypoint_safely(frame, joint_name)
             
-            if wrist is not None and left_ankle is not None and right_ankle is not None:
-                ground_y = (left_ankle[1] + right_ankle[1]) / 2
+            current_height = 0.0
+            if kp is not None:
+                # Calculate signed height from ground
+                if orientation == 'y_down':
+                    # Y increases downwards. Ground is at ground_y_ref.
+                    # Height = Ground - Y
+                    # If Y < Ground (smaller Y), it is above ground (positive height).
+                    # If Y > Ground (larger Y), it is below ground (negative height).
+                    current_height = float(ground_y_ref - kp[1])
+                else:
+                    # Y increases upwards. Ground is at ground_y_ref.
+                    # Height = Y - Ground
+                    # If Y > Ground, it is above ground (positive height).
+                    # If Y < Ground, it is below ground (negative height).
+                    current_height = float(kp[1] - ground_y_ref)
+
+                # Penetration logic (remains same for scoring)
+                is_penetrating = False
+                penetration_depth = 0.0
                 
-                # 如果手腕低於地面（Y 軸更大）
-                if wrist[1] > ground_y + config.penetration_tolerance:
-                    penetration_depth = float(wrist[1] - ground_y)
+                if current_height < -config.penetration_tolerance:
+                    is_penetrating = True
+                    penetration_depth = abs(current_height)
+                
+                if is_penetrating:
                     max_depth = max(max_depth, penetration_depth)
+                    frame_penetrated = True
                     
-                    # 檢查是否為新的穿透事件（與前一個事件間隔超過 5 幀）
-                    is_new_event = True
-                    for prev_frame, prev_joint in penetration_events:
-                        if prev_joint == wrist_name and frame_idx - prev_frame < 5:
-                            is_new_event = False
-                            break
-                    
-                    if is_new_event:
-                        penetration_events.append((frame_idx, wrist_name))
-                        penetration_count += 1
-                        penetration_frames.append({
-                            "frame": frame_idx,
-                            "joint": wrist_name,
-                            "penetration_depth_mm": penetration_depth
-                        })
+                    # 記錄嚴重穿透 (深度 > 50mm)
+                    if penetration_depth > 50:
+                        # 檢查是否為新的穿透事件
+                        is_new_event = True
+                        for prev_frame, prev_joint in penetration_events:
+                            if prev_joint == joint_name and frame_idx - prev_frame < 10:
+                                is_new_event = False
+                                break
+                        
+                        if is_new_event:
+                            penetration_events.append((frame_idx, joint_name))
+                            penetration_frames.append({
+                                "frame": frame_idx,
+                                "joint": joint_name,
+                                "penetration_depth_mm": round(penetration_depth, 1)
+                            })
+            
+            if joint_name == "left_ankle":
+                la_height = current_height
+            elif joint_name == "right_ankle":
+                ra_height = current_height
+            elif joint_name == "tennis_ball":
+                tb_height = current_height
         
+        if frame_penetrated:
+            penetration_count += 1
+            
         all_depths.append(max_depth)
+        left_ankle_heights.append(la_height)
+        right_ankle_heights.append(ra_height)
+        tennis_ball_heights.append(tb_height)
     
     return {
         "total_penetrations": penetration_count,
         "penetration_rate": float(penetration_count / len(data) * 100) if data else 0.0,
-        "penetration_frames": penetration_frames[:10],  # 只返回前 10 個
+        "ground_y_ref": ground_y_ref,
+        "orientation": orientation,
+        "penetration_frames": penetration_frames[:15],
         "series": {
             "frames": all_frames,
-            "penetration_depth_mm": all_depths
+            "penetration_depth_mm": all_depths,
+            "left_ankle_height": left_ankle_heights,
+            "right_ankle_height": right_ankle_heights,
+            "tennis_ball_height": tennis_ball_heights
         }
     }
 
 
 def print_analysis_report(
     ground_plane: dict,
-    symmetry_results: list,
-    relative_position: dict,
-    center_stability: dict,
-    rigid_groups: dict,
     topology: dict,
     penetration: dict,
     config: ValidationConfig
@@ -532,59 +650,20 @@ def print_analysis_report(
         print("【1. 地面平面一致性】")
         print("=" * 100)
         print(f"平均高度差: {ground_plane['mean_diff_mm']:.2f} mm")
+        print(f"估計地面高度 (Y): {ground_plane.get('estimated_ground_y', 0):.1f}")
         assessment = ground_plane['assessment'].replace('⚠️', '[WARNING]').replace('❌', '[ERROR]').replace('✅', '[OK]')
         print(f"評估: {assessment}")
     
-    if symmetry_results:
-        print("\n" + "=" * 100)
-        print("【2. 身體左右對稱性】")
-        print("=" * 100)
-        for result in symmetry_results:
-            print(
-                f"{result['pair_name']:<10} 不對稱度:{result['mean_asymmetry_percent']:.2f}% "
-                f"{result['assessment']}"
-            )
-    
-    if relative_position:
-        print("\n" + "=" * 100)
-        print("【3. 相對位置一致性】")
-        print("=" * 100)
-        if relative_position['head_below_shoulder_count'] > 0:
-            print(f"[!] 頭部低於肩膀: {relative_position['head_below_shoulder_count']} 次")
-        if relative_position['shoulder_below_hip_count'] > 0:
-            print(f"[!] 肩膀低於髖部: {relative_position['shoulder_below_hip_count']} 次")
-    
-    if center_stability:
-        print("\n" + "=" * 100)
-        print("【4. 重心穩定性】")
-        print("=" * 100)
-        axes_stats = center_stability.get('axes', {})
-        for axis_name, stats in axes_stats.items():
-            axis_label = axis_name.upper()
-            print(
-                f"{axis_label} 軸標準差: {stats['std_mm']:.2f} mm"
-                f" (異常 {stats['outlier_count']}, 門檻 {stats['threshold_sigma']:.1f}σ)"
-            )
-    
-    if rigid_groups:
-        print("\n" + "=" * 100)
-        print("【5. 剛體組距離恆定性】")
-        print("=" * 100)
-        for group_name, pairs in rigid_groups.items():
-            print(f"\n{group_name}:")
-            for pair in pairs:
-                print(f"  {pair['pair']}: CV={pair['cv_percent']:.2f}% ({pair['quality']})")
-    
     if topology:
         print("\n" + "=" * 100)
-        print("【6. 拓撲結構驗證】")
+        print("【2. 拓撲結構驗證】")
         print("=" * 100)
         print(f"完整性: {topology['completeness_rate']:.1f}%")
         print(f"骨架斷裂幀數: {topology['broken_frames']}")
     
     if penetration:
         print("\n" + "=" * 100)
-        print("【7. 穿透檢測】")
+        print("【3. 穿透檢測】")
         print("=" * 100)
         print(f"穿透次數: {penetration['total_penetrations']}")
         print(f"穿透率: {penetration['penetration_rate']:.2f}%")
@@ -592,9 +671,6 @@ def print_analysis_report(
 
 def calculate_overall_score(
     ground_plane: dict,
-    symmetry: list,
-    relative: dict,
-    rigid: dict,
     penetration: dict,
     topology: dict
 ) -> dict:
@@ -604,62 +680,30 @@ def calculate_overall_score(
     score = 100.0
     deductions = {}
 
-    # 1. 地面平面 (Max 20)
+    # 1. 地面平面 (Max 40)
     gp_diff = ground_plane.get('mean_diff_mm', 0)
+    
     gp_deduction = 0
     if gp_diff > 100:
-        gp_deduction = 20
+        gp_deduction += 20
     elif gp_diff > 50:
-        gp_deduction = 10
-    elif gp_diff > 20:
-        gp_deduction = 5
+        gp_deduction += 10
+        
+    gp_deduction = min(40, gp_deduction)
     score -= gp_deduction
     deductions['ground_plane'] = gp_deduction
 
-    # 2. 對稱性 (Max 20)
-    avg_asym = 0
-    if symmetry:
-        avg_asym = sum(s.get('mean_asymmetry_percent', 0) for s in symmetry) / len(symmetry)
-    
-    sym_deduction = min(20, avg_asym * 0.5) # e.g. 40% asym -> 20 pts
-    score -= sym_deduction
-    deductions['symmetry'] = sym_deduction
-
-    # 3. 相對位置 (Max 20)
-    total_frames = relative.get('total_frames', 1)
-    violations = (
-        relative.get('head_below_shoulder_count', 0) +
-        relative.get('shoulder_below_hip_count', 0) +
-        relative.get('hip_below_knee_count', 0) +
-        relative.get('knee_below_ankle_count', 0)
-    )
-    violation_rate = (violations / total_frames) 
-    rel_deduction = min(20, violation_rate * 20)
-    score -= rel_deduction
-    deductions['relative_position'] = rel_deduction
-
-    # 4. 剛體組 (Max 20)
-    cv_sum = 0
-    cv_count = 0
-    for group, pairs in rigid.items():
-        for pair in pairs:
-            cv_sum += pair.get('cv_percent', 0)
-            cv_count += 1
-    
-    avg_cv = cv_sum / cv_count if cv_count > 0 else 0
-    rigid_deduction = min(20, avg_cv * 2) # e.g. 10% CV -> 20 pts
-    score -= rigid_deduction
-    deductions['rigid_body'] = rigid_deduction
-
-    # 5. 穿透 (Max 10)
+    # 2. 穿透 (Max 30)
+    # 評分標準：基於穿透幀數佔總幀數的比例 (Penetration Rate)
+    # 係數 2.0: 即 1% 穿透扣 2 分，15% 穿透即扣滿 30 分
     pen_rate = penetration.get('penetration_rate', 0)
-    pen_deduction = min(10, pen_rate * 0.2) # 50% penetration -> 10 pts
+    pen_deduction = min(30, pen_rate * 2.0) 
     score -= pen_deduction
     deductions['penetration'] = pen_deduction
 
-    # 6. 拓撲 (Max 10)
+    # 3. 拓撲 (Max 30)
     completeness = topology.get('completeness_rate', 100)
-    topo_deduction = min(10, (100 - completeness))
+    topo_deduction = min(30, (100 - completeness) * 2)
     score -= topo_deduction
     deductions['topology'] = topo_deduction
 
@@ -697,34 +741,24 @@ def validate_spatial_consistency_analysis(
     print("\n執行地面平面分析...")
     ground_plane = analyze_ground_plane_consistency(data, config)
     
-    print("執行身體對稱性分析...")
-    symmetry_results = analyze_body_symmetry(data, config)
-    
-    print("執行相對位置分析...")
-    relative_position = analyze_relative_position_consistency(data, config)
-    
-    print("執行重心穩定性分析...")
-    center_stability = analyze_center_stability(data, config)
-    
-    print("執行剛體組分析...")
-    rigid_groups = analyze_rigid_body_groups(data, config)
+    # 獲取估計的地面高度，傳給穿透檢測
+    ground_y_ref = ground_plane.get('estimated_ground_y')
+    orientation = ground_plane.get('orientation', 'y_down')
     
     print("執行拓撲結構驗證...")
     topology = analyze_topology_validation(data, config)
     
     print("執行穿透檢測...")
-    penetration = analyze_penetration_detection(data, config)
+    penetration = analyze_penetration_detection(data, config, ground_y_ref, orientation)
     
     # 列印報告
     print_analysis_report(
-        ground_plane, symmetry_results, relative_position,
-        center_stability, rigid_groups, topology, penetration, config
+        ground_plane, topology, penetration, config
     )
     
     # 計算評分
     score_data = calculate_overall_score(
-        ground_plane, symmetry_results, relative_position,
-        rigid_groups, penetration, topology
+        ground_plane, penetration, topology
     )
     print(f"\n總體評分: {score_data['total_score']} / 100")
 
@@ -743,10 +777,6 @@ def validate_spatial_consistency_analysis(
             "topology_completeness": topology.get('completeness_rate', 0.0)
         },
         "ground_plane_consistency": ground_plane,
-        "body_symmetry": symmetry_results,
-        "relative_position_consistency": relative_position,
-        "center_stability": center_stability,
-        "rigid_body_groups": rigid_groups,
         "topology_validation": topology,
         "penetration_detection": penetration
     }
@@ -782,7 +812,7 @@ if __name__ == "__main__":
             if arg == '--output' and i + 1 < len(sys.argv):
                 output_json_path = sys.argv[i + 1]
     else:
-        json_3d_path = "0306_3__trajectory/trajectory__2/0306_3__2(3D_trajectory_smoothed).json"
+        json_3d_path = "data/trajectory__new/tsung__19_45(3D_trajectory_smoothed).json"
         config_path = None
         output_json_path = None
         print("提示: 可使用命令列參數:")

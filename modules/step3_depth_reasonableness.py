@@ -6,10 +6,9 @@ Step 3: 深度合理性驗證分析
   1. 深度範圍檢查（有效深度區間）
   2. 深度變異係數分析
   3. 深度跳動檢測
-  4. 深度對稱性檢查
-  5. 深度邏輯檢查（肢體遠近關係）
-  6. 深度梯度分析
-  7. Z 軸統計特性分析
+  4. 深度邏輯檢查（肢體遠近關係）
+  5. 深度梯度分析
+  6. Z 軸統計特性分析
 """
 
 import numpy as np
@@ -18,32 +17,21 @@ import sys
 import os
 import json
 
-# Add parent directory to path to allow importing config
+# 修正路徑問題，確保能夠正確引入模組
+# Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 引入共用模組
-try:
-    from .utils import (
-        get_keypoint_safely,
-        load_json_file,
-        save_json_results,
-        calculate_cv,
-        detect_outliers_zscore,
-        generate_output_path,
-        KEYPOINT_NAMES_EN,
-        get_keypoint_name_zh,
-    )
-except ImportError:
-    from utils import (
-        get_keypoint_safely,
-        load_json_file,
-        save_json_results,
-        calculate_cv,
-        detect_outliers_zscore,
-        generate_output_path,
-        KEYPOINT_NAMES_EN,
-        get_keypoint_name_zh,
-    )
+from modules.utils import (
+    get_keypoint_safely,
+    load_json_file,
+    save_json_results,
+    calculate_cv,
+    detect_outliers_zscore,
+    generate_output_path,
+    KEYPOINT_NAMES_EN,
+    get_keypoint_name_zh,
+)
 
 from config import load_config, ValidationConfig
 
@@ -191,182 +179,107 @@ def analyze_depth_ranges(data: list, config: ValidationConfig) -> dict:
     return depth_stats
 
 
-def analyze_depth_symmetry(data: list, config: ValidationConfig) -> list:
-    """
-    分析深度對稱性（左右關節深度差異）
-    
-    參數:
-        data: 3D 軌跡數據
-        config: 驗證配置
-    
-    返回:
-        list: 深度對稱性分析結果
-    """
-    symmetry_pairs = [
-        ('left_shoulder', 'right_shoulder', '肩膀'),
-        ('left_hip', 'right_hip', '髖部'),
-        ('left_knee', 'right_knee', '膝蓋'),
-        ('left_ankle', 'right_ankle', '腳踝'),
-        ('left_wrist', 'right_wrist', '手腕'),
-    ]
-    
-    symmetry_results = []
-    
-    for left_kp, right_kp, zh_name in symmetry_pairs:
-        left_depths = []
-        right_depths = []
-        
-        for frame in data:
-            left_point = get_keypoint_safely(frame, left_kp)
-            right_point = get_keypoint_safely(frame, right_kp)
-            
-            if left_point is not None and right_point is not None:
-                left_depths.append(left_point[2])
-                right_depths.append(right_point[2])
-        
-        if not left_depths:
-            continue
-        
-        left_arr = np.array(left_depths, dtype=float)
-        right_arr = np.array(right_depths, dtype=float)
-        
-        diffs = np.abs(left_arr - right_arr)
-        mean_diff = float(np.mean(diffs))
-        max_diff = float(np.max(diffs))
-        
-        # 評估對稱性品質
-        # 假設: 深度差異在 50mm 內為優，100mm 內為可接受，超過為差
-        if mean_diff <= 50:
-            assessment = "Good"
-        elif mean_diff <= 100:
-            assessment = "Acceptable"
-        else:
-            assessment = "Poor"
+def calculate_bone_length(p1, p2):
+    """計算兩點間的歐幾里得距離"""
+    return np.linalg.norm(np.array(p1) - np.array(p2))
 
-        symmetry_results.append({
-            'pair_name': zh_name,
-            'sample_count': len(diffs),
-            'mean_depth_diff_mm': mean_diff,
-            'std_depth_diff_mm': float(np.std(diffs)),
-            'max_depth_diff_mm': max_diff,
-            'median_depth_diff_mm': float(np.median(diffs)),
-            'assessment': assessment
-        })
-    
-    return symmetry_results
-
+def calculate_vector_angle(v1, v2):
+    """計算兩個向量的夾角 (度)"""
+    # v1 dot v2 = |v1| |v2| cos(theta)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+    if norm_v1 == 0 or norm_v2 == 0:
+        return 0.0
+    cos_theta = np.dot(v1, v2) / (norm_v1 * norm_v2)
+    # 限制範圍避免數值誤差
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    return np.degrees(np.arccos(cos_theta))
 
 def analyze_depth_logic(data: list, config: ValidationConfig) -> dict:
     """
-    分析深度邏輯合理性（肢體遠近關係）
-    
-    參數:
-        data: 3D 軌跡數據
-        config: 驗證配置
-    
-    返回:
-        dict: 深度邏輯分析結果
+    分析深度邏輯合理性 (改進版)
+    重點檢查：
+    1. 骨骼長度異常 (Bone Length) - 檢測深度估計導致的肢體伸縮
+    2. 關節反向彎曲 (Joint Hyperextension) - 檢測手肘/膝蓋反折
     """
+    # 初始化結果結構
+    checks = {
+        'elbow_hyperextension': {'total': 0, 'left': 0, 'right': 0},
+        'knee_hyperextension': {'total': 0, 'left': 0, 'right': 0}
+    }
     violations = {
-        'wrist_behind_shoulder': 0,
-        'knee_behind_hip': 0,
+        'elbow_hyperextension': {'total': 0, 'left': 0, 'right': 0},
+        'knee_hyperextension': {'total': 0, 'left': 0, 'right': 0}
+    }
+    anomalies = {
+        'elbow_hyperextension': [],
+        'knee_hyperextension': []
     }
 
-    wrist_checks = 0
-    knee_checks = 0
-    
-    # 收集詳細異常信息
-    wrist_anomalies = []
-    knee_anomalies = []
-    
+    # 2. 逐幀檢查
     for frame_idx, frame in enumerate(data):
-        # 檢查手腕是否合理地在肩膀前後
-        left_shoulder = get_keypoint_safely(frame, "left_shoulder")
-        left_wrist = get_keypoint_safely(frame, "left_wrist")
         
-        if left_shoulder is not None and left_wrist is not None:
-            wrist_checks += 1
-            depth_diff = left_shoulder[2] - left_wrist[2]
-            # 使用配置的容差值
-            if left_wrist[2] < left_shoulder[2] - config.wrist_depth_tolerance:
-                violations['wrist_behind_shoulder'] += 1
-                wrist_anomalies.append({
-                    'frame': frame_idx,
-                    'side': 'left',
-                    'wrist_z': round(left_wrist[2], 2),
-                    'shoulder_z': round(left_shoulder[2], 2),
-                    'depth_diff': round(depth_diff, 2),
-                    'severity': 'severe' if depth_diff > config.wrist_depth_tolerance * 3 else 
-                               'moderate' if depth_diff > config.wrist_depth_tolerance * 2 else 'mild'
-                })
+        # --- B. 手肘反向彎曲 (Hyperextension) ---
+        # 這裡簡化判斷：如果手肘深度異常地比肩膀和手腕連線還深很多 (反折)
+        for side in ['left', 'right']:
+            shoulder = get_keypoint_safely(frame, f"{side}_shoulder")
+            elbow = get_keypoint_safely(frame, f"{side}_elbow")
+            wrist = get_keypoint_safely(frame, f"{side}_wrist")
+            
+            if shoulder is not None and elbow is not None and wrist is not None:
+                checks['elbow_hyperextension']['total'] += 1
+                checks['elbow_hyperextension'][side] += 1
+                
+                # 簡單幾何：如果手肘 Z 值比 肩膀和手腕連線都大很多 (凹陷進去)
+                # 假設相機在正前方，Z越大越遠
+                avg_z = (shoulder[2] + wrist[2]) / 2
+                # 容忍度 200mm
+                if elbow[2] > avg_z + 200: 
+                    violations['elbow_hyperextension']['total'] += 1
+                    violations['elbow_hyperextension'][side] += 1
+                    anomalies['elbow_hyperextension'].append({
+                        'frame': frame_idx,
+                        'side': side,
+                        'val_z': round(elbow[2], 1),
+                        'ref_z': round(avg_z, 1),
+                        'severity': 'moderate'
+                    })
+
+        # --- C. 膝蓋反向彎曲 ---
+        # 站立時，膝蓋不應該比「臀部與腳踝連線」更靠後太多 (反膝)
+        for side in ['left', 'right']:
+            hip = get_keypoint_safely(frame, f"{side}_hip")
+            knee = get_keypoint_safely(frame, f"{side}_knee")
+            ankle = get_keypoint_safely(frame, f"{side}_ankle")
+            
+            if hip is not None and knee is not None and ankle is not None:
+                checks['knee_hyperextension']['total'] += 1
+                checks['knee_hyperextension'][side] += 1
+                
+                # 簡單幾何：如果膝蓋 Z 值比 臀部和腳踝都大很多 (凹陷進去)
+                avg_z = (hip[2] + ankle[2]) / 2
+                if knee[2] > avg_z + 200: # 膝蓋比連線深 20公分 (反折)
+                    violations['knee_hyperextension']['total'] += 1
+                    violations['knee_hyperextension'][side] += 1
+                    anomalies['knee_hyperextension'].append({
+                        'frame': frame_idx,
+                        'side': side,
+                        'val_z': round(knee[2], 1),
+                        'ref_z': round(avg_z, 1),
+                        'severity': 'moderate'
+                    })
+
+    # 整理結果
+    result = {}
+    for key in checks.keys():
+        result[key] = {
+            'checks': checks[key],
+            'violations': violations[key],
+            'rate': safe_percentage(violations[key]['total'], checks[key]['total']),
+            'anomalies': anomalies[key]
+        }
         
-        right_shoulder = get_keypoint_safely(frame, "right_shoulder")
-        right_wrist = get_keypoint_safely(frame, "right_wrist")
-        
-        if right_shoulder is not None and right_wrist is not None:
-            wrist_checks += 1
-            depth_diff = right_shoulder[2] - right_wrist[2]
-            if right_wrist[2] < right_shoulder[2] - config.wrist_depth_tolerance:
-                violations['wrist_behind_shoulder'] += 1
-                wrist_anomalies.append({
-                    'frame': frame_idx,
-                    'side': 'right',
-                    'wrist_z': round(right_wrist[2], 2),
-                    'shoulder_z': round(right_shoulder[2], 2),
-                    'depth_diff': round(depth_diff, 2),
-                    'severity': 'severe' if depth_diff > config.wrist_depth_tolerance * 3 else 
-                               'moderate' if depth_diff > config.wrist_depth_tolerance * 2 else 'mild'
-                })
-        
-        # 檢查膝蓋是否合理地在髖部前後
-        left_hip = get_keypoint_safely(frame, "left_hip")
-        left_knee = get_keypoint_safely(frame, "left_knee")
-        
-        if left_hip is not None and left_knee is not None:
-            knee_checks += 1
-            depth_diff = left_hip[2] - left_knee[2]
-            # 使用配置的容差值
-            if left_knee[2] < left_hip[2] - config.knee_depth_tolerance:
-                violations['knee_behind_hip'] += 1
-                knee_anomalies.append({
-                    'frame': frame_idx,
-                    'side': 'left',
-                    'knee_z': round(left_knee[2], 2),
-                    'hip_z': round(left_hip[2], 2),
-                    'depth_diff': round(depth_diff, 2),
-                    'severity': 'severe' if depth_diff > config.knee_depth_tolerance * 3 else 
-                               'moderate' if depth_diff > config.knee_depth_tolerance * 2 else 'mild'
-                })
-        
-        right_hip = get_keypoint_safely(frame, "right_hip")
-        right_knee = get_keypoint_safely(frame, "right_knee")
-        
-        if right_hip is not None and right_knee is not None:
-            knee_checks += 1
-            depth_diff = right_hip[2] - right_knee[2]
-            if right_knee[2] < right_hip[2] - config.knee_depth_tolerance:
-                violations['knee_behind_hip'] += 1
-                knee_anomalies.append({
-                    'frame': frame_idx,
-                    'side': 'right',
-                    'knee_z': round(right_knee[2], 2),
-                    'hip_z': round(right_hip[2], 2),
-                    'depth_diff': round(depth_diff, 2),
-                    'severity': 'severe' if depth_diff > config.knee_depth_tolerance * 3 else 
-                               'moderate' if depth_diff > config.knee_depth_tolerance * 2 else 'mild'
-                })
-    
-    return {
-        'total_frames': len(data),
-        'wrist_checks': wrist_checks,
-        'wrist_behind_shoulder_count': violations['wrist_behind_shoulder'],
-        'wrist_behind_shoulder_rate': safe_percentage(violations['wrist_behind_shoulder'], wrist_checks),
-        'wrist_anomalies': wrist_anomalies,  # 新增
-        'knee_checks': knee_checks,
-        'knee_behind_hip_count': violations['knee_behind_hip'],
-        'knee_behind_hip_rate': safe_percentage(violations['knee_behind_hip'], knee_checks),
-        'knee_anomalies': knee_anomalies  # 新增
-    }
+    return result
 
 
 def analyze_depth_statistics(depth_stats: dict) -> dict:
@@ -402,6 +315,7 @@ def analyze_temporal_depth_stability(data: list, config: ValidationConfig) -> di
     分析時間軸上的深度穩定性 (偵測整體深度跳動)
     """
     frame_diffs = []
+    changes = []
     
     for i in range(1, len(data)):
         curr_frame = data[i]
@@ -419,80 +333,147 @@ def analyze_temporal_depth_stability(data: list, config: ValidationConfig) -> di
                 valid_points += 1
         
         avg_diff = diff_sum / valid_points if valid_points > 0 else 0
+        changes.append(avg_diff)
         frame_diffs.append({
             'frame_index': i,
             'avg_depth_change_mm': avg_diff
         })
     
-    # 統計
-    changes = [x['avg_depth_change_mm'] for x in frame_diffs]
     if not changes:
-        return {'unstable_frames': [], 'max_change_mm': 0, 'mean_change_mm': 0}
+        return {
+            'unstable_frames': [], 
+            'max_change_mm': 0, 
+            'mean_change_mm': 0,
+            'series_data': []
+        }
         
     mean_change = float(np.mean(changes))
     std_change = float(np.std(changes))
-    threshold = mean_change + 3 * std_change
+    # 動態閾值：平均值 + 3個標準差，且至少要大於 50mm 才會被視為異常跳動
+    threshold = max(mean_change + 3 * std_change, 50.0)
     
     unstable_frames = [x for x in frame_diffs if x['avg_depth_change_mm'] > threshold]
     
     return {
         'mean_frame_change_mm': mean_change,
         'max_frame_change_mm': float(np.max(changes)),
-        'unstable_frames': unstable_frames, # Frames with sudden global depth shift
-        'threshold_mm': threshold
+        'unstable_frames': unstable_frames,
+        'unstable_frame_count': len(unstable_frames),
+        'unstable_rate': safe_percentage(len(unstable_frames), len(data)),
+        'threshold_mm': threshold,
+        'series_data': changes  # 用於前端繪製折線圖
     }
 
 
-def calculate_depth_quality_score(depth_stats: dict, logic_stats: dict, overall_stats: dict) -> dict:
-    """計算整體深度品質分數 (0-100)"""
+def calculate_depth_quality_score(
+    depth_stats: dict, 
+    logic_stats: dict, 
+    overall_stats: dict,
+    temporal_stats: dict
+) -> dict:
+    """
+    計算整體深度品質分數 (0-100) - 全面性評分版
+    權重分配：
+    1. 穩定性 (CV) - 30%
+    2. 邏輯合理性 (Logic) - 30%
+    3. 時間連續性 (Temporal) - 20%
+    4. 物理限制 (Velocity/Outliers) - 20%
+    """
     score = 100.0
     deductions = []
     
-    # 1. CV 扣分 (穩定性)
+    # 1. 穩定性扣分 (CV) - 反映數據的雜訊程度
     avg_cv = overall_stats.get('average_cv_percent', 0)
-    if avg_cv > 10:
-        deduct = (avg_cv - 10) * 2
-        score -= deduct
-        deductions.append(f"平均 CV 過高 ({avg_cv:.1f}%) -{deduct:.1f}")
+    if avg_cv > 15:
+        deduct = 30
+        deductions.append({"reason": f"深度極度不穩定 (CV {avg_cv:.1f}%)", "points": deduct})
+    elif avg_cv > 10:
+        deduct = 20 + (avg_cv - 10) * 2
+        deductions.append({"reason": f"深度不穩定 (CV {avg_cv:.1f}%)", "points": deduct})
     elif avg_cv > 5:
-        deduct = (avg_cv - 5) * 1
-        score -= deduct
-        deductions.append(f"平均 CV 略高 ({avg_cv:.1f}%) -{deduct:.1f}")
-        
-    # 2. 邏輯異常扣分
-    wrist_rate = logic_stats.get('wrist_behind_shoulder_rate', 0)
-    knee_rate = logic_stats.get('knee_behind_hip_rate', 0)
+        deduct = (avg_cv - 5) * 2
+        deductions.append({"reason": f"深度略有雜訊 (CV {avg_cv:.1f}%)", "points": deduct})
+    score -= min(30, sum(d['points'] for d in deductions if 'CV' in d['reason']))
+
+    # 2. 邏輯異常扣分 (Logic) - 反映重建結構錯誤
+    logic_deduct = 0
     
-    if wrist_rate > 0:
-        deduct = min(20, wrist_rate * 0.5)
-        score -= deduct
-        deductions.append(f"手腕深度異常 ({wrist_rate:.1f}%) -{deduct:.1f}")
+    # 遍歷所有邏輯檢查項目
+    for check_name, result in logic_stats.items():
+        if not isinstance(result, dict) or 'rate' not in result:
+            continue
+            
+        rate = result['rate']
+        if rate > 0:
+            # 根據不同項目給予不同權重
+            weight = 1.0
+            label = check_name
+            if check_name == 'elbow_hyperextension':
+                label = "手肘反向彎曲"
+            elif check_name == 'knee_hyperextension':
+                label = "膝蓋反向彎曲"
+                
+            d = min(15, rate * weight) 
+            logic_deduct += d
+            deductions.append({"reason": f"{label} ({rate:.1f}%)", "points": d})
+    
+    score -= min(30, logic_deduct)
+
+    # 3. 時間連續性扣分 (Temporal) - 反映畫面閃爍/跳動
+    unstable_rate = temporal_stats.get('unstable_rate', 0)
+    max_jump = temporal_stats.get('max_frame_change_mm', 0)
+    
+    temp_deduct = 0
+    if unstable_rate > 0:
+        d = min(20, unstable_rate * 5.0) # 1% 跳動幀扣 5 分 (跳動很嚴重)
+        temp_deduct += d
+        deductions.append({"reason": f"深度瞬間跳動 ({unstable_rate:.1f}% 幀)", "points": d})
+    
+    if max_jump > 200: # 瞬間移動超過 20公分
+        d = 10
+        temp_deduct += d
+        deductions.append({"reason": f"存在劇烈深度突變 (最大 {max_jump:.0f}mm)", "points": d})
         
-    if knee_rate > 0:
-        deduct = min(20, knee_rate * 0.5)
-        score -= deduct
-        deductions.append(f"膝蓋深度異常 ({knee_rate:.1f}%) -{deduct:.1f}")
-        
-    # 3. 異常值扣分
+    score -= min(20, temp_deduct)
+
+    # 4. 物理限制扣分 (Velocity/Outliers)
+    # 檢查是否有關鍵點移動速度過快 (Z-Velocity)
+    high_velocity_kps = 0
+    for kp, stat in depth_stats.items():
+        # 假設 100mm/frame 是非常快的 Z 軸移動 (約 3m/s @ 30fps)
+        if stat.get('mean_gradient_mm', 0) > 100:
+            high_velocity_kps += 1
+            
+    phy_deduct = 0
+    if high_velocity_kps > 0:
+        d = min(15, high_velocity_kps * 3)
+        phy_deduct += d
+        deductions.append({"reason": f"{high_velocity_kps} 個部位 Z 軸移動過快", "points": d})
+
+    # 異常值比例
     total_outliers = sum(s['outlier_count'] for s in depth_stats.values())
     total_samples = sum(s['sample_count'] for s in depth_stats.values())
     outlier_rate = (total_outliers / total_samples * 100) if total_samples else 0
     
-    if outlier_rate > 1:
-        deduct = min(20, outlier_rate * 2)
-        score -= deduct
-        deductions.append(f"深度異常值比例 ({outlier_rate:.1f}%) -{deduct:.1f}")
+    if outlier_rate > 2:
+        d = min(10, (outlier_rate - 2) * 2)
+        phy_deduct += d
+        deductions.append({"reason": f"深度離群值過多 ({outlier_rate:.1f}%)", "points": d})
+        
+    score -= min(20, phy_deduct)
 
+    # 確保分數範圍
+    final_score = max(0.0, min(100.0, score))
+    
     return {
-        'score': max(0, min(100, score)),
+        'score': final_score,
         'deductions': deductions,
-        'level': 'Excellent' if score >= 90 else 'Good' if score >= 80 else 'Acceptable' if score >= 60 else 'Poor'
+        'level': 'Excellent' if final_score >= 90 else 'Good' if final_score >= 80 else 'Acceptable' if final_score >= 60 else 'Poor'
     }
 
 
 def print_analysis_report(
     depth_stats: dict,
-    symmetry_results: list,
     logic_stats: dict,
     overall_stats: dict,
     config: ValidationConfig
@@ -511,98 +492,30 @@ def print_analysis_report(
             f"{stats['cv_percent']:>8.2f}  {stats['depth_range_mm']:>10.2f}  {stats['quality_level']:<10} "
             f"{stats['valid_range_rate']:>7.1f}%")
     
-    if symmetry_results:
-        print("\n" + "=" * 100)
-        print("【2. 深度對稱性檢查】")
-        print("=" * 100)
-        for result in symmetry_results:
-            print(f"{result['pair_name']:<10} 平均深度差:{result['mean_depth_diff_mm']:>8.2f}mm "
-                  f"最大:{result['max_depth_diff_mm']:>8.2f}mm")
-    
     if logic_stats:
         print("\n" + "=" * 100)
-        print("【3. 深度邏輯合理性檢查】")
+        print("【2. 深度邏輯合理性檢查】")
         print("=" * 100)
-        wrist_checks = logic_stats.get('wrist_checks', 0)
-        knee_checks = logic_stats.get('knee_checks', 0)
-        print(f"手腕異常後置: {logic_stats['wrist_behind_shoulder_count']}/{wrist_checks} "
-            f"({logic_stats['wrist_behind_shoulder_rate']:.1f}%)")
-        print(f"膝蓋異常後置: {logic_stats['knee_behind_hip_count']}/{knee_checks} "
-            f"({logic_stats['knee_behind_hip_rate']:.1f}%)")
         
-        # 智能顯示手腕異常詳情
-        wrist_anomalies = logic_stats.get('wrist_anomalies', [])
-        if wrist_anomalies:
-            # 按嚴重度分類
-            severe = [a for a in wrist_anomalies if a['severity'] == 'severe']
-            moderate = [a for a in wrist_anomalies if a['severity'] == 'moderate']
-            mild = [a for a in wrist_anomalies if a['severity'] == 'mild']
+        for check_name, result in logic_stats.items():
+            if not isinstance(result, dict): continue
             
-            tolerance = config.wrist_depth_tolerance
-            print(f"\n  手腕異常分類:")
-            print(f"  • 嚴重 (深度差>{tolerance*3:.0f}mm): {len(severe):3d} 個 ({len(severe)/len(wrist_anomalies)*100:5.1f}%)")
-            print(f"  • 中度 ({tolerance*2:.0f}-{tolerance*3:.0f}mm): {len(moderate):3d} 個 ({len(moderate)/len(wrist_anomalies)*100:5.1f}%)")
-            print(f"  • 輕度 ({tolerance:.0f}-{tolerance*2:.0f}mm):   {len(mild):3d} 個 ({len(mild)/len(wrist_anomalies)*100:5.1f}%)")
+            label = check_name
+            if check_name == 'elbow_hyperextension': label = "手肘反向彎曲"
+            elif check_name == 'knee_hyperextension': label = "膝蓋反向彎曲"
             
-            # 嚴重異常：全部顯示
+            total_checks = result['checks']['total']
+            total_violations = result['violations']['total']
+            rate = result['rate']
+            
+            print(f"{label:<15}: {total_violations}/{total_checks} ({rate:.1f}%) "
+                  f"[L: {result['violations']['left']} | R: {result['violations']['right']}]")
+            
+            # 顯示嚴重異常
+            anomalies = result.get('anomalies', [])
+            severe = [a for a in anomalies if a['severity'] == 'severe']
             if severe:
-                print(f"\n[!] 嚴重手腕異常 (深度差>{tolerance*3:.0f}mm) - 全部 {len(severe)} 個:")
-                for a in severe:
-                    print(f"      Frame {a['frame']:3d} | {a['side']:5s} | 手腕Z={a['wrist_z']:7.1f}mm, 肩膀Z={a['shoulder_z']:7.1f}mm, 深度差={a['depth_diff']:6.1f}mm")
-            
-            # 中度異常：顯示前10個
-            if moderate:
-                show_count = min(10, len(moderate))
-                print(f"\n  中度手腕異常 ({tolerance*2:.0f}-{tolerance*3:.0f}mm) - 顯示前 {show_count}/{len(moderate)} 個:")
-                for a in moderate[:show_count]:
-                    print(f"      Frame {a['frame']:3d} | {a['side']:5s} | 手腕Z={a['wrist_z']:7.1f}mm, 肩膀Z={a['shoulder_z']:7.1f}mm, 深度差={a['depth_diff']:6.1f}mm")
-                if len(moderate) > 10:
-                    print(f"      ... 還有 {len(moderate)-10} 個中度異常")
-            
-            # 輕度異常：僅統計
-            if mild:
-                print(f"\n  輕度手腕異常 ({tolerance:.0f}-{tolerance*2:.0f}mm): {len(mild)} 個（詳情見 JSON）")
-        
-        # 智能顯示膝蓋異常詳情
-        knee_anomalies = logic_stats.get('knee_anomalies', [])
-        if knee_anomalies:
-            # 按嚴重度分類
-            severe = [a for a in knee_anomalies if a['severity'] == 'severe']
-            moderate = [a for a in knee_anomalies if a['severity'] == 'moderate']
-            mild = [a for a in knee_anomalies if a['severity'] == 'mild']
-            
-            tolerance = config.knee_depth_tolerance
-            print(f"\n  膝蓋異常分類:")
-            print(f"  • 嚴重 (深度差>{tolerance*3:.0f}mm): {len(severe):3d} 個 ({len(severe)/len(knee_anomalies)*100:5.1f}%)")
-            print(f"  • 中度 ({tolerance*2:.0f}-{tolerance*3:.0f}mm): {len(moderate):3d} 個 ({len(moderate)/len(knee_anomalies)*100:5.1f}%)")
-            print(f"  • 輕度 ({tolerance:.0f}-{tolerance*2:.0f}mm):   {len(mild):3d} 個 ({len(mild)/len(knee_anomalies)*100:5.1f}%)")
-            
-            # 嚴重異常：全部顯示
-            if severe:
-                print(f"\n[!] 嚴重膝蓋異常 (深度差>{tolerance*3:.0f}mm) - 全部 {len(severe)} 個:")
-                for a in severe:
-                    print(f"      Frame {a['frame']:3d} | {a['side']:5s} | 膝蓋Z={a['knee_z']:7.1f}mm, 髖部Z={a['hip_z']:7.1f}mm, 深度差={a['depth_diff']:6.1f}mm")
-            
-            # 中度異常：顯示前10個
-            if moderate:
-                show_count = min(10, len(moderate))
-                print(f"\n  中度膝蓋異常 ({tolerance*2:.0f}-{tolerance*3:.0f}mm) - 顯示前 {show_count}/{len(moderate)} 個:")
-                for a in moderate[:show_count]:
-                    print(f"      Frame {a['frame']:3d} | {a['side']:5s} | 膝蓋Z={a['knee_z']:7.1f}mm, 髖部Z={a['hip_z']:7.1f}mm, 深度差={a['depth_diff']:6.1f}mm")
-                if len(moderate) > 10:
-                    print(f"      ... 還有 {len(moderate)-10} 個中度異常")
-            
-            # 輕度異常：僅統計
-            if mild:
-                print(f"\n  輕度膝蓋異常 ({tolerance:.0f}-{tolerance*2:.0f}mm): {len(mild)} 個（詳情見 JSON）")
-        
-        # JSON 儲存提示
-        if wrist_anomalies or knee_anomalies:
-            print(f"\n  [V] 完整異常詳情已儲存至 JSON:")
-            if wrist_anomalies:
-                print(f"     • logic_results.wrist_anomalies - 所有 {len(wrist_anomalies)} 個手腕異常")
-            if knee_anomalies:
-                print(f"     • logic_results.knee_anomalies - 所有 {len(knee_anomalies)} 個膝蓋異常")
+                print(f"  [!] 發現 {len(severe)} 個嚴重異常")
     
     if overall_stats:
         print("\n" + "=" * 100)
@@ -677,16 +590,15 @@ def validate_depth_reasonableness_analysis(
         
         # 執行各項分析
         depth_stats = analyze_depth_ranges(view_data, config)
-        symmetry_results = analyze_depth_symmetry(view_data, config)
         logic_stats = analyze_depth_logic(view_data, config)
         overall_stats = analyze_depth_statistics(depth_stats)
         temporal_stats = analyze_temporal_depth_stability(view_data, config)
-        quality_score = calculate_depth_quality_score(depth_stats, logic_stats, overall_stats)
+        quality_score = calculate_depth_quality_score(depth_stats, logic_stats, overall_stats, temporal_stats)
         
         # 僅對 Global 視角列印詳細報告，避免洗版
         if view_name == 'Global':
             print_analysis_report(
-                depth_stats, symmetry_results,
+                depth_stats,
                 logic_stats, overall_stats, config
             )
         
@@ -703,13 +615,11 @@ def validate_depth_reasonableness_analysis(
                 "average_cv": overall_stats.get('average_cv_percent', 0.0),
                 "quality_level": config.get_quality_level_cv(overall_stats.get('average_cv_percent', 0.0)),
                 "total_keypoints_analyzed": len(depth_stats),
-                "total_logic_violations": (logic_stats.get('wrist_behind_shoulder_count', 0) + 
-                                          logic_stats.get('knee_behind_hip_count', 0)),
+                "total_logic_violations": sum(v['violations']['total'] for v in logic_stats.values() if isinstance(v, dict) and 'violations' in v),
                 "mean_depth_mm": overall_stats.get('overall_mean_depth_mm', 0.0),
                 "quality_score": quality_score
             },
             "depth_range_analysis": depth_stats,
-            "depth_symmetry": symmetry_results,
             "depth_logic_check": logic_stats,
             "overall_statistics": overall_stats,
             "temporal_stability": temporal_stats
