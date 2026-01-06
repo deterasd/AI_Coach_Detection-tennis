@@ -40,7 +40,7 @@ async function fetchVideoList(folder) {
     for (let i = 1; i <= 100; i++) {
         try {
 
-            const response = await fetch(`/getVideos?folder=${folder}__trajectory/trajectory__${i}`);
+            const response = await fetch(`/getVideos?folder=${folder}__trajectory/trajectory_${i}`);
             if (!response.ok) {
                 console.warn(`trajectory_${i} not found, skip.`);
                 continue;
@@ -70,7 +70,7 @@ videoSelect.addEventListener('change', e => {
     const selected_path = e.target.value;
     let pathParts = selected_path.split('/');
     pathParts[2] = pathParts[2] + '__trajectory';
-    pathParts[3] = pathParts[3].replace('trajectory_', 'trajectory__');
+    // pathParts[3] = pathParts[3].replace('trajectory_', 'trajectory__');
     const selectedVideo = pathParts.join('/');
     console.log(selectedVideo);
 

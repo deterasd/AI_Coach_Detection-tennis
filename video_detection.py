@@ -4,6 +4,8 @@ from ultralytics import YOLO
 import time
 import torch
 import gc
+import json
+import os
 
 # COCO 預設 17 個關節名稱
 body_parts_list = [
@@ -32,24 +34,44 @@ def process_video(
     video_path,
     ball_model_path='model/tennisball_OD_v1.pt',
     pose_model_path='model/yolov8n-pose.pt',
-    paddle_model_path='model/best-paddlekeypoint.pt',
+    paddle_model_path='model/tennispaddle.pt',
+    ball_model=None,
+    pose_model=None,
+    paddle_model=None,
     OUTPUT_WIDTH=1280,
     OUTPUT_HEIGHT=720,
     skip_frames=1,
     yolo_batch_size=4,
     ball_conf_threshold=0.8,
-    paddle_conf_threshold=0.5
+    paddle_conf_threshold=0.5,
+    json_path=None
 ):
     device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"[INFO] Using device: {device_str}")
 
-    # 載入模型
-    ball_model = YOLO(ball_model_path)
-    pose_model = YOLO(pose_model_path)
-    paddle_model = YOLO(paddle_model_path)
-    ball_model.model.to(device_str)
-    pose_model.model.to(device_str)
-    paddle_model.model.to(device_str)
+    # 檢查是否使用 JSON
+    use_json = False
+    trajectory_data = None
+    if json_path and os.path.exists(json_path):
+        try:
+            print(f"[INFO] 發現軌跡檔案，將使用 JSON 資料進行繪圖: {json_path}")
+            with open(json_path, 'r', encoding='utf-8') as f:
+                trajectory_data = json.load(f)
+            use_json = True
+        except Exception as e:
+            print(f"⚠️ 讀取 JSON 失敗，將切換回模型推論: {e}")
+
+    # 載入模型 (如果不使用 JSON)
+    if not use_json:
+        if ball_model is None:
+            ball_model = YOLO(ball_model_path)
+            ball_model.model.to(device_str)
+        if pose_model is None:
+            pose_model = YOLO(pose_model_path)
+            pose_model.model.to(device_str)
+        if paddle_model is None:
+            paddle_model = YOLO(paddle_model_path)
+            paddle_model.model.to(device_str)
     
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -84,15 +106,6 @@ def process_video(
         print("❌ 無法擷取任何影格。")
         return
 
-    print(f"[INFO] 共擷取 {total_frames} 幀，進行 YOLO 推論...")
-
-    # YOLO 推論
-    with torch.no_grad():
-        pose_results_batch = pose_model.predict(frames_for_infer, verbose=False, device=device_str, batch=yolo_batch_size)
-        ball_results_batch = ball_model.predict(frames_for_infer, verbose=False, device=device_str, batch=yolo_batch_size)
-        # 降低 paddle 偵測的信心度閾值到 0.1 以提高偵測率
-        paddle_results_batch = paddle_model.predict(frames_for_infer, verbose=False, device=device_str, batch=yolo_batch_size, conf=0.1)
-
     # === 初始化結果容器 ===
     ball_positions = [None] * total_frames
     ball_confidences = [None] * total_frames
@@ -101,47 +114,100 @@ def process_video(
     paddle_keypoints = [None] * total_frames
     paddle_confidences = [None] * total_frames
 
-    # === 逐幀整理結果 ===
-    for i, fidx in enumerate(infer_indices):
-        pose_result = pose_results_batch[i]
-        ball_result = ball_results_batch[i]
-        paddle_result = paddle_results_batch[i]
+    if use_json:
+        print(f"[INFO] 使用 JSON 資料填入結果容器...")
+        for frame_data in trajectory_data:
+            idx = frame_data.get("frame", 0)
+            if idx >= total_frames: continue
+            
+            # Ball
+            ball = frame_data.get("tennis_ball", {})
+            if ball and ball.get("x") is not None and ball.get("y") is not None:
+                ball_positions[idx] = (ball["x"], ball["y"])
+                ball_confidences[idx] = 1.0 
+            
+            # Pose
+            kpts = []
+            has_pose = False
+            # body_parts_list is global
+            for part in body_parts_list:
+                p_data = frame_data.get(part, {})
+                if p_data and p_data.get("x") is not None:
+                    kpts.append((p_data["x"], p_data["y"]))
+                    has_pose = True
+                else:
+                    kpts.append((0, 0))
+            
+            if has_pose:
+                keypoints_per_frame[idx] = kpts
+                keypoints_conf_per_frame[idx] = [1.0]*17
+            
+            # Paddle
+            paddle = frame_data.get("paddle", {})
+            if paddle:
+                if "top" in paddle and paddle["top"]["x"] is not None:
+                    pts = []
+                    for key in ["top", "right", "bottom", "left"]:
+                        pt = paddle.get(key, {})
+                        if pt and pt.get("x") is not None:
+                            pts.append((pt["x"], pt["y"]))
+                    if len(pts) == 4:
+                        paddle_keypoints[idx] = pts
+                        paddle_confidences[idx] = [1.0]*4
 
-        # --- Pose ---
-        if pose_result.keypoints is not None and len(pose_result.keypoints) > 0:
-            kpts = pose_result.keypoints.xy[0]
-            kpts_xy = [(int(x), int(y)) for x, y in kpts]
-            kpts_conf = pose_result.keypoints.conf[0].cpu().numpy()  # (17,)
-            kpts_conf = [float(c) for c in kpts_conf]
-        else:
-            kpts_xy = None
-            kpts_conf = None
-        # --- Ball ---
-        boxes = ball_result.boxes
-        ball_pos, ball_conf = None, None
-        if boxes is not None and len(boxes) > 0:
-            best_box = max(boxes, key=lambda b: b.conf[0])
-            if float(best_box.conf[0]) >= ball_conf_threshold:
-                x1, y1, x2, y2 = best_box.xyxy[0]
-                ball_pos = (int((x1 + x2) / 2), int((y1 + y2) / 2))
-                ball_conf = float(best_box.conf[0])
+    else:
+        print(f"[INFO] 共擷取 {total_frames} 幀，進行 YOLO 推論...")
 
-        # --- Paddle Keypoints ---
-        paddle_pts, paddle_conf = None, None
-        if paddle_result.keypoints is not None and len(paddle_result.keypoints) > 0:
-            pts = paddle_result.keypoints.xy[0].cpu().numpy()
-            confs = paddle_result.keypoints.conf[0].cpu().numpy()
-            if pts.shape[0] >= 4:
-                paddle_pts = [(int(x), int(y)) for x, y in pts[:4]]
-                paddle_conf = [float(c) for c in confs[:4]]
+        # YOLO 推論 - 降低 batch size 以避免 OOM
+        safe_batch_size = 4  # 降低批次大小以節省記憶體
+        
+        with torch.no_grad():
+            pose_results_batch = pose_model.predict(frames_for_infer, verbose=False, device=device_str, batch=safe_batch_size)
+            ball_results_batch = ball_model.predict(frames_for_infer, verbose=False, device=device_str, batch=safe_batch_size)
+            # 降低 paddle 偵測的信心度閾值到 0.1 以提高偵測率
+            paddle_results_batch = paddle_model.predict(frames_for_infer, verbose=False, device=device_str, batch=safe_batch_size, conf=0.1)
 
-        idx_in_list = fidx - 1
-        ball_positions[idx_in_list] = ball_pos
-        ball_confidences[idx_in_list] = ball_conf
-        keypoints_per_frame[idx_in_list] = kpts_xy
-        keypoints_conf_per_frame[idx_in_list] = kpts_conf
-        paddle_keypoints[idx_in_list] = paddle_pts
-        paddle_confidences[idx_in_list] = paddle_conf
+        # === 逐幀整理結果 ===
+        for i, fidx in enumerate(infer_indices):
+            pose_result = pose_results_batch[i]
+            ball_result = ball_results_batch[i]
+            paddle_result = paddle_results_batch[i]
+
+            # --- Pose ---
+            if pose_result.keypoints is not None and len(pose_result.keypoints) > 0:
+                kpts = pose_result.keypoints.xy[0]
+                kpts_xy = [(int(x), int(y)) for x, y in kpts]
+                kpts_conf = pose_result.keypoints.conf[0].cpu().numpy()  # (17,)
+                kpts_conf = [float(c) for c in kpts_conf]
+            else:
+                kpts_xy = None
+                kpts_conf = None
+            # --- Ball ---
+            boxes = ball_result.boxes
+            ball_pos, ball_conf = None, None
+            if boxes is not None and len(boxes) > 0:
+                best_box = max(boxes, key=lambda b: b.conf[0])
+                if float(best_box.conf[0]) >= ball_conf_threshold:
+                    x1, y1, x2, y2 = best_box.xyxy[0]
+                    ball_pos = (int((x1 + x2) / 2), int((y1 + y2) / 2))
+                    ball_conf = float(best_box.conf[0])
+
+            # --- Paddle Keypoints ---
+            paddle_pts, paddle_conf = None, None
+            if paddle_result.keypoints is not None and len(paddle_result.keypoints) > 0:
+                pts = paddle_result.keypoints.xy[0].cpu().numpy()
+                confs = paddle_result.keypoints.conf[0].cpu().numpy()
+                if pts.shape[0] >= 4:
+                    paddle_pts = [(int(x), int(y)) for x, y in pts[:4]]
+                    paddle_conf = [float(c) for c in confs[:4]]
+
+            idx_in_list = fidx - 1
+            ball_positions[idx_in_list] = ball_pos
+            ball_confidences[idx_in_list] = ball_conf
+            keypoints_per_frame[idx_in_list] = kpts_xy
+            keypoints_conf_per_frame[idx_in_list] = kpts_conf
+            paddle_keypoints[idx_in_list] = paddle_pts
+            paddle_confidences[idx_in_list] = paddle_conf
 
     # === 影片輸出設定 ===
     output_path = video_path.replace('.mp4', '_processed.mp4')

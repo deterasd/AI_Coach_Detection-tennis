@@ -92,16 +92,20 @@ def process_single_frame(body_result, ball_result, paddle_result, keypoint_names
         frame_data[keypoint] = {"x": None, "y": None}
 
     # --- 身體關鍵點 ---
-    if body_result.keypoints is not None:
-        keypoints = body_result.keypoints.xy[0].cpu().numpy()
-        if len(keypoints) == len(keypoint_names):
-            for idx, keypoint in enumerate(keypoint_names):
-                x, y = keypoints[idx][:2]
-                coords = {
-                    "x": int(x) if x != 0.0 else None,
-                    "y": int(y) if y != 0.0 else None
-                }
-                frame_data[keypoint].update(coords)
+    if body_result.keypoints is not None and len(body_result.keypoints.xy) > 0:
+        # 檢查是否有偵測到任何關鍵點
+        if body_result.keypoints.xy.shape[1] > 0:
+            keypoints = body_result.keypoints.xy[0].cpu().numpy()
+            # 確保關鍵點數量足夠 (YOLOv8 Pose 通常有 17 個關鍵點)
+            if len(keypoints) >= len(keypoint_names):
+                for idx, keypoint in enumerate(keypoint_names):
+                    if idx < len(keypoints):
+                        x, y = keypoints[idx][:2]
+                        coords = {
+                            "x": int(x) if x != 0.0 else None,
+                            "y": int(y) if y != 0.0 else None
+                        }
+                        frame_data[keypoint].update(coords)
 
     # --- 網球位置 (物件偵測) ---
     for box in ball_result.boxes:
@@ -212,7 +216,7 @@ if __name__ == "__main__":
     model_load_start = time.time()
     pose_model = YOLO('model/yolov8n-pose.pt')
     ball_model = YOLO('model/tennisball_OD_v1.pt')
-    paddle_model = YOLO('model/best-paddlekeypoint.pt')  # 新增：球拍模型
+    paddle_model = YOLO('model/tennispaddle.pt')  # 新增：球拍模型
     # 將模型移至 GPU（若有 CUDA）
     if torch.cuda.is_available():
         pose_model.model.to('cuda')

@@ -294,7 +294,7 @@ async def startup_event():
     try:
         yolo_pose_model = YOLO('model/yolov8n-pose.pt')
         yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
-        paddle_model = YOLO('model/best-paddlekeypoint.pt')  # 👈 新增球拍模型
+        paddle_model = YOLO('model/tennispaddle.pt')  # 👈 新增球拍模型
         #yolo_paddle_model = YOLO('model/best.pt')
         #print("球拍模型載入完成:", yolo_paddle_model)
 

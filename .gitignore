@@ -10,7 +10,10 @@ trajectory/
 __pycache__/
 *.pyc
 *.mp4
+*.MP4
 *.avi
+*.AVI
+*.mov
 *.MOV
 *.JPG
 *.jpg
@@ -74,9 +77,5 @@ tennis_analysis_sessions/
 # !trajectory/**  # Removed - now ignored
 !play_records/
 !play_records/**
-!output/
-!output/**
-!input_videos/
-!input_videos/**
 !binocular_correction/
 !binocular_correction/**

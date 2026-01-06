@@ -55,28 +55,33 @@ def smooth_2D_trajectory(input_file, window_length=15, polyorder=3, tennis_windo
         if len(tb_x) > tennis_window_length:
             tb_x_smooth = savgol_filter(tb_x, tennis_window_length, tennis_polyorder)
             tb_y_smooth = savgol_filter(tb_y, tennis_window_length, tennis_polyorder)
+        else:
+            # 如果數據點太少，直接使用原始（插值後）數據
+            tb_x_smooth = tb_x
+            tb_y_smooth = tb_y
             
-            # Calculate tennis ball angles for all frames
-            for i in range(len(valid_range_data)):
-                if i > 0 and i < len(valid_range_data) - 1:
-                    p1 = {"x": tb_x_smooth[i-1], "y": tb_y_smooth[i-1]}
-                    p2 = {"x": tb_x_smooth[i], "y": tb_y_smooth[i]}
-                    p3 = {"x": tb_x_smooth[i+1], "y": tb_y_smooth[i+1]}
-                    angle = calculate_angle(p1, p2, p3)
-                else:
-                    angle = 0
-                
-                data[i + first_valid]['tennis_ball'].update({
-                    'x': float(tb_x_smooth[i]),
-                    'y': float(tb_y_smooth[i])
-                })
-                data[i + first_valid]['tennis_ball_angle'] = float(angle)
+        # Calculate tennis ball angles for all frames
+        for i in range(len(valid_range_data)):
+            if i > 0 and i < len(valid_range_data) - 1:
+                p1 = {"x": tb_x_smooth[i-1], "y": tb_y_smooth[i-1]}
+                p2 = {"x": tb_x_smooth[i], "y": tb_y_smooth[i]}
+                p3 = {"x": tb_x_smooth[i+1], "y": tb_y_smooth[i+1]}
+                angle = calculate_angle(p1, p2, p3)
+            else:
+                angle = 0
+            
+            data[i + first_valid]['tennis_ball'].update({
+                'x': float(tb_x_smooth[i]),
+                'y': float(tb_y_smooth[i])
+            })
+            data[i + first_valid]['tennis_ball_angle'] = float(angle)
 
         # Find frame with minimum x coordinate
-        min_x_idx = np.argmin(tb_x_smooth)
-        hit_frame_idx = min_x_idx + first_valid
-        data[hit_frame_idx]['tennis_ball_hit'] = True
-        print(f"找到擊球點在 frame {data[hit_frame_idx]['frame']}")
+        if len(tb_x_smooth) > 0:
+            min_x_idx = np.argmin(tb_x_smooth)
+            hit_frame_idx = min_x_idx + first_valid
+            data[hit_frame_idx]['tennis_ball_hit'] = True
+            print(f"找到擊球點在 frame {data[hit_frame_idx]['frame']}")
 
     # Set tennis_ball_angle to 0 for frames outside valid range
     for i in range(len(data)):

@@ -83,7 +83,7 @@ def smooth_2D_trajectory_with_output_folder(trajectory_path, output_folder):
     
     return smoothed_trajectory_path
 
-def process_video_with_output_folder(video_path, output_folder, ball_model=None, pose_model=None, paddle_model=None, json_path=None):
+def process_video_with_output_folder(video_path, output_folder, ball_model=None, pose_model=None, paddle_model=None):
     """
     處理影片並將結果保存到指定資料夾
     """
@@ -95,8 +95,7 @@ def process_video_with_output_folder(video_path, output_folder, ball_model=None,
         video_path,
         ball_model=ball_model,
         pose_model=pose_model,
-        paddle_model=paddle_model,
-        json_path=json_path
+        paddle_model=paddle_model
     )
     
     # 移動結果到指定資料夾
@@ -255,12 +254,21 @@ def check_ball_exits(active_balls, edges, current_time, exit_timeout):
                 is_exit, reason = is_ball_exit_right_edge(ball_info['positions'], edges)
                 if is_exit:
                     exit_time = ball_info['last_seen']
-                    exited_balls.append((ball_id, exit_time, reason))
+                    entry_time = ball_info.get('entry_time', 0)
+                    exited_balls.append((ball_id, exit_time, reason, entry_time))
                     balls_to_remove.append(ball_id)
                 else:
-                    # 如果不是真的出場，重新開始追蹤
+                    # 如果不是真的出場，但已經超時，視為結束
+                    # 原邏輯是直接移除，這裡改為回傳，以確保串流能處理到這些球
+                    print(f"   ⚠️ 移除球 (ID: {ball_id}) - 超時且未在右邊界 (視為結束)")
+                    exit_time = ball_info['last_seen']
+                    entry_time = ball_info.get('entry_time', 0)
+                    reason = "追蹤超時 (Lost Tracking)"
+                    exited_balls.append((ball_id, exit_time, reason, entry_time))
                     balls_to_remove.append(ball_id)
             else:
+                # 軌跡太短，可能是誤判，直接移除不回傳
+                print(f"   ⚠️ 移除球 (ID: {ball_id}) - 軌跡太短 (忽略)")
                 balls_to_remove.append(ball_id)
     
     # 移除已出場的球
@@ -351,30 +359,21 @@ def analyze_movement_trend(positions, edges):
         'moving_outward': moving_outward
     }
 
-def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5, 
+def detect_ball_entries_generator(video_path, model, confidence_threshold=0.5, 
                                 detection_area="right_upper_two_thirds", 
                                 enable_exit_detection=True, exit_timeout=1.5,
                                 ball_entry_direction="right"):
     """
-    優化的球進入偵測，支援多球追蹤和動態分割模式
-    採用 video_segment_tester_optimized 的進階算法
+    [串流版] 優化的球進入偵測生成器
+    使用 yield 方式即時回傳偵測到的球事件 (entry + exit)
     """
-    print(f"🔍 開始偵測球進入時間點: {Path(video_path).name}")
-    print(f"   球進入方向: {'右邊' if ball_entry_direction == 'right' else '左邊'}")
-    print(f"   偵測範圍: {detection_area}")
-    print(f"   信心度閾值: {confidence_threshold}")
-    print(f"   球出場偵測: {'啟用' if enable_exit_detection else '停用'}")
-    if enable_exit_detection:
-        print(f"   出場等待時間: {exit_timeout} 秒")
+    print(f"🔍 [串流模式] 開始偵測球進入: {Path(video_path).name}")
     
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-    print(f"   影片資訊: {total_frames} 幀, {fps:.2f} FPS")
-    print(f"   🎯 球追蹤距離: {max(200, fps * 8):.0f}像素 (根據{fps:.1f}FPS調整)")
     
     # 邊緣檢測參數
     edge_ratio = 0.15
@@ -385,29 +384,17 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
         'bottom': frame_height * (1 - edge_ratio)
     }
     
-    # 偵測範圍設定 - 改進版本
-    if ball_entry_direction == "right":
-        print(f"   偵測範圍: 右邊緣上2/3區域 + 上邊緣右側2/3區域")
-    else:
-        print(f"   偵測範圍: 左邊緣上2/3區域 + 上邊緣左側2/3區域")
-    
-    # 初始化變數（使用 video_segment_tester_optimized 的算法）
-    ball_entry_times = []
-    ball_exit_times = []
-    active_balls = {}  # 活躍球追蹤
+    # 初始化變數
+    active_balls = {}  # 活躍球追蹤 {ball_id: {'entry_time': t, 'positions': [], 'last_seen': t}}
     next_ball_id = 0
-    
-    # === 優化參數 ===
-    SKIP_FRAMES_AFTER_FOUND = 60  # 找到球後跳過 60 幀 (約 1 秒)
-    frames_to_skip = 0
     
     # --- 批次處理優化 (多執行緒讀取) ---
     batch_size = 32
     frames_batch = []
     
-    # 定義多執行緒讀取類別
+    # 定義多執行緒讀取類別 (內部類別)
     class ThreadedVideoCapture:
-        def __init__(self, path, queue_size=256): # 增加緩衝區大小
+        def __init__(self, path, queue_size=256):
             self.cap = cv2.VideoCapture(path)
             self.q = queue.Queue(maxsize=queue_size)
             self.stopped = False
@@ -427,7 +414,7 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
                         return
                     self.q.put(frame)
                 else:
-                    time.sleep(0.001) # 減少睡眠時間
+                    time.sleep(0.001)
                     
         def read(self):
             return self.q.get() if not self.q.empty() else None
@@ -437,33 +424,26 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
             
         def stop(self):
             self.stopped = True
-            if self.thread.is_alive():
+            # 避免在自己的執行緒中 join 自己
+            if self.thread.is_alive() and threading.current_thread() != self.thread:
                 self.thread.join()
             self.cap.release()
 
-    # 啟動多執行緒讀取
-    # 注意：原本的 cap 已經被用來讀取屬性，這裡重新開啟一個用於讀取幀
-    cap.release() 
-    video_stream = ThreadedVideoCapture(video_path).start()
-    
-    # 等待緩衝區填充一點
-    time.sleep(0.5) # 減少等待時間
+    # cap.release() 
+    # video_stream = ThreadedVideoCapture(video_path).start()
+    # time.sleep(0.5)
     
     frame_count = 0
-    while video_stream.running() and frame_count < total_frames:
-        if video_stream.q.empty():
-            time.sleep(0.001) # 減少睡眠時間
-            continue
+    # while video_stream.running() and frame_count < total_frames:
+    while cap.isOpened() and frame_count < total_frames:
+        # if video_stream.q.empty():
+        #     time.sleep(0.001)
+        #     continue
             
-        frame = video_stream.read()
-        if frame is None:
+        # frame = video_stream.read()
+        ret, frame = cap.read()
+        if not ret:
             break
-            
-        # === 激進跳幀邏輯 (累積階段) ===
-        if frames_to_skip > 0:
-            frames_to_skip -= 1
-            frame_count += 1
-            continue
             
         frames_batch.append(frame)
         frame_count += 1
@@ -472,10 +452,6 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
         if len(frames_batch) == batch_size or frame_count == total_frames:
             
             # --- 跳幀掃描優化 (Sparse Scanning) ---
-            # 如果目前沒有追蹤任何球，我們可以先進行「稀疏掃描」
-            # 只推論批次中的部分幀 (例如每 4 幀測一次)
-            # 如果發現球，再對整個批次進行完整推論
-            
             need_full_inference = True
             
             if not active_balls and len(frames_batch) >= 4:
@@ -483,10 +459,8 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
                 sparse_indices = list(range(0, len(frames_batch), skip_step))
                 sparse_frames = [frames_batch[i] for i in sparse_indices]
                 
-                # 稀疏推論
                 sparse_results = model(sparse_frames, verbose=False, half=True)
                 
-                # 檢查是否有任何球被偵測到
                 ball_found_in_sparse = False
                 for res in sparse_results:
                     if res.boxes:
@@ -498,47 +472,31 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
                         break
                 
                 if not ball_found_in_sparse:
-                    # 如果稀疏掃描沒看到球，就跳過這個批次的完整推論
-                    # 但我們還是要更新進度條
                     need_full_inference = False
-                    
-                    # 模擬進度更新
+                    # 顯示進度
                     last_frame_idx = frame_count - 1
-                    if last_frame_idx % int(fps * 10) < batch_size: # 簡單的檢查方式
+                    if last_frame_idx % int(fps * 10) < batch_size:
                          progress = (last_frame_idx / total_frames) * 100
                          print(f"   進度: {progress:.1f}% (跳過空白片段)")
 
             # --- 完整推論 (Dense Inference) ---
             if need_full_inference:
-                # 批次推論
-                results = model(frames_batch, verbose=False, half=True) # 啟用 FP16 加速
+                results = model(frames_batch, verbose=False, half=True)
                 
-                # 處理批次中的每一幀結果
                 for i, result in enumerate(results):
-                    # === 激進跳幀邏輯 (批次階段) ===
-                    if frames_to_skip > 0:
-                        frames_to_skip -= 1
-                        continue
-                        
-                    # 計算當前處理的幀編號和時間
                     current_frame_idx = frame_count - len(frames_batch) + i
                     current_time = current_frame_idx / fps
                     
-                    # 解析結果 (取代 detect_ball_in_frame)
                     position = None
-                    confidence = 0.0
-                    
                     if result.boxes:
-                        # 找出信心度最高的框
                         best_box = max(result.boxes, key=lambda box: float(box.conf[0]))
                         if float(best_box.conf[0]) >= confidence_threshold:
-                            confidence = float(best_box.conf[0])
                             x1, y1, x2, y2 = best_box.xyxy[0].cpu().numpy()
                             position = ((x1 + x2) / 2, (y1 + y2) / 2)
                     
                     ball_detected = position is not None
                     
-                    # 檢查是否在邊緣區域 - 使用改進的偵測邏輯
+                    # 檢查是否在邊緣區域
                     in_edge = False
                     if ball_detected:
                         x, y = position
@@ -548,179 +506,52 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
                     # 更新活躍球追蹤
                     if ball_detected:
                         if in_edge and not active_balls:
-                            # 沒有活躍球，這是新球進入
+                            # 新球進入
                             active_balls[next_ball_id] = {
                                 'entry_time': current_time,
                                 'positions': [position],
-                                'last_seen': current_time
+                                'last_seen': current_time,
+                                'id': next_ball_id
                             }
-                            ball_entry_times.append(current_time)
-                            print(f"   ⚾ 球進入時間: {current_time:.2f} 秒 (幀 {current_frame_idx}) - 球#{next_ball_id}")
+                            print(f"   ⚾ 發現新球 (ID: {next_ball_id}) 進入時間: {current_time:.2f} 秒")
                             next_ball_id += 1
-                            
-                            # === 激進跳幀邏輯 ===
-                            frames_to_skip = SKIP_FRAMES_AFTER_FOUND
-                            print(f"   🚀 發現新球！跳過接下來 {frames_to_skip} 幀...")
-                            
                         elif active_balls:
-                            # 已有活躍球，持續追蹤其位置
+                            # 更新現有球
                             update_ball_tracking(active_balls, position, current_time, fps)
                     
-                    # 檢查球出場
+                    # 檢查球出場並 Yield 結果
                     if enable_exit_detection:
                         exited_balls = check_ball_exits(active_balls, edges, current_time, exit_timeout)
-                        for ball_id, exit_time, reason in exited_balls:
-                            ball_exit_times.append(exit_time)
-                            print(f"   🎯 球出場時間: {exit_time:.2f} 秒 - 球#{ball_id}: {reason}")
-                    
-                    # 顯示進度
-                    if current_frame_idx % int(fps * 10) == 0:  # 每10秒顯示一次
-                        progress = (current_frame_idx / total_frames) * 100
-                        print(f"   進度: {progress:.1f}%")
-            
+                        for ball_id, exit_time, reason, entry_time in exited_balls:
+                            print(f"   🎯 球出場 (ID: {ball_id}) 時間: {exit_time:.2f} 秒 - {reason}")
+                            yield {
+                                'ball_id': ball_id,
+                                'entry_time': entry_time,
+                                'exit_time': exit_time,
+                                'reason': reason
+                            }
+
             # 清空批次
             frames_batch = []
             
-    video_stream.stop()
+    # video_stream.stop()
     
     # 處理最後一個球（影片結束時仍在畫面中的球）
     for ball_id, ball_info in active_balls.items():
         final_exit_time = (total_frames - 1) / fps
-        ball_exit_times.append(final_exit_time)
+        entry_time = ball_info.get('entry_time', 0)
         print(f"   🎯 最後片段延伸到影片結束: {final_exit_time:.2f} 秒")
+        yield {
+            'ball_id': ball_id,
+            'entry_time': entry_time,
+            'exit_time': final_exit_time,
+            'reason': "Video End"
+        }
     
     cap.release()
-    
-    print(f"✅ 偵測完成: 找到 {len(ball_entry_times)} 個球進入時間點")
-    print(f"   總出場點: {len(ball_exit_times)}")
-    
-    return ball_entry_times, ball_exit_times
+    print("✅ 偵測生成器結束")
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-    print(f"   影片資訊: {total_frames} 幀, {fps:.2f} FPS, {frame_width}x{frame_height}")
-    print(f"   🎯 球追蹤距離: {max(200, fps * 8):.0f}像素 (根據{fps:.1f}FPS調整)")
-    
-    # 邊緣檢測參數 - 使用與 video_segment_tester_optimized 相同的邏輯
-    edge_ratio = 0.15
-    edges = {
-        'left': frame_width * edge_ratio,
-        'right': frame_width * (1 - edge_ratio),
-        'top': frame_height * edge_ratio,
-        'bottom': frame_height * (1 - edge_ratio)
-    }
-    
-    # 根據球進入方向調整偵測模式 - 改進版本
-    if ball_entry_direction == "right":
-        detection_mode = "right_only"  # 右邊緣上2/3 + 上方2/3右半邊
-    else:
-        detection_mode = "left_only"   # 左邊緣上2/3 + 上方2/3左半邊
-    
-    print(f"   偵測模式: {detection_mode}")
-    print(f"   偵測邊界: 左{edges['left']:.0f}, 右{edges['right']:.0f}, 上{edges['top']:.0f}, 下{edges['bottom']:.0f}")
-    if ball_entry_direction == "right":
-        print(f"   偵測範圍: 右邊緣上2/3區域 + 上邊緣右側2/3區域")
-    else:
-        print(f"   偵測範圍: 左邊緣上2/3區域 + 上邊緣左側2/3區域")
-    
-    # 初始化追蹤變數
-    ball_entry_times = []
-    ball_exit_times = []
-    active_balls = {}       # 活躍球追蹤 {ball_id: {'entry_time': float, 'positions': [], 'last_seen': float}}
-    next_ball_id = 0        # 下一個球的ID
-    min_interval = 2.0      # 最小間隔時間
-    last_entry_time = -min_interval
-    tracking_distance = max(200, fps * 8)  # 球追蹤距離
-    
-    detection_count = 0
-    
-    try:
-        for frame_idx in range(total_frames):
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            current_time = frame_idx / fps
-            
-            # YOLO 偵測
-            results = model(frame, conf=confidence_threshold, verbose=False)
-            
-            # 檢查偵測結果並獲取球的位置
-            detected_balls = []
-            for result in results:
-                if result.boxes is not None:
-                    for box in result.boxes:
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        center_x = (x1 + x2) / 2
-                        center_y = (y1 + y2) / 2
-                        confidence = box.conf[0].cpu().numpy()
-                        
-                        # 檢查是否在邊緣區域（球進入點）- 使用改進的偵測邏輯
-                        is_entry = _is_ball_entry_edge(center_x, center_y, edges, detection_mode, frame_width, frame_height)
-                        
-                        if is_entry:
-                            detected_balls.append({
-                                'position': (center_x, center_y),
-                                'confidence': confidence,
-                                'time': current_time
-                            })
-                            detection_count += 1
-            
-            # 更新活躍球追蹤
-            next_ball_id = _update_active_balls(active_balls, detected_balls, current_time, tracking_distance, next_ball_id)
-            
-            # 檢查球進入
-            for ball_id, ball_data in active_balls.items():
-                if ball_data.get('entry_recorded', False):
-                    continue
-                    
-                # 檢查是否滿足進入條件
-                if (current_time - last_entry_time >= min_interval and 
-                    len(ball_data['positions']) >= 3):  # 至少被偵測到3次才認定為有效進入
-                    
-                    entry_time = ball_data['entry_time']
-                    ball_entry_times.append(entry_time)
-                    last_entry_time = entry_time
-                    ball_data['entry_recorded'] = True
-                    
-                    print(f"   ⚾ 球進入時間: {entry_time:.2f} 秒 (球#{ball_id})")
-            
-            # 檢查球出場（如果啟用）
-            if enable_exit_detection:
-                balls_to_exit = []
-                for ball_id, ball_data in active_balls.items():
-                    time_since_last_seen = current_time - ball_data['last_seen']
-                    if time_since_last_seen >= exit_timeout:
-                        # 檢查球是否真的離開了畫面
-                        if _is_ball_exited(ball_data['positions'], edges):
-                            exit_time = ball_data['last_seen']
-                            ball_exit_times.append(exit_time)
-                            balls_to_exit.append(ball_id)
-                            print(f"   🎯 球出場時間: {exit_time:.2f} 秒 (球#{ball_id})")
-                
-                # 移除已出場的球
-                for ball_id in balls_to_exit:
-                    del active_balls[ball_id]
-            
-            # 顯示進度
-            if frame_idx % (fps * 10) == 0:  # 每10秒顯示一次
-                progress = (frame_idx / total_frames) * 100
-                print(f"   進度: {progress:.1f}% (偵測次數: {detection_count})")
-    
-    finally:
-        cap.release()
-    
-    # 處理最後仍在追蹤的球
-    if enable_exit_detection:
-        final_time = (total_frames - 1) / fps
-        for ball_id, ball_data in active_balls.items():
-            if ball_data.get('entry_recorded', False):
-                ball_exit_times.append(final_time)
-                print(f"   🎯 最後球延伸到影片結束: {final_time:.2f} 秒 (球#{ball_id})")
-    
-    print(f"✅ 偵測完成: 找到 {len(ball_entry_times)} 個球進入時間點")
-    print(f"   總偵測次數: {detection_count}")
-    
-    return ball_entry_times, ball_exit_times
+
 
 
 def _is_ball_entry_edge(x, y, edges, detection_mode, frame_width, frame_height):
@@ -1435,8 +1266,7 @@ def processing_trajectory_unified(P1, P2, yolo_pose_model, yolo_tennis_ball_mode
             success = process_multiple_balls(
                 P1, P2, yolo_pose_model, yolo_tennis_ball_model,
                 video_side, video_45, knn_dataset, 
-                name, output_folder, timing_results, segmentation_results, yolo_paddle_model,
-                start_total_time=start_total
+                name, output_folder, timing_results, segmentation_results, yolo_paddle_model
             )
         else:
             # 單球或未分割處理流程
@@ -1481,8 +1311,7 @@ def processing_trajectory_unified(P1, P2, yolo_pose_model, yolo_tennis_ball_mode
 
 def process_multiple_balls(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
                           video_side, video_45, knn_dataset, 
-                          name, output_folder, timing_results, segmentation_results, paddle_model=None,
-                          start_total_time=None):
+                          name, output_folder, timing_results, segmentation_results, paddle_model=None):
     """
     處理多球分析 - 為每個球對創建獨立的分析資料夾
     
@@ -1495,7 +1324,6 @@ def process_multiple_balls(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
         output_folder: 主輸出資料夾
         timing_results: 時間記錄
         segmentation_results: 分割結果包含ball_pairs
-        start_total_time: 總流程開始時間 (用於計算第一顆球完成時間)
     
     Returns:
         bool: 處理是否成功
@@ -1534,11 +1362,6 @@ def process_multiple_balls(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
             
             if success:
                 print(f"✅ 第 {ball_number} 顆球處理完成")
-                # 記錄第一顆球完成時間
-                if i == 0 and start_total_time is not None:
-                    first_ball_time = time.perf_counter() - start_total_time
-                    timing_results['第一顆球執行完成'] = first_ball_time
-                    print(f"⏱️ 第一顆球執行完成時間: {first_ball_time:.4f} 秒")
             else:
                 print(f"⚠️ 第 {ball_number} 顆球處理有部分問題，但已完成可執行的步驟")
                 # 不將 overall_success 設為 False，允許繼續處理下一顆球
@@ -1667,8 +1490,7 @@ def process_single_video_set(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
             output_folder,
             ball_model=yolo_tennis_ball_model,
             pose_model=yolo_pose_model,
-            paddle_model=paddle_model,
-            json_path=trajectory_side
+            paddle_model=paddle_model
         )
         clear_all_memory()
         
@@ -1678,8 +1500,7 @@ def process_single_video_set(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
             output_folder,
             ball_model=yolo_tennis_ball_model,
             pose_model=yolo_pose_model,
-            paddle_model=paddle_model,
-            json_path=trajectory_45
+            paddle_model=paddle_model
         )
         clear_all_memory()
         
@@ -1890,3 +1711,148 @@ def generate_processing_summary(output_folder, name, timing_results, total_time)
     except Exception as e:
         print(f"⚠️ 生成處理摘要失敗: {e}")
         return False
+
+def cut_single_segment(video_path, start_time, end_time, output_file):
+    """
+    單一影片片段分割函數
+    """
+    duration = end_time - start_time
+    if duration < 0.5:
+        return False
+
+    # 使用 FFmpeg 分割
+    ffmpeg_path = 'ffmpeg'
+    local_ffmpeg = Path("tools/ffmpeg.exe")
+    if local_ffmpeg.exists():
+        ffmpeg_path = str(local_ffmpeg)
+    
+    # 嘗試 GPU 模式
+    cmd = [
+        ffmpeg_path, '-y',
+        '-i', str(video_path),
+        '-ss', str(start_time),
+        '-t', str(duration),
+        '-c:v', 'h264_nvenc',
+        '-preset', 'fast',
+        '-crf', '23',
+        '-c:a', 'aac',
+        str(output_file)
+    ]
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode == 0 and output_file.exists() and output_file.stat().st_size > 10240:
+            return True
+    except:
+        pass
+        
+    # 失敗則嘗試 CPU 模式 (copy)
+    cmd_cpu = [
+        ffmpeg_path, '-y',
+        '-i', str(video_path),
+        '-ss', str(start_time),
+        '-t', str(duration),
+        '-c', 'copy',
+        str(output_file)
+    ]
+    try:
+        result = subprocess.run(cmd_cpu, capture_output=True, text=True, timeout=60)
+        if result.returncode == 0 and output_file.exists() and output_file.stat().st_size > 10240:
+            return True
+    except:
+        pass
+        
+    return False
+
+def processing_trajectory_streaming(P1, P2, yolo_pose_model, yolo_tennis_ball_model, yolo_paddle_model,
+                                video_side, video_45, knn_dataset, name,
+                                ball_entry_direction="right", confidence_threshold=0.5,
+                                output_folder=None):
+    """
+    [串流版] 完整軌跡處理流程
+    掃描 -> 發現球 -> 立即處理 -> 繼續掃描
+    """
+    if output_folder is None:
+        output_folder = Path("trajectory") / f"{name}__trajectory"
+    else:
+        output_folder = Path(output_folder)
+    
+    output_folder.mkdir(parents=True, exist_ok=True)
+    segments_folder = output_folder / "segments"
+    segments_folder.mkdir(parents=True, exist_ok=True)
+    
+    print(f"🚀 啟動串流處理模式 - {name}")
+    
+    # 使用生成器進行偵測
+    ball_generator = detect_ball_entries_generator(
+        video_side, yolo_tennis_ball_model, confidence_threshold,
+        detection_area="right_upper_two_thirds" if ball_entry_direction == "right" else "left_upper_two_thirds",
+        enable_exit_detection=True, exit_timeout=1.5, ball_entry_direction=ball_entry_direction
+    )
+    
+    ball_count = 0
+    
+    for ball_event in ball_generator:
+        ball_id = ball_event['ball_id']
+        entry_time = ball_event['entry_time']
+        exit_time = ball_event['exit_time']
+        reason = ball_event['reason']
+        
+        if reason == "Video End":
+            continue
+            
+        ball_count += 1
+        print(f"\n🔥 [串流處理] 收到球 #{ball_count} (ID:{ball_id})")
+        print(f"   時間範圍: {entry_time:.2f}s - {exit_time:.2f}s")
+        
+        # 1. 分割影片
+        start_time = max(0, entry_time - 0.5)
+        end_time = exit_time + 0.1
+        
+        segment_side_path = segments_folder / f"{name}__{ball_count}_side_segment.mp4"
+        segment_45_path = segments_folder / f"{name}__{ball_count}_45_segment.mp4"
+        
+        print(f"   ✂️ 正在分割片段...")
+        cut_side = cut_single_segment(video_side, start_time, end_time, segment_side_path)
+        cut_45 = cut_single_segment(video_45, start_time, end_time, segment_45_path)
+        
+        if not cut_side or not cut_45:
+            print(f"   ❌ 分割失敗，跳過此球")
+            continue
+            
+        # 2. 建立單球資料夾
+        ball_folder = output_folder / f"trajectory_{ball_count}"
+        ball_folder.mkdir(parents=True, exist_ok=True)
+        
+        # 複製片段到球資料夾
+        shutil.copy2(segment_side_path, ball_folder / segment_side_path.name)
+        shutil.copy2(segment_45_path, ball_folder / segment_45_path.name)
+        
+        # 3. 執行單球處理
+        print(f"   ⚙️ 開始分析球 #{ball_count}...")
+        timing_results = {}
+        
+        # 建構 segmentation_results 結構以相容 process_single_video_set
+        ball_segmentation = {
+            "ball_pairs": [{
+                "ball_number": ball_count,
+                "side_data": {"segment": str(ball_folder / segment_side_path.name)},
+                "deg45_data": {"segment": str(ball_folder / segment_45_path.name)}
+            }],
+            "side_segments": [str(ball_folder / segment_side_path.name)],
+            "deg45_segments": [str(ball_folder / segment_45_path.name)]
+        }
+        
+        success = process_single_video_set(
+            P1, P2, yolo_pose_model, yolo_tennis_ball_model,
+            video_side, video_45, knn_dataset, 
+            name, ball_folder, timing_results, ball_segmentation, yolo_paddle_model
+        )
+        
+        if success:
+            print(f"   ✅ 球 #{ball_count} 處理完成！結果已生成。")
+        else:
+            print(f"   ⚠️ 球 #{ball_count} 處理部分失敗。")
+            
+    print(f"\n🏁 所有串流處理完成！共處理 {ball_count} 顆球。")
+    return True

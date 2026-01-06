@@ -1157,10 +1157,10 @@
         scene.add(mesh);
       });
       const baseSkeletonMaterial = new LineMaterial({
-        color: 0x3a9cfc,
-        linewidth: 3,
+        color: 0xffffff,
+        linewidth: 4,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.9,
         depthTest: false,
         depthWrite: false
       });
@@ -1168,7 +1168,19 @@
       skeletonConnections.forEach(connection => {
         const geo = new LineGeometry();
         geo.setPositions([0, 0, 0, 0, 0, 0]);
+        
         const mat = baseSkeletonMaterial.clone();
+        
+        // Color coding: Left=Cyan, Right=Orange, Center=White
+        const start = connection[0];
+        const end = connection[1];
+        const isLeft = (start.includes('left') || end.includes('left')) && !(start.includes('right') || end.includes('right'));
+        const isRight = (start.includes('right') || end.includes('right')) && !(start.includes('left') || end.includes('left'));
+        
+        if (isLeft) mat.color.setHex(0x00FFFF);
+        else if (isRight) mat.color.setHex(0xFF4500);
+        else mat.color.setHex(0xFFFFFF);
+
         mat.resolution.set(window.innerWidth, window.innerHeight);
         const line = new Line2(geo, mat);
         line.frustumCulled = false;
@@ -1480,12 +1492,120 @@
       fileControlGroup.appendChild(dirInput);
     }
     
+    // === 新增：球拍軌跡優化函式 ===
+    function smoothPaddleData(data) {
+      console.log("正在優化球拍軌跡...");
+      const paddleJoints = ['top', 'bottom', 'left', 'right', 'center'];
+      const maxSpeedThreshold = 0.5; // 閾值：如果一幀移動超過 0.5 單位(約25公分)，視為異常
+      const smoothWindow = 3; // 平滑窗口大小
+
+      paddleJoints.forEach(joint => {
+        // 1. 提取該關節的所有幀數據
+        let points = data.map(frame => {
+          if (frame.paddle && frame.paddle[joint] && validPoint(frame.paddle[joint])) {
+            return { ...frame.paddle[joint], valid: true };
+          }
+          return { x: null, y: null, z: null, valid: false };
+        });
+
+        // 2. 去除離群值 (Outlier Removal)
+        // 如果某點跟上一個有效點距離太遠，視為誤判，將其標記為無效
+        let lastValidIdx = -1;
+        for (let i = 0; i < points.length; i++) {
+          if (!points[i].valid) continue;
+
+          if (lastValidIdx !== -1) {
+            const p1 = points[lastValidIdx];
+            const p2 = points[i];
+            const dist = Math.sqrt(
+              Math.pow(p2.x - p1.x, 2) + 
+              Math.pow(p2.y - p1.y, 2) + 
+              Math.pow(p2.z - p1.z, 2)
+            );
+            
+            // 如果距離過大 (可能是飛掉的點)，將其視為無效
+            // 注意：這裡要考慮幀數間隔，如果中間隔了很多幀，距離大是正常的
+            const frameGap = i - lastValidIdx;
+            if (dist > maxSpeedThreshold * frameGap) {
+              points[i].valid = false; 
+              continue; // 跳過此點，不更新 lastValidIdx
+            }
+          }
+          lastValidIdx = i;
+        }
+
+        // 3. 填補缺失值 (Linear Interpolation)
+        for (let i = 0; i < points.length; i++) {
+          if (!points[i].valid) {
+            // 尋找前一個有效點
+            let prevIdx = -1;
+            for (let j = i - 1; j >= 0; j--) {
+              if (points[j].valid) { prevIdx = j; break; }
+            }
+            
+            // 尋找後一個有效點
+            let nextIdx = -1;
+            for (let j = i + 1; j < points.length; j++) {
+              if (points[j].valid) { nextIdx = j; break; }
+            }
+
+            // 如果前後都有點，進行插值
+            if (prevIdx !== -1 && nextIdx !== -1) {
+              const ratio = (i - prevIdx) / (nextIdx - prevIdx);
+              points[i].x = points[prevIdx].x + (points[nextIdx].x - points[prevIdx].x) * ratio;
+              points[i].y = points[prevIdx].y + (points[nextIdx].y - points[prevIdx].y) * ratio;
+              points[i].z = points[prevIdx].z + (points[nextIdx].z - points[prevIdx].z) * ratio;
+              points[i].valid = true; // 標記為修復完成
+            }
+          }
+        }
+
+        // 4. 簡單平滑化 (Moving Average)
+        // 避免插值後的轉折太生硬
+        const smoothedPoints = JSON.parse(JSON.stringify(points));
+        for (let i = 0; i < points.length; i++) {
+          if (!points[i].valid) continue;
+          
+          let sumX = 0, sumY = 0, sumZ = 0, count = 0;
+          for (let j = -smoothWindow; j <= smoothWindow; j++) {
+            const idx = i + j;
+            if (idx >= 0 && idx < points.length && points[idx].valid) {
+              sumX += points[idx].x;
+              sumY += points[idx].y;
+              sumZ += points[idx].z;
+              count++;
+            }
+          }
+          smoothedPoints[i].x = sumX / count;
+          smoothedPoints[i].y = sumY / count;
+          smoothedPoints[i].z = sumZ / count;
+        }
+
+        // 5. 將處理好的數據寫回原始 data
+        for (let i = 0; i < data.length; i++) {
+          if (smoothedPoints[i].valid) {
+            if (!data[i].paddle) data[i].paddle = {};
+            data[i].paddle[joint] = {
+              x: smoothedPoints[i].x,
+              y: smoothedPoints[i].y,
+              z: smoothedPoints[i].z
+            };
+          }
+        }
+      });
+      console.log("球拍軌跡優化完成");
+    }
+
     // 載入 JSON 檔案
     function loadJSONFile(file) {
       return file.text().then(txt => {
           resetAllStates();
           trajectoryData = JSON.parse(txt.replace(/^\uFEFF/, '').replace(/:\s*NaN/g, ': null').trim());
           if (!Array.isArray(trajectoryData)) trajectoryData = [trajectoryData];
+
+          // === 新增這行：在處理其他邏輯前，先修復球拍軌跡 ===
+          smoothPaddleData(trajectoryData); 
+          // ==============================================
 
           window.hitFrames = [];
           trajectoryData.forEach((frame, index) => {
@@ -1874,19 +1994,8 @@
 
           const bone = boneMeshes[i];
           if (bone) {
-            const startVec = new THREE.Vector3(positions[0], positions[1], positions[2]);
-            const endVec = new THREE.Vector3(positions[3], positions[4], positions[5]);
-            const dir = new THREE.Vector3().subVectors(endVec, startVec);
-            const length = dir.length();
-            if (length > 1e-4) {
-              const midPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
-              bone.visible = true;
-              bone.position.copy(midPoint);
-              bone.scale.set(1, length, 1);
-              bone.quaternion.setFromUnitVectors(boneUpVector, dir.normalize());
-            } else {
-              bone.visible = false;
-            }
+            // 移除 3D 骨架顯示邏輯
+            bone.visible = false;
           }
         } else {
           lines[i].visible = false;
@@ -1896,7 +2005,8 @@
         }
       });
 
-      updateMannequin();
+      // 移除人體模型更新
+      // updateMannequin();
     }
     
     // 更新目前影格數據與顯示資訊

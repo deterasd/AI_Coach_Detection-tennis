@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     yolo_pose_model = YOLO('model/yolov8n-pose.pt')
     yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
-    paddle_model=YOLO('model/best-paddlekeypoint.pt')#0920新增球拍
+    paddle_model=YOLO('model/tennispaddle.pt')#0920新增球拍
 
     yolo_pose_model.model.to('cuda')
     yolo_tennis_ball_model.model.to('cuda')
