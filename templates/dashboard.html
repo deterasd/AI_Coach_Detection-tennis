@@ -953,7 +953,25 @@
         else if (step === 5) reportPage = 'step5_spatial_consistency.html';
         else if (step === 6) reportPage = 'step6_time_smoothness.html';
         
-        viewBtn.href = `${reportPage}?src=${encodeURIComponent(resultFile)}`;
+        if (step === 1) {
+            // 1. 獲取目前選中的資料夾名稱
+            const folder = document.getElementById('folder-select').value;
+            
+            // 2. 獲取檔名
+            const sideFileName = document.getElementById('file-side') ? document.getElementById('file-side').value : '';
+            const cam45FileName = document.getElementById('file-45') ? document.getElementById('file-45').value : '';
+            
+            // 3. 組合完整的後端存取路徑 (格式: /data/資料夾名/檔名)
+            // 注意：這裡假設後端的資料路由是 /data/<path:filename>
+            const sidePath = (folder && sideFileName) ? `/data/${folder}/${sideFileName}` : '';
+            const cam45Path = (folder && cam45FileName) ? `/data/${folder}/${cam45FileName}` : '';
+
+            // 4. 將完整路徑傳遞給 Step 1 頁面
+            viewBtn.href = `${reportPage}?src=${encodeURIComponent(resultFile)}&json_2d_side=${encodeURIComponent(sidePath)}&json_2d_45=${encodeURIComponent(cam45Path)}`;
+        }
+        else {
+            viewBtn.href = `${reportPage}?src=${encodeURIComponent(resultFile)}`;
+        }
         viewBtn.style.display = 'inline-flex';
 
         // Store result for download

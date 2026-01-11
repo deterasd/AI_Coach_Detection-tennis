@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>step1. 3D 重建誤差驗證儀表板</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
 
@@ -99,7 +100,6 @@
             display: none;
         }
 
-        /* New Styles for Comprehensive View */
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -607,12 +607,9 @@
         </div>
     </header>
 
-    <!-- Summary Stats -->
     <div id="summaryStats" class="summary-grid">
-        <!-- Injected by JS -->
-    </div>
+        </div>
 
-    <!-- Composite Score -->
     <div id="compositeScoreCard" class="score-card" style="display:none;">
         <div class="score-main">
             <div class="score-label">綜合評分</div>
@@ -639,8 +636,7 @@
 
     <h2 class="section-title">📊 視覺化圖表分析</h2>
     <div class="grid" id="dashboardGrid">
-        <!-- Cards will be injected here by JS -->
-    </div>
+        </div>
 
     <h2 class="section-title">📋 詳細數據分析</h2>
     
@@ -688,7 +684,6 @@
 
     <h3 style="margin-bottom: 16px; color: var(--text-sub);">嚴重異常列表 (Severe Anomalies)</h3>
     
-    <!-- Filter Controls -->
     <div class="control-group">
         <div class="control-item">
             <label class="control-label">部位:</label>
@@ -727,6 +722,38 @@
             </thead>
             <tbody></tbody>
         </table>
+    </div>
+
+
+    <h2 class="section-title">📈 2D Keypoint Confidence 走勢圖</h2>
+
+    <div class="data-table-container" style="margin-bottom: 18px;">
+        <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="min-width:180px;">
+                <label style="margin-bottom: 6px; color: var(--text-sub); font-size: 0.9rem;">檢視相機 (Camera)</label>
+                <select id="conf-camera" class="styled-select">
+                    <option value="all">雙機比較 (Both)</option>
+                    <option value="side">Side Camera</option>
+                    <option value="45">45° Camera</option>
+                </select>
+            </div>
+
+            <div style="min-width:260px;">
+                <label style="margin-bottom: 6px; color: var(--text-sub); font-size: 0.9rem;">關鍵點 (Keypoint)</label>
+                <select id="conf-keypoint" class="styled-select" style="width:260px;">
+                    </select>
+            </div>
+            
+            <div style="color: var(--text-sub); font-size: 0.85rem; margin-bottom: 8px; margin-left: auto;">
+                * 資料來源：後端預處理 (Backend Pre-processed)
+            </div>
+        </div>
+    </div>
+
+    <div class="data-table-container">
+        <div class="chart-container" style="height: 360px;">
+            <canvas id="confTrendChart"></canvas>
+        </div>
     </div>
 
 </div>
@@ -1799,6 +1826,159 @@
                     }
                 });
             }
+        }
+
+        // ===================== 2D Confidence Trend (Backend Integration) =====================
+        // ===================== 2D Confidence Trend (Backend Integration) =====================
+    if (data.confidence_trends) {
+        const trends = data.confidence_trends;
+        const ctx = document.getElementById('confTrendChart').getContext('2d');
+        
+        // 取得 DOM 元素
+        let selectKeypoint = document.getElementById('conf-keypoint');
+        let selectCamera = document.getElementById('conf-camera');
+        
+        // 1. 填充部位下拉選單 (如果尚未填充)
+        if (selectKeypoint.options.length === 0) {
+            // 合併 Side 和 45 的 key，確保即使某邊沒資料也能選
+            const keysSide = Object.keys(trends.side || {});
+            const keys45 = Object.keys(trends.camera_45 || {});
+            const allKeys = [...new Set([...keysSide, ...keys45])].sort();
+
+            selectKeypoint.innerHTML = ''; 
+            allKeys.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = k;
+                selectKeypoint.appendChild(opt);
+            });
+            
+            // 優先預設選取 'nose'
+            if (allKeys.includes('nose')) selectKeypoint.value = 'nose';
+            else if (allKeys.length > 0) selectKeypoint.value = allKeys[0];
+        }
+
+        // 定義繪圖變數
+        if (window.confChartInstance) {
+            window.confChartInstance.destroy();
+        }
+
+        const updateChart = () => {
+            // [修正重點] 必須重新抓取當前 DOM 元素的 value
+            const kp = document.getElementById('conf-keypoint').value;
+            const viewCam = document.getElementById('conf-camera').value;
+            const frames = trends.frames;
+            
+            if (!kp || !frames || frames.length === 0) return;
+
+            const datasets = [];
+            
+            // Side Camera 數據 (藍色)
+            if (viewCam === 'side' || viewCam === 'all') {
+                datasets.push({
+                    label: 'Side Camera',
+                    data: trends.side[kp] || [],
+                    borderColor: '#667eea', 
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0, 
+                    pointHoverRadius: 4,
+                    tension: 0.2,
+                    spanGaps: true // [優化] 允許跨越斷掉的 frame 連線
+                });
+            }
+            
+            // 45 Camera 數據 (粉色)
+            if (viewCam === '45' || viewCam === 'all') {
+                datasets.push({
+                    label: '45° Camera',
+                    data: trends.camera_45[kp] || [], // 注意後端 key 是 camera_45
+                    borderColor: '#f093fb', 
+                    backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.2,
+                    spanGaps: true // [優化] 允許跨越斷掉的 frame 連線
+                });
+            }
+
+            if (window.confChartInstance) {
+                window.confChartInstance.destroy();
+            }
+
+            window.confChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: frames,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Frame (偵數)' },
+                            ticks: { maxTicksLimit: 12 }
+                        },
+                        y: { 
+                            min: 0, 
+                            max: 1.05, 
+                            title: { display: true, text: 'Confidence (0~1)' } 
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: 0.8,
+                                    yMax: 0.8,
+                                    borderColor: 'rgba(52, 211, 153, 0.8)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 4],
+                                    label: { 
+                                        content: '優良閾值 (0.8)', 
+                                        enabled: true, 
+                                        position: 'start',
+                                        color: '#34d399',
+                                        font: { size: 10 }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // [修正重點] 移除舊監聽器並綁定新的，確保變數參照正確
+        // 使用 replaceChild 方法來清除所有舊的 event listeners
+        const oldKpParams = selectKeypoint;
+        const newKpParams = oldKpParams.cloneNode(true);
+        oldKpParams.parentNode.replaceChild(newKpParams, oldKpParams);
+        
+        const oldCamParams = selectCamera;
+        const newCamParams = oldCamParams.cloneNode(true);
+        oldCamParams.parentNode.replaceChild(newCamParams, oldCamParams);
+
+        // 綁定新事件
+        newKpParams.addEventListener('change', updateChart);
+        newCamParams.addEventListener('change', updateChart);
+        
+        // 初始繪製
+        updateChart();
+    
+        } else {
+            // 如果 JSON 中沒有 confidence_trends 資料的備用顯示
+            const container = document.getElementById('confTrendChart').parentElement;
+            container.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%; color:var(--text-sub);">尚未包含 Confidence 資料，請重新執行分析 (Re-run Step 1)。</div>';
         }
     }
 </script>

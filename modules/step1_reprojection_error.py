@@ -12,12 +12,14 @@ Step 1: 重投影誤差驗證分析
   7. 相機偏差分析
   8. 畸變參數驗證
   9. 相機內參合理性檢查
+  10. 2D Confidence 數值提取 (新增)
 """
 
 import numpy as np
 from datetime import datetime
 import sys
 import os
+import json  # 確保有這行
 from typing import Optional, Tuple
 
 # 修正路徑問題，確保能夠正確引入模組
@@ -40,21 +42,90 @@ from config import load_config, ValidationConfig
 
 
 # ========================================================
+# 新增: Confidence 提取函數
+# ========================================================
+def extract_confidence_series(json_path):
+    """
+    讀取原始 2D JSON，提取每個部位的 confidence 序列
+    - 人體 17 點（同層）
+    - tennis_ball（同層）
+    - paddle_*（巢狀）
+    """
+    try:
+        if not json_path or not isinstance(json_path, str):
+            return {"frames": [], "series": {}}
+
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if not isinstance(data, list) or not data:
+            return {"frames": [], "series": {}}
+
+        # 1) 建立 key 清單：人體點 + tennis_ball + paddle_*
+        all_keys = set()
+        ignore_keys = ['frame', 'ball', 'court', 'person']  # ✅ 不再忽略 tennis_ball / paddle
+
+        check_frames = data[:30] if len(data) > 30 else data
+        for frame in check_frames:
+            if not isinstance(frame, dict):
+                continue
+
+            # (A) 同層 key：人體17點 + tennis_ball
+            for k in frame.keys():
+                if k not in ignore_keys and k != "paddle":
+                    all_keys.add(k)
+
+            # (B) paddle 巢狀 key：top/right/bottom/left/center
+            paddle = frame.get("paddle")
+            if isinstance(paddle, dict):
+                for part in paddle.keys():
+                    all_keys.add(f"paddle_{part}")
+
+        # 初始化
+        series = {k: [] for k in sorted(all_keys)}
+        frames = []
+
+        # 2) 遍歷每一幀收集 conf
+        for frame in data:
+            if not isinstance(frame, dict):
+                continue
+
+            frames.append(frame.get("frame", len(frames)))
+
+            # (A) 同層：人體17點 + tennis_ball
+            for k in series.keys():
+                conf = None
+
+                if k.startswith("paddle_"):
+                    # (B) paddle 巢狀：paddle_top/right/...
+                    part = k.replace("paddle_", "", 1)
+                    paddle = frame.get("paddle", {})
+                    pv = paddle.get(part, {}) if isinstance(paddle, dict) else {}
+                    if isinstance(pv, dict):
+                        val = pv.get("conf")
+                        if val is not None:
+                            conf = round(float(val), 4)
+                else:
+                    # 同層點（含 tennis_ball）
+                    item = frame.get(k, {})
+                    if isinstance(item, dict):
+                        val = item.get("conf")
+                        if val is not None:
+                            conf = round(float(val), 4)
+
+                series[k].append(conf)
+
+        return {"frames": frames, "series": series}
+
+    except Exception as e:
+        print(f"Error extracting confidence from {json_path}: {e}")
+        return {"frames": [], "series": {}}
+
+# ========================================================
 # 投影相關函數
 # ========================================================
-
 def project_point(P: np.ndarray, X: np.ndarray, distortion: np.ndarray = None) -> np.ndarray:
-    """
-    使用投影矩陣 P 將 3D 齊次座標投影到 2D
-    
-    參數:
-        P: 投影矩陣 (3x4)
-        X: 3D 齊次座標 (4,)
-        distortion: 畸變參數 [k1, k2, p1, p2, k3] (可選)
-    
-    返回:
-        np.ndarray: 2D 投影座標 [x, y]，若投影失敗則返回 [nan, nan]
-    """
+    """使用投影矩陣 P 將 3D 齊次座標投影到 2D"""
     x = P @ X
     if abs(x[2]) < 1e-6:
         return np.array([np.nan, np.nan])
@@ -790,7 +861,12 @@ def validate_reprojection_analysis(
             "depth_z": float(z)
         })
     
-    # 列印報告
+    # [新增] 提取信心值數據
+    print(f"\n提取信心值數據 (Confidence Series)...")
+    conf_data_side = extract_confidence_series(json_2d_side_path)
+    conf_data_45 = extract_confidence_series(json_2d_45_path)
+     
+     # 列印報告
     print_analysis_report(
         error_data,
         analysis,
@@ -798,7 +874,6 @@ def validate_reprojection_analysis(
         depth_relationship=depth_relationship,
         temporal_stability=temporal_stability
     )
-    
     # 整合結果（確保所有數值都經過序列化處理）
     results = {
         "metadata": {
@@ -878,7 +953,14 @@ def validate_reprojection_analysis(
                                                detailed_anomalies.get('by_severity', {}).get('moderate', []) +
                                                detailed_anomalies.get('by_severity', {}).get('mild', []))
             ]
-        } if detailed_anomalies.get('total_count', 0) > 0 else {}
+        } if detailed_anomalies.get('total_count', 0) > 0 else {},
+        
+        # [新增] 將信心值數據加入輸出 JSON
+        "confidence_trends": {
+            "frames": conf_data_side.get("frames", []),
+            "side": conf_data_side.get("series", {}),
+            "camera_45": conf_data_45.get("series", {})
+        }
     }
     
     # 保存結果
@@ -923,9 +1005,9 @@ if __name__ == "__main__":
         config_path = sys.argv[5] if len(sys.argv) > 5 else None
     else:
         # 預設測試路徑
-        json_3d_path = "data/trajectory__old/0306_3__2(3D_trajectory_smoothed).json"
-        json_2d_side_path = "data/trajectory__old/0306_3__2_side(2D_trajectory_smoothed).json"
-        json_2d_45_path = "data/trajectory__old/0306_3__2_45(2D_trajectory_smoothed).json"
+        json_3d_path = "data/trajectory_v11x(new)/test1-v11x(new)__1_segment(3D_trajectory).json"
+        json_2d_45_path = "data/trajectory_v11x(new)/test1-v11x(new)__1_45_segment(2D_trajectory).json"
+        json_2d_side_path = "data/trajectory_v11x(new)/test1-v11x(new)__1_side_segment(2D_trajectory).json"
         output_json_path = None
         config_path = None
         print("提示: 可使用命令列參數:")

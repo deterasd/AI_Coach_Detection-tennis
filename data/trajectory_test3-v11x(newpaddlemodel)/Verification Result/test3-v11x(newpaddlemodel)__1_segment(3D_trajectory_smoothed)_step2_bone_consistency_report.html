@@ -1,0 +1,3263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step2. 骨架一致性驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* New Styles for Comprehensive View */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .file-upload-btn span {
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
+  "metadata": {
+    "analysis_time": "2026-01-11T19:21:33.837258",
+    "source_file": "data/trajectory_test3-v11x(newpaddlemodel)/test3-v11x(newpaddlemodel)__1_segment(3D_trajectory_smoothed).json",
+    "total_frames": 50,
+    "analysis_type": "Bone Consistency Analysis"
+  },
+  "overall_summary": {
+    "average_cv": 7.375493593210609,
+    "quality_level": "可接受",
+    "total_bones_analyzed": 16,
+    "total_spikes_detected": 0
+  },
+  "overall_quality": {
+    "average_cv": 7.375493593210609,
+    "quality_level": "可接受"
+  },
+  "bone_statistics": {
+    "頭部": {
+      "mean": 3.564181287532424,
+      "std": 0.3008080222207481,
+      "cv": 8.4397508979967,
+      "count": 50,
+      "mean_diff": 0.07542841480937298,
+      "max_diff": 0.8818431642490556,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.8731800848943837,
+        "p_value": 6.992841506142194e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 1,
+        "rate": 2.0,
+        "bounds": [
+          2.770793777980213,
+          4.370004944818879
+        ]
+      },
+      "outliers_zscore": {
+        "count": 1,
+        "rate": 2.0
+      },
+      "series_data": [
+        3.4032972118418945,
+        3.5951863891574876,
+        3.7525286294595768,
+        3.8484060150611037,
+        3.8830526189279384,
+        3.8693240040847776,
+        3.8249261726911605,
+        3.7678329239023336,
+        3.7255835606423195,
+        3.711209671259639,
+        3.7305746815718,
+        3.771123368371728,
+        3.825991172222872,
+        3.8737560670203415,
+        3.906535336399677,
+        3.9081743112802636,
+        3.866593698054168,
+        3.8051554761194053,
+        3.7138456061288236,
+        3.6042114679046486,
+        3.5093262896372024,
+        3.451719920750501,
+        3.3982483228909794,
+        3.3680741284307927,
+        3.3630051663276275,
+        3.3631378324772556,
+        3.36209925557511,
+        3.363186665798853,
+        3.368186677089566,
+        3.377431830910153,
+        3.3857540219674567,
+        3.3976471880058527,
+        3.407268062283415,
+        3.4214352970593263,
+        3.4401962109900857,
+        3.463352670220112,
+        3.478044535404577,
+        3.480279339403581,
+        3.4647387393502713,
+        3.421043990510659,
+        3.3568144916068254,
+        3.2860980856731103,
+        3.209639452531725,
+        3.13423344188502,
+        3.079924863211154,
+        3.07184355693656,
+        3.1608366064145743,
+        3.427399248384019,
+        3.9644734692719106,
+        4.846316633520966
+      ]
+    },
+    "脊柱": {
+      "mean": 30.014695463573005,
+      "std": 0.4062436339835466,
+      "cv": 1.353482444879641,
+      "count": 50,
+      "mean_diff": 0.10477109169573763,
+      "max_diff": 0.31867337692942854,
+      "quality_level": "優秀",
+      "shapiro_test": {
+        "statistic": 0.9465146523337232,
+        "p_value": 0.024580527459282586,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          28.625825615422492,
+          31.425180949601575
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        29.68599798351128,
+        29.595518400597076,
+        29.57454961792991,
+        29.599776042550435,
+        29.65570472223296,
+        29.73229826205931,
+        29.82298384406591,
+        29.923131929596696,
+        30.032245491285032,
+        30.144628936549516,
+        30.266487381664753,
+        30.383678648268926,
+        30.47781148848055,
+        30.55416924029737,
+        30.601218394438508,
+        30.605505575549024,
+        30.539058305159294,
+        30.430363956114896,
+        30.306075537175854,
+        30.181151254785373,
+        30.057221060082146,
+        29.93705739695772,
+        29.799407959575017,
+        29.672112493149104,
+        29.565398743244163,
+        29.464754920641866,
+        29.38351208376158,
+        29.33709097603886,
+        29.321595847633763,
+        29.341480855754178,
+        29.4128556897021,
+        29.545923923567035,
+        29.728980730703956,
+        29.941968799378078,
+        30.15505904058828,
+        30.347280293119486,
+        30.49645085827452,
+        30.605356016227823,
+        30.655915843228968,
+        30.633242418264548,
+        30.553704348390596,
+        30.425769231786596,
+        30.263140165602078,
+        30.099680722548555,
+        29.956936969287437,
+        29.85530639684518,
+        29.81671062458983,
+        29.865867429661883,
+        30.03198147540146,
+        30.350654852330887
+      ]
+    },
+    "肩寬": {
+      "mean": 17.288316388495083,
+      "std": 1.340646669547267,
+      "cv": 7.754639835486998,
+      "count": 50,
+      "mean_diff": 0.18305423705065224,
+      "max_diff": 0.4848961507388516,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.7967530629559345,
+        "p_value": 7.38641392632464e-07,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 4,
+        "rate": 8.0,
+        "bounds": [
+          14.784709768820667,
+          20.410034620469112
+        ]
+      },
+      "outliers_zscore": {
+        "count": 1,
+        "rate": 2.0
+      },
+      "series_data": [
+        18.52078869162235,
+        18.475950499808903,
+        18.420039278852478,
+        18.363069827928502,
+        18.314941622144808,
+        18.283730961537135,
+        18.274331513807727,
+        18.28750128011381,
+        18.29884486294514,
+        18.333895310708193,
+        18.375929762725722,
+        18.39229743344404,
+        18.366942561921892,
+        18.301102113819546,
+        18.203760137846924,
+        18.068332774793003,
+        17.889299558918978,
+        17.69414975041077,
+        17.50020571838815,
+        17.314011285499273,
+        17.141038620252964,
+        16.99659545175486,
+        16.897955197493435,
+        16.84303082005934,
+        16.81860727120532,
+        16.84249694338529,
+        16.892957051753967,
+        16.966844142437974,
+        17.059206184834785,
+        17.17749900531793,
+        17.31769434003764,
+        17.50512222255622,
+        17.75458443880126,
+        18.03925223098587,
+        18.29782461074911,
+        18.447921863075283,
+        18.45388828532323,
+        18.32715771875292,
+        18.067819820449976,
+        17.672438505313238,
+        17.21225704032026,
+        16.72736088958141,
+        16.24535530596707,
+        15.78268126501231,
+        15.328171236484422,
+        14.882539995697963,
+        14.441875019037075,
+        13.998201176600261,
+        13.540692880626574,
+        13.057624943648836
+      ]
+    },
+    "骨盆": {
+      "mean": 11.95331606917005,
+      "std": 0.5469392573056351,
+      "cv": 4.575627835327628,
+      "count": 50,
+      "mean_diff": 0.0888658748247097,
+      "max_diff": 0.3284629358283855,
+      "quality_level": "良好",
+      "shapiro_test": {
+        "statistic": 0.9476822017267407,
+        "p_value": 0.027421203319184653,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 1,
+        "rate": 2.0,
+        "bounds": [
+          10.417690950695292,
+          13.572098491132369
+        ]
+      },
+      "outliers_zscore": {
+        "count": 1,
+        "rate": 2.0
+      },
+      "series_data": [
+        13.031542281054097,
+        12.79878785083341,
+        12.619821594367917,
+        12.489768555963144,
+        12.403372323235871,
+        12.354911479152978,
+        12.338165341528782,
+        12.346426244997273,
+        12.35395959028309,
+        12.381122924268078,
+        12.419079322866795,
+        12.452184280153826,
+        12.476227408570754,
+        12.49074616252232,
+        12.499409819907964,
+        12.489197808880922,
+        12.452205089417413,
+        12.39188657653526,
+        12.30907428960757,
+        12.210358150140863,
+        12.09541960297991,
+        11.97171260267083,
+        11.84118075302449,
+        11.718907697237347,
+        11.60844066305478,
+        11.533492899045187,
+        11.49402728356031,
+        11.486219658441332,
+        11.507464098211694,
+        11.546095398813911,
+        11.597978150127334,
+        11.676952444961524,
+        11.786053439560897,
+        11.91164560955201,
+        12.027502378748467,
+        12.103749282570492,
+        12.120049284826127,
+        12.090235802726545,
+        12.0244944624657,
+        11.921749719576658,
+        11.816936280141396,
+        11.71801620953364,
+        11.631082300147245,
+        11.5473279829657,
+        11.43786223502134,
+        11.294134042054651,
+        11.108918020527362,
+        10.876919877496345,
+        10.59572555999966,
+        10.267262624171275
+      ]
+    },
+    "左上臂": {
+      "mean": 13.408124383253128,
+      "std": 0.8293125131639465,
+      "cv": 6.1851493129028965,
+      "count": 50,
+      "mean_diff": 0.13857532080662927,
+      "max_diff": 0.5389052856361793,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.8507765051433854,
+        "p_value": 1.6239393762068292e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 2,
+        "rate": 4.0,
+        "bounds": [
+          11.296735582273843,
+          15.441693878187063
+        ]
+      },
+      "outliers_zscore": {
+        "count": 1,
+        "rate": 2.0
+      },
+      "series_data": [
+        14.59375322415833,
+        14.382508861504846,
+        14.180182569090055,
+        13.988625102430282,
+        13.812756528973669,
+        13.654852869125381,
+        13.51128350890492,
+        13.372005839365324,
+        13.203834148904088,
+        13.003729443992171,
+        12.817766768748168,
+        12.681328875844585,
+        12.630696606895194,
+        12.663915909948981,
+        12.764881161316238,
+        12.856373131516435,
+        12.893988603566807,
+        12.920636072418072,
+        12.911845570601557,
+        12.87605123138304,
+        12.853433025613157,
+        12.850315582450682,
+        12.89797148277905,
+        12.983883939534433,
+        13.070421769510087,
+        13.115367750081068,
+        13.129089988600672,
+        13.076646631455375,
+        12.995401094869987,
+        12.874473356505542,
+        12.746940112088048,
+        12.63128117051016,
+        12.538359516247812,
+        12.495636173209958,
+        12.552126864938796,
+        12.674820426912218,
+        12.835625150594959,
+        13.028848785367012,
+        13.244608420743564,
+        13.484142686388699,
+        13.711805790297891,
+        13.912193846634917,
+        14.100848000418633,
+        14.271800065201907,
+        14.44374247846589,
+        14.628922028206096,
+        14.847114492683366,
+        15.127723592412995,
+        15.511376812804503,
+        16.050282098440682
+      ]
+    },
+    "左前臂": {
+      "mean": 14.22214025094116,
+      "std": 1.2805176823067486,
+      "cv": 9.003691847448977,
+      "count": 50,
+      "mean_diff": 0.34395442373035184,
+      "max_diff": 0.946685971197903,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9236955587066574,
+        "p_value": 0.0032154059379864036,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          9.669537693394993,
+          18.55677728179247
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        14.688370688377011,
+        13.891859826822365,
+        13.305196559740162,
+        12.925209496660802,
+        12.734034622157356,
+        12.699422779826579,
+        12.778157057711622,
+        12.921032558872202,
+        13.018176935923549,
+        12.996944406750881,
+        12.90893810007104,
+        12.793815991691826,
+        12.63547531652888,
+        12.497011678547716,
+        12.463447001713511,
+        12.599531222302895,
+        12.958395429999666,
+        13.537695369895278,
+        14.34854428173919,
+        15.295230252937094,
+        16.042201406254385,
+        16.578596855698358,
+        16.643947461984027,
+        16.384165156611253,
+        16.06446269401074,
+        15.5622061339653,
+        15.010558985762383,
+        14.624578539028732,
+        14.434775236331689,
+        14.422178184605007,
+        14.727118932000238,
+        15.369659295166162,
+        16.052589153831327,
+        16.546234724074203,
+        16.46762425595514,
+        16.076681146809126,
+        15.396445053846577,
+        14.64147538225581,
+        13.995634795310252,
+        13.441636721929545,
+        13.21612128495193,
+        13.284199569124485,
+        13.514631537963663,
+        13.863845603012035,
+        14.164765306800897,
+        14.363948028808997,
+        14.421332102826065,
+        14.306998640154154,
+        14.000262906704538,
+        13.491647873011402
+      ]
+    },
+    "左整臂": {
+      "mean": 22.879154593800287,
+      "std": 3.044307248650959,
+      "cv": 13.306030326294898,
+      "count": 50,
+      "mean_diff": 0.5083421739377745,
+      "max_diff": 1.3506048511319015,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.9425046270491663,
+        "p_value": 0.016945150676998855,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          13.938545597993556,
+          31.79764689385623
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        25.075242170838806,
+        23.724637319706904,
+        22.40173023899186,
+        21.15376866871542,
+        20.026087184735818,
+        19.05840936578963,
+        18.280851244511766,
+        17.71071521280311,
+        17.312445851602835,
+        17.174121923519778,
+        17.333388697177465,
+        17.694813555467903,
+        18.15552735407821,
+        18.66662512416923,
+        19.2566011415358,
+        19.849971615746885,
+        20.463021889017604,
+        21.198216721454408,
+        22.05261989506268,
+        22.945912099236658,
+        23.63067550339383,
+        24.151655800782216,
+        24.31341916464823,
+        24.212819884796296,
+        24.033372360622938,
+        23.606227012008148,
+        23.08742506387909,
+        22.638472929818285,
+        22.354326804592283,
+        22.205103912515675,
+        22.37096029743165,
+        22.889532447292734,
+        23.521764608912783,
+        24.137987533189275,
+        24.554597289548546,
+        24.896724305760074,
+        25.032325818955204,
+        25.108897820264033,
+        25.254239371521702,
+        25.458235075988338,
+        25.82687541384488,
+        26.299508570110525,
+        26.800237588735683,
+        27.234877163889827,
+        27.514995822777383,
+        27.582967365175854,
+        27.395371026750677,
+        26.927408100912306,
+        26.181221322268225,
+        25.20079703546512
+      ]
+    },
+    "右上臂": {
+      "mean": 13.977573713634579,
+      "std": 1.2714803607471112,
+      "cv": 9.096574175150526,
+      "count": 50,
+      "mean_diff": 0.1828424096936496,
+      "max_diff": 0.6666695156427362,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9337367644870403,
+        "p_value": 0.007674026087078551,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          9.866677851954766,
+          18.445595405063354
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        16.10779955875713,
+        16.015819549886125,
+        15.965077127433535,
+        15.934608859090963,
+        15.90566350003723,
+        15.861705941577563,
+        15.788460202246238,
+        15.674075378155099,
+        15.518535832603067,
+        15.248376052147915,
+        14.886810721714289,
+        14.534729257717032,
+        14.210684426172548,
+        13.959481586272267,
+        13.75447057797167,
+        13.580777050416321,
+        13.430871071596922,
+        13.283584748606355,
+        13.133011634001111,
+        12.963390347939216,
+        12.76567137689322,
+        12.551074495352129,
+        12.327782556157457,
+        12.12714112079469,
+        12.008472476739708,
+        11.980563616608732,
+        12.050274839823663,
+        12.176861564387922,
+        12.346114482526641,
+        12.557624958712909,
+        12.821750349960487,
+        13.067358701160277,
+        13.28594776016202,
+        13.440900352160744,
+        13.52782332341559,
+        13.540795138772936,
+        13.492000477883455,
+        13.410413612085602,
+        13.356057056102859,
+        13.39954884513466,
+        13.565222941730132,
+        13.831869564400288,
+        14.15422864903788,
+        14.489890378732573,
+        14.874573793758444,
+        15.231839478481689,
+        15.471172689955603,
+        15.497473461805871,
+        15.218486855145466,
+        14.55181733950273
+      ]
+    },
+    "右前臂": {
+      "mean": 12.367263044366577,
+      "std": 2.9650542773332815,
+      "cv": 23.97502395393697,
+      "count": 50,
+      "mean_diff": 0.7791661882301053,
+      "max_diff": 2.4088358523431985,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.9507734459738976,
+        "p_value": 0.036707819678892264,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 4,
+        "rate": 8.0,
+        "bounds": [
+          6.652770286415424,
+          18.72558741243158
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        10.993858203689872,
+        12.630840951257738,
+        14.495313796801991,
+        16.00065800448622,
+        16.988780782294096,
+        17.46475685118277,
+        17.49894425897498,
+        17.19098652976029,
+        16.687362758748186,
+        16.173530100081297,
+        15.845599596221044,
+        15.520158044667292,
+        15.17559032169028,
+        14.783463784509445,
+        14.278002184515032,
+        13.707326623893849,
+        13.21542540849534,
+        12.63191486263828,
+        12.093147195143578,
+        11.67838375382919,
+        11.399749968288074,
+        11.21789506334801,
+        11.123306273987058,
+        11.10968961210625,
+        11.167470590445973,
+        11.22278008438116,
+        11.359804478315073,
+        11.596242066322656,
+        11.935309188074381,
+        12.327230039751427,
+        12.70257028382235,
+        12.987292810823636,
+        13.089593289527802,
+        12.923049885405678,
+        12.375245545053096,
+        11.340231510426905,
+        9.771610361653476,
+        7.971578926937113,
+        6.217581123727499,
+        4.9506280818821935,
+        5.006618350559142,
+        6.542777236959028,
+        8.951613089302226,
+        11.355379925346657,
+        13.165050302585417,
+        13.95911740715699,
+        13.446895164502871,
+        11.600847954672227,
+        9.431207562153814,
+        11.06074202793
+      ]
+    },
+    "右整臂": {
+      "mean": 21.808802761930803,
+      "std": 2.5491462247214813,
+      "cv": 11.68861148660229,
+      "count": 50,
+      "mean_diff": 0.6636692727375335,
+      "max_diff": 2.5355299447948383,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.9345675802215065,
+        "p_value": 0.008261529361708993,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 2,
+        "rate": 4.0,
+        "bounds": [
+          15.971227988908673,
+          28.841744494899068
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        21.656447743368,
+        22.781168845510575,
+        23.954017797020214,
+        24.863955149058306,
+        25.386370156659705,
+        25.501594721394333,
+        25.248561760477042,
+        24.700180800462284,
+        24.035728474530156,
+        23.24487112051667,
+        22.462523662391657,
+        21.76787225008994,
+        21.162510819324876,
+        20.78986859631718,
+        20.59093626781649,
+        20.586163453078406,
+        20.72056618734441,
+        20.821080925668735,
+        20.894677020817657,
+        20.946907586218042,
+        20.957633467694762,
+        20.958938677040006,
+        20.94899886744781,
+        20.932949420674973,
+        20.98158555766089,
+        21.16273058391686,
+        21.51644195905808,
+        22.069802724781546,
+        22.775280606150567,
+        23.558746211258363,
+        24.341584587663338,
+        25.02123934655517,
+        25.479029931849475,
+        25.60358095492985,
+        25.278081966072207,
+        24.410643254807756,
+        22.9618661866661,
+        21.237919976121738,
+        19.501524693599396,
+        17.936284046438473,
+        16.731080833720643,
+        15.911610009429904,
+        15.729329386770985,
+        16.58665153372184,
+        18.029368408289415,
+        19.46996564182674,
+        20.517447274254014,
+        21.159552751214363,
+        22.009367977032657,
+        24.544897921827495
+      ]
+    },
+    "左大腿": {
+      "mean": 20.027977310130986,
+      "std": 0.43055500327506946,
+      "cv": 2.1497677803802824,
+      "count": 50,
+      "mean_diff": 0.11329291160828057,
+      "max_diff": 0.3530128154676966,
+      "quality_level": "良好",
+      "shapiro_test": {
+        "statistic": 0.950592369556864,
+        "p_value": 0.03608307977857923,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          18.8682018194546,
+          21.27038884702613
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        20.5471073309837,
+        20.61555757637445,
+        20.626910967064553,
+        20.585707304248082,
+        20.504022661561944,
+        20.39659458965698,
+        20.277169745908786,
+        20.155954524722745,
+        20.027072163771475,
+        19.899021315938313,
+        19.774875127079593,
+        19.653227992042225,
+        19.53407758895011,
+        19.431108346063162,
+        19.378270906767245,
+        19.402471112015107,
+        19.53995415281154,
+        19.769777701892078,
+        20.06403316978201,
+        20.411407785373243,
+        20.76442060084094,
+        20.930842115853856,
+        20.926361551611272,
+        20.78566977679801,
+        20.559192102174112,
+        20.28849107777628,
+        20.02199581346494,
+        19.76877003909454,
+        19.57274629633392,
+        19.444705720094856,
+        19.407433048616586,
+        19.441668846194183,
+        19.53086297678855,
+        19.66012227192268,
+        19.775488331843334,
+        19.80807538064643,
+        19.82359147144215,
+        19.83975859463783,
+        19.86202558772302,
+        19.88030177237353,
+        19.898513998672477,
+        19.90747502565838,
+        19.9257971845242,
+        19.95821820251297,
+        19.985363880460454,
+        20.0129477521251,
+        20.05426356302114,
+        20.132415086698373,
+        20.282663628917618,
+        20.55436174472029
+      ]
+    },
+    "左小腿": {
+      "mean": 20.258930998186695,
+      "std": 0.7528394872341064,
+      "cv": 3.716086931247707,
+      "count": 50,
+      "mean_diff": 0.10321475437094875,
+      "max_diff": 0.4467032158121462,
+      "quality_level": "良好",
+      "shapiro_test": {
+        "statistic": 0.9535082300480027,
+        "p_value": 0.04762398364535181,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          17.668183680144104,
+          22.850681403801794
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        21.260126466343735,
+        21.21138605984147,
+        21.18639783104911,
+        21.147692229233844,
+        21.087289518612913,
+        21.013344538101354,
+        20.939587172645762,
+        20.877427946506096,
+        20.813760298462633,
+        20.761842759409312,
+        20.700359167103343,
+        20.614616533275402,
+        20.49678449599105,
+        20.35812078870913,
+        20.21878041113394,
+        20.131464204813533,
+        20.09301730395876,
+        20.085153418217455,
+        20.09249978205788,
+        20.087049395653942,
+        20.08315334959371,
+        20.022171005580827,
+        19.87502854926952,
+        19.702480519141936,
+        19.506172219172477,
+        19.32293893373917,
+        19.18611323955235,
+        19.1024551436918,
+        19.078067878051677,
+        19.109089608523657,
+        19.146625345885333,
+        19.176706330546473,
+        19.214358509121062,
+        19.269938015385485,
+        19.352381311984136,
+        19.461605458295573,
+        19.581333595640338,
+        19.727247495298787,
+        19.88942686680535,
+        20.069520756302662,
+        20.264195591037094,
+        20.456152266779352,
+        20.638291074740273,
+        20.790783451846956,
+        20.917183694404848,
+        21.0210239746579,
+        21.120198162153773,
+        21.254231404313224,
+        21.492136310443108,
+        21.938839526255254
+      ]
+    },
+    "左整腿": {
+      "mean": 39.87732114818426,
+      "std": 1.063404901459829,
+      "cv": 2.666690918149223,
+      "count": 50,
+      "mean_diff": 0.15547757461902778,
+      "max_diff": 0.2777488318385082,
+      "quality_level": "良好",
+      "shapiro_test": {
+        "statistic": 0.9553393483802304,
+        "p_value": 0.05675096661209385,
+        "is_normal": true
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          36.807550046577475,
+          43.240160411503425
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        41.65641036235725,
+        41.69963703644092,
+        41.694321945347795,
+        41.616811978484414,
+        41.47633798561721,
+        41.297934989019346,
+        41.10932087888865,
+        40.93134916579982,
+        40.74562073942809,
+        40.56279448311568,
+        40.37051163786904,
+        40.161840789809396,
+        39.9359622336399,
+        39.71433927959514,
+        39.52261078848372,
+        39.39127307588072,
+        39.32395073644938,
+        39.32780371533373,
+        39.39652453879704,
+        39.500577938456956,
+        39.60063624152534,
+        39.643133293443306,
+        39.575333135241415,
+        39.42713085736919,
+        39.21070192477357,
+        38.941504837136534,
+        38.663756005298026,
+        38.41178079390485,
+        38.22421817746418,
+        38.11705372044916,
+        38.09733467242954,
+        38.14920440401089,
+        38.26410118583866,
+        38.43093617069261,
+        38.62566291629333,
+        38.82461703338269,
+        39.0256544370635,
+        39.247009959378104,
+        39.482101266634395,
+        39.719356727328915,
+        39.963623566383625,
+        40.20471717262272,
+        40.44437407090148,
+        40.66911699411022,
+        40.85536845306556,
+        40.98667003777726,
+        41.046828141291556,
+        41.02077674372527,
+        40.895605564958885,
+        40.661814605904105
+      ]
+    },
+    "右大腿": {
+      "mean": 20.661694283386122,
+      "std": 0.688066621872737,
+      "cv": 3.3301558547693983,
+      "count": 50,
+      "mean_diff": 0.12074881165111086,
+      "max_diff": 0.3869315190303979,
+      "quality_level": "良好",
+      "shapiro_test": {
+        "statistic": 0.9453616784473283,
+        "p_value": 0.0220743391458183,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          18.54988065582443,
+          22.466840943228796
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        20.848174573641167,
+        20.96391916861115,
+        21.01524741663754,
+        21.011466151017153,
+        20.96227266553245,
+        20.87762692089363,
+        20.767692228420096,
+        20.642838736198822,
+        20.525200460343523,
+        20.420120822088478,
+        20.337306586606793,
+        20.28273459806237,
+        20.250585400635174,
+        20.240773943552306,
+        20.255779165386148,
+        20.33689825997927,
+        20.52975352899982,
+        20.81543924280536,
+        21.168409736915866,
+        21.555341255946264,
+        21.910262885817595,
+        22.167935945494584,
+        22.211585995159954,
+        22.082423054983348,
+        21.85052632164321,
+        21.610961802617194,
+        21.355478604412195,
+        21.138608333739125,
+        21.00421672281137,
+        20.924325489083717,
+        20.943226760714147,
+        20.976852561346327,
+        20.979273173374512,
+        20.89649224554457,
+        20.72437331856726,
+        20.4629166044925,
+        20.175100786693196,
+        19.927527241036195,
+        19.75789494589815,
+        19.676178996876263,
+        19.658747623499117,
+        19.68664273581646,
+        19.743146862318504,
+        19.81067894996585,
+        19.870821688870837,
+        19.919200606155364,
+        19.952241838488966,
+        19.966620755903687,
+        19.95997623037314,
+        19.932894225335506
+      ]
+    },
+    "右小腿": {
+      "mean": 18.65378058700942,
+      "std": 1.1299900524762911,
+      "cv": 6.057699924181704,
+      "count": 50,
+      "mean_diff": 0.1914991289070403,
+      "max_diff": 0.4736241195766482,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.8782378874900516,
+        "p_value": 9.897214332770111e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          14.796952146235888,
+          22.473109616865393
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        19.88276364306199,
+        20.293303653138544,
+        20.593501897206192,
+        20.75194896093901,
+        20.77997738682845,
+        20.707715757919303,
+        20.5683338801206,
+        20.38807481011373,
+        20.17633002238498,
+        19.951306045588478,
+        19.723709252835807,
+        19.48460155362855,
+        19.232746008348876,
+        18.957050269683137,
+        18.663468008668737,
+        18.38361976986547,
+        18.159093063688566,
+        17.950003235164658,
+        17.70359475435315,
+        17.497553517276884,
+        17.345988162690055,
+        17.348228275533092,
+        17.52294259341914,
+        17.822830031550577,
+        18.234018337955316,
+        18.63936520262094,
+        19.027182351508806,
+        19.356136542694113,
+        19.589124748074344,
+        19.667791182654874,
+        19.596359171147657,
+        19.326906767110437,
+        18.895687239675308,
+        18.42206312009866,
+        17.98895302050054,
+        17.69096399442317,
+        17.51545724609928,
+        17.415207440392766,
+        17.383365657110254,
+        17.40903943586446,
+        17.495088294123683,
+        17.596726797459382,
+        17.685023157517936,
+        17.720250222613338,
+        17.734755083145366,
+        17.728060049519307,
+        17.704113495998932,
+        17.672340544456627,
+        17.648828133282507,
+        17.657537560415218
+      ]
+    },
+    "右整腿": {
+      "mean": 37.95749766112238,
+      "std": 1.7873859087417368,
+      "cv": 4.708913966613902,
+      "count": 50,
+      "mean_diff": 0.1688348974160408,
+      "max_diff": 0.46946108836446854,
+      "quality_level": "良好",
+      "shapiro_test": {
+        "statistic": 0.8436997989255841,
+        "p_value": 1.0491598567631012e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          32.51571154807324,
+          43.363667394734605
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        40.549742088405345,
+        40.982248380396484,
+        41.29321794718835,
+        41.45890536995226,
+        41.48460724838368,
+        41.390954658693786,
+        41.20422272801431,
+        40.94985815252626,
+        40.650413521550114,
+        40.33743269685585,
+        40.030189590981976,
+        39.71828219301433,
+        39.3884748572669,
+        39.01731123714567,
+        38.57479726973568,
+        38.105336181371214,
+        37.68504110774707,
+        37.33902207219994,
+        37.0725980717269,
+        36.92981831634104,
+        36.87261587646352,
+        36.85106822845828,
+        36.79762439274985,
+        36.72177731420518,
+        36.64555084755357,
+        36.59428571260166,
+        36.56174483299309,
+        36.528284611065466,
+        36.47859271170478,
+        36.40925195322992,
+        36.295963803914205,
+        36.163020084425106,
+        36.03237932829575,
+        35.953530942977864,
+        35.93466772115002,
+        35.99714616495941,
+        36.146899696490195,
+        36.35054512299938,
+        36.58016474989445,
+        36.82090310095616,
+        37.05701423838568,
+        37.261445479634986,
+        37.42678327003416,
+        37.530181201390846,
+        37.60140646983709,
+        37.640771031424194,
+        37.649553887884956,
+        37.632372986389875,
+        37.60052883610651,
+        37.57633476844589
+      ]
+    }
+  },
+  "symmetry_analysis": [
+    {
+      "pair_name": "上臂",
+      "left_mean_cm": 13.408124383253128,
+      "right_mean_cm": 13.977573713634579,
+      "difference_cm": 0.5694493303814507,
+      "difference_percent": 4.158735178974069,
+      "assessment": "[!] 可接受",
+      "left_cv": 6.1851493129028965,
+      "right_cv": 9.096574175150526
+    },
+    {
+      "pair_name": "前臂",
+      "left_mean_cm": 14.22214025094116,
+      "right_mean_cm": 12.367263044366577,
+      "difference_cm": 1.8548772065745833,
+      "difference_percent": 13.952003254634265,
+      "assessment": "[X] 不對稱 (右側不穩 CV:24.0%)",
+      "left_cv": 9.003691847448977,
+      "right_cv": 23.97502395393697
+    },
+    {
+      "pair_name": "整臂",
+      "left_mean_cm": 22.879154593800287,
+      "right_mean_cm": 21.808802761930803,
+      "difference_cm": 1.070351831869484,
+      "difference_percent": 4.790336794090298,
+      "assessment": "[!] 可接受",
+      "left_cv": 13.306030326294898,
+      "right_cv": 11.68861148660229
+    },
+    {
+      "pair_name": "大腿",
+      "left_mean_cm": 20.027977310130986,
+      "right_mean_cm": 20.661694283386122,
+      "difference_cm": 0.6337169732551367,
+      "difference_percent": 3.114878780963687,
+      "assessment": "[!] 可接受",
+      "left_cv": 2.1497677803802824,
+      "right_cv": 3.3301558547693983
+    },
+    {
+      "pair_name": "小腿",
+      "left_mean_cm": 20.258930998186695,
+      "right_mean_cm": 18.65378058700942,
+      "difference_cm": 1.6051504111772736,
+      "difference_percent": 8.250005439291638,
+      "assessment": "[X] 不對稱",
+      "left_cv": 3.716086931247707,
+      "right_cv": 6.057699924181704
+    },
+    {
+      "pair_name": "整腿",
+      "left_mean_cm": 39.87732114818426,
+      "right_mean_cm": 37.95749766112238,
+      "difference_cm": 1.9198234870618762,
+      "difference_percent": 4.933071127885313,
+      "assessment": "[!] 可接受",
+      "left_cv": 2.666690918149223,
+      "right_cv": 4.708913966613902
+    }
+  ],
+  "body_height_analysis": {
+    "sample_count": 50,
+    "mean_cm": 77.3094445045067,
+    "std_cm": 3.083613108894878,
+    "cv_percent": 3.988662871216363,
+    "min_cm": 73.50249299432748,
+    "max_cm": 82.11140857249339,
+    "max_mean_ratio": 1.0621135502753065,
+    "assessment": "[!] 身高比例尚可（有輕微 scaling 變化） | ⚠️ 警告：平均身高 (77.3cm) 超出正常範圍 (140.0-210.0cm)，請檢查相機標定或單位。",
+    "scale_warning": "⚠️ 警告：平均身高 (77.3cm) 超出正常範圍 (140.0-210.0cm)，請檢查相機標定或單位。"
+  },
+  "joint_depth_stability": {
+    "nose": {
+      "sample_count": 50,
+      "mean_z_cm": 171.79010599129987,
+      "std_z_cm": 4.7931298960634265,
+      "cv_percent": 2.7901082360972347,
+      "min_z_cm": 165.78270712222547,
+      "max_z_cm": 180.06732180051134
+    },
+    "left_shoulder": {
+      "sample_count": 50,
+      "mean_z_cm": 180.63079672191137,
+      "std_z_cm": 3.774667130163595,
+      "cv_percent": 2.0897140458140435,
+      "min_z_cm": 175.31303327983966,
+      "max_z_cm": 187.69845233412613
+    },
+    "right_shoulder": {
+      "sample_count": 50,
+      "mean_z_cm": 170.01313516544687,
+      "std_z_cm": 2.152993451952336,
+      "cv_percent": 1.2663688895903062,
+      "min_z_cm": 166.15394736687708,
+      "max_z_cm": 172.67034521043476
+    },
+    "left_hip": {
+      "sample_count": 50,
+      "mean_z_cm": 180.76734989236706,
+      "std_z_cm": 3.6273593210616832,
+      "cv_percent": 2.0066451841117847,
+      "min_z_cm": 175.24110813132225,
+      "max_z_cm": 189.30375538459342
+    },
+    "right_hip": {
+      "sample_count": 50,
+      "mean_z_cm": 173.41041230142218,
+      "std_z_cm": 2.4853449453822916,
+      "cv_percent": 1.4332155217198042,
+      "min_z_cm": 169.7705862613696,
+      "max_z_cm": 177.8211808281482
+    },
+    "left_wrist": {
+      "sample_count": 50,
+      "mean_z_cm": 173.97262339617035,
+      "std_z_cm": 7.424813356337865,
+      "cv_percent": 4.267805595728751,
+      "min_z_cm": 163.0070350325688,
+      "max_z_cm": 188.8645204730513
+    },
+    "right_wrist": {
+      "sample_count": 50,
+      "mean_z_cm": 158.50434521363806,
+      "std_z_cm": 6.131160469813667,
+      "cv_percent": 3.868134000711375,
+      "min_z_cm": 153.0493538293741,
+      "max_z_cm": 173.96060647299825
+    },
+    "left_ankle": {
+      "sample_count": 50,
+      "mean_z_cm": 183.39438178827652,
+      "std_z_cm": 2.2600523763455054,
+      "cv_percent": 1.2323454809835288,
+      "min_z_cm": 180.46284210803634,
+      "max_z_cm": 187.43892149683245
+    },
+    "right_ankle": {
+      "sample_count": 50,
+      "mean_z_cm": 171.88187835276776,
+      "std_z_cm": 1.522400591439201,
+      "cv_percent": 0.8857248978363205,
+      "min_z_cm": 169.0573705467088,
+      "max_z_cm": 174.63972942348033
+    }
+  },
+  "joint_angle_analysis": {
+    "left_elbow": {
+      "sample_count": 50,
+      "mean_angle_deg": 113.48571131003469,
+      "std_angle_deg": 18.75015054736633,
+      "min_angle_deg": 82.63091021608058,
+      "max_angle_deg": 152.08043260152715,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    },
+    "right_elbow": {
+      "sample_count": 50,
+      "mean_angle_deg": 117.5649225620831,
+      "std_angle_deg": 25.256000110274613,
+      "min_angle_deg": 78.82367239998182,
+      "max_angle_deg": 169.4306722848018,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    },
+    "left_knee": {
+      "sample_count": 50,
+      "mean_angle_deg": 165.28198283898263,
+      "std_angle_deg": 7.156697418981087,
+      "min_angle_deg": 146.2162598053337,
+      "max_angle_deg": 174.49563662765325,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    },
+    "right_knee": {
+      "sample_count": 50,
+      "mean_angle_deg": 156.33016323890826,
+      "std_angle_deg": 18.817084736079543,
+      "min_angle_deg": 127.06802497362787,
+      "max_angle_deg": 179.2754124820716,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    }
+  },
+  "bone_orientation_stability": {
+    "左上臂": {
+      "sample_count": 49,
+      "mean_angle_change_deg": 3.236227460480183,
+      "max_angle_change_deg": 7.226109011186535,
+      "std_angle_change_deg": 1.865709737365415
+    },
+    "右上臂": {
+      "sample_count": 49,
+      "mean_angle_change_deg": 3.857151330049172,
+      "max_angle_change_deg": 10.13260231164688,
+      "std_angle_change_deg": 2.8073713762702335
+    },
+    "左大腿": {
+      "sample_count": 49,
+      "mean_angle_change_deg": 1.6226576680920224,
+      "max_angle_change_deg": 4.8238249411837,
+      "std_angle_change_deg": 1.0115707447586875
+    },
+    "右大腿": {
+      "sample_count": 49,
+      "mean_angle_change_deg": 1.4507932713258234,
+      "max_angle_change_deg": 4.160429071952723,
+      "std_angle_change_deg": 1.1696694539922934
+    }
+  },
+  "spike_detection": {
+    "total_spikes": 0,
+    "top_10_spikes": []
+  },
+  "detailed_angle_anomalies": {}
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>骨架一致性驗證</span></h1>
+        <div class="upload-section">
+            <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Injected by JS -->
+    </div>
+
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+    
+    <!-- Height Warning Alert -->
+    <div id="heightWarning" style="display:none; margin-bottom: 24px; padding: 16px; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; color: #fbbf24; align-items: center; gap: 12px;">
+        <span style="font-size: 1.5rem;">⚠️</span>
+        <div>
+            <div style="font-weight: 700; font-size: 1.1rem;">身高比例異常警告</div>
+            <div id="heightWarningText" style="opacity: 0.9;"></div>
+        </div>
+    </div>
+
+    <!-- Tooltip Container (Moved to body level for better positioning) -->
+    <div id="mapTooltip" style="position: absolute; display: none; background: rgba(0,0,0,0.9); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; pointer-events: none; border: 1px solid rgba(255,255,255,0.2); z-index: 9999; white-space: nowrap;"></div>
+
+    <div class="grid" id="dashboardGrid">
+        <!-- Cards will be injected here by JS -->
+    </div>
+
+    <h2 class="section-title">📋 詳細數據分析</h2>
+    
+    <div class="two-col-grid">
+        <div>
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">各部位骨架長度統計 (Bone Statistics)</h3>
+            <div class="data-table-container">
+                <table id="boneTable">
+                    <thead>
+                        <tr>
+                            <th>部位</th>
+                            <th>平均長度 (cm)</th>
+                            <th>標準差長度 (Std)</th>
+                            <th>變異係數 (CV%)</th>
+                            <th>品質</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div>
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">左右對稱性分析 (Symmetry Analysis)</h3>
+            <div class="data-table-container">
+                <table id="symmetryTable">
+                    <thead>
+                        <tr>
+                            <th>部位對</th>
+                            <th>左側均值 (cm)</th>
+                            <th>右側均值 (cm)</th>
+                            <th>差異 %</th>
+                            <th>評估</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">檢測到的突波 (Top Spikes)</h3>
+            <div class="data-table-container">
+                <table id="spikesTable">
+                    <thead>
+                        <tr>
+                            <th>Frame</th>
+                            <th>Bone/Joint</th>
+                            <th>Value (cm)</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Chart.js Global Defaults for Premium Dark Theme
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    // Tooltip styling
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Pre-process JSON string to handle NaN/Infinity which are valid in Python but not in standard JSON
+                let jsonString = e.target.result;
+                jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('解析 JSON 失敗，請確認檔案格式正確。\n錯誤: ' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter or Offline Data
+    if (window.OFFLINE_DATA) {
+        renderDashboard(window.OFFLINE_DATA);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text(); // Get text first to handle NaN
+                })
+                .then(text => {
+                    // Pre-process JSON string to handle NaN/Infinity
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    alert('無法從 URL 載入 JSON 檔案: ' + src);
+                });
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params) {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusBadge(value, type) {
+        let status = 'neutral';
+        let text = value;
+        
+        if (type === 'cv') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        } else if (type === 'quality') {
+            if (value === '優秀' || value === 'Excellent' || value === '良好' || value === 'Good') { status = 'success'; }
+            else if (value === '可接受' || value === 'Acceptable') { status = 'warning'; }
+            else { status = 'danger'; }
+        } else if (type === 'diff') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        }
+        
+        return `<span class="status-badge status-${status}">${text}</span>`;
+    }
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">所有骨長/對稱檢查皆通過</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep2(data) {
+        if (!data || !data.overall_summary) return null;
+
+        // 如果後端已經計算了詳細的分數結構，直接使用後端的結果
+        if (data.overall_summary.quality_score && data.overall_summary.quality_score.deductions) {
+            const qs = data.overall_summary.quality_score;
+            const breakdown = qs.deductions.map(d => ({
+                label: d.reason.split('(')[0].trim(),
+                value: d.reason.match(/\((.*?)\)/) ? d.reason.match(/\((.*?)\)/)[1] : '',
+                detail: d.reason,
+                impact: d.points
+            }));
+            
+            return {
+                score: qs.score,
+                level: qs.level,
+                summary: breakdown.length > 0 
+                    ? `主要扣分項目: ${breakdown[0].detail}` 
+                    : '檢測結果優良，骨架一致性高。',
+                breakdown: breakdown
+            };
+        }
+
+        let workingScore = 100;
+        const breakdown = [];
+        const summary = data.overall_summary;
+        const bones = data.bone_statistics || {};
+        const symmetry = Array.isArray(data.symmetry_analysis) ? data.symmetry_analysis : [];
+        const spikesTotal = (data.spike_detection && data.spike_detection.total_spikes) || summary.total_spikes_detected || 0;
+        const heightWarning = data.body_height_analysis && data.body_height_analysis.scale_warning;
+
+        const register = (label, value, detail, penalty) => {
+            const safePenalty = penalty > 0 && Number.isFinite(penalty) ? penalty : 0;
+            if (safePenalty > 0) workingScore -= safePenalty;
+            breakdown.push({ label, value, detail, impact: safePenalty });
+        };
+
+        const avgCv = summary.average_cv || summary.average_cv_percent || 0;
+        const avgCvPenalty = avgCv > 4 ? clamp((avgCv - 4) * 2.2, 0, 22) : 0;
+        register('平均骨長 CV', `${avgCv.toFixed(2)}%`, '整體穩定度，建議小於 4%', avgCvPenalty);
+
+        let worstBone = null;
+        Object.keys(bones).forEach(key => {
+            const stat = bones[key];
+            if (!worstBone || stat.cv > worstBone.cv) {
+                worstBone = { name: key, cv: stat.cv };
+            }
+        });
+        if (worstBone) {
+            const worstPenalty = worstBone.cv > 8 ? clamp((worstBone.cv - 8) * 1.8, 0, 20) : 0;
+            register(`最高 CV 骨段 (${worstBone.name})`, `${worstBone.cv.toFixed(2)}%`, '單一骨段的離散程度 (建議 < 8%)', worstPenalty);
+        } else {
+            register('最高 CV 骨段', 'N/A', '缺少骨段統計資料', 0);
+        }
+
+        let worstSym = null;
+        symmetry.forEach(pair => {
+            if (!worstSym || pair.difference_percent > worstSym.difference_percent) {
+                worstSym = pair;
+            }
+        });
+        if (worstSym) {
+            const symPenalty = worstSym.difference_percent > 5 ? clamp((worstSym.difference_percent - 5) * 1.8, 0, 20) : 0;
+            register(`最差對稱組 (${worstSym.pair_name})`, `${worstSym.difference_percent.toFixed(2)}%`, '左右差異 (建議 ≦ 5%)', symPenalty);
+        } else {
+            register('對稱性', 'N/A', '未提供對稱分析', 0);
+        }
+
+        const spikePenalty = spikesTotal > 0 ? clamp(spikesTotal * 0.7, 0, 15) : 0;
+        register('突波檢測', `${spikesTotal} 次`, '突然拉長/縮短的次數 (0 次為佳)', spikePenalty);
+
+        if (heightWarning) {
+            register('身高尺規偏移', '警示', heightWarning, 5);
+        } else {
+            register('身高尺規偏移', '正常', '比例合理，未扣分', 0);
+        }
+
+        workingScore = clamp(workingScore, 0, 100);
+        const totalPenalty = breakdown.reduce((sum, item) => sum + item.impact, 0);
+        const leading = breakdown.reduce((max, item) => item.impact > max.impact ? item : max, breakdown[0] || { impact: 0 });
+        const summaryText = totalPenalty > 0 && leading
+            ? `主要扣分來自「${leading.label}」：${leading.value} 導致 -${leading.impact.toFixed(1)} 分`
+            : '骨長、對稱、身高校準皆維持在建議範圍。';
+
+        return {
+            score: workingScore,
+            level: describeScoreLevel(workingScore),
+            summary: summaryText,
+            breakdown
+        };
+    }
+
+    let charts = {}; // Store chart instances
+
+    function renderDashboard(data) {
+        // Clear existing charts to prevent memory leaks
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
+        dashboardGrid.innerHTML = ''; // Clear previous charts
+        
+        // --- 1. Populate Summary Stats ---
+        const statsContainer = document.getElementById('summaryStats');
+        const summary = data.overall_summary;
+        
+        // Height Warning Logic
+        if (data.body_height_analysis && data.body_height_analysis.scale_warning) {
+            const warningDiv = document.getElementById('heightWarning');
+            const warningText = document.getElementById('heightWarningText');
+            warningDiv.style.display = 'flex';
+            warningText.textContent = data.body_height_analysis.scale_warning;
+        }
+
+        // --- Body Map Coloring & Tooltip Logic ---
+        // Logic moved to the end of function to ensure DOM elements exist
+
+        
+        const summaryItems = [
+            { label: '平均變異係數 (CV)', value: `${summary.average_cv.toFixed(2)}%`, sub: '越低越穩定' },
+            { label: '整體品質', value: summary.quality_level, sub: `Analyzed ${summary.total_bones_analyzed} bones` },
+            { label: '檢測到的突波', value: summary.total_spikes_detected, sub: 'Sudden changes' },
+            { label: '身高估計', value: data.body_height_analysis ? `${data.body_height_analysis.mean_cm.toFixed(1)} cm` : 'N/A', sub: data.body_height_analysis ? `±${data.body_height_analysis.std_cm.toFixed(1)} cm` : '' }
+        ];
+
+        statsContainer.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+
+        renderCompositeScoreCard(calculateCompositeScoreStep2(data));
+
+
+        // --- 2. Populate Bone Statistics Table ---
+        const boneTableBody = document.querySelector('#boneTable tbody');
+        const boneStats = data.bone_statistics;
+        const boneNames = Object.keys(boneStats).sort((a, b) => boneStats[b].cv - boneStats[a].cv);
+        
+        boneTableBody.innerHTML = boneNames.map(name => {
+            const stat = boneStats[name];
+            return `
+                <tr>
+                    <td>${name}</td>
+                    <td>${stat.mean.toFixed(1)}</td>
+                    <td>${stat.std.toFixed(2)}</td>
+                    <td>${getStatusBadge(stat.cv, 'cv')}</td>
+                    <td>${getStatusBadge(stat.quality_level, 'quality')}</td>
+                </tr>
+            `;
+        }).join('');
+
+
+        // --- 3. Populate Symmetry Table ---
+        const symTableBody = document.querySelector('#symmetryTable tbody');
+        if (data.symmetry_analysis) {
+            const sortedSymmetry = [...data.symmetry_analysis].sort((a, b) => b.difference_percent - a.difference_percent);
+            symTableBody.innerHTML = sortedSymmetry.map(sym => `
+                <tr>
+                    <td>${sym.pair_name}</td>
+                    <td>${sym.left_mean_cm.toFixed(1)}</td>
+                    <td>${sym.right_mean_cm.toFixed(1)}</td>
+                    <td>${getStatusBadge(sym.difference_percent, 'diff')}</td>
+                    <td>${sym.assessment}</td>
+                </tr>
+            `).join('');
+        } else {
+            symTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub)">無對稱性分析數據</td></tr>';
+        }
+
+        // --- 4. Populate Spikes Table ---
+        const spikesTableBody = document.querySelector('#spikesTable tbody');
+        if (data.spike_detection && data.spike_detection.top_10_spikes) {
+            spikesTableBody.innerHTML = data.spike_detection.top_10_spikes.map(spike => `
+                <tr>
+                    <td>${spike.frame_prev} → ${spike.frame_curr}</td>
+                    <td>${spike.bone_zh || spike.bone || 'Unknown'}</td>
+                    <td>${spike.diff ? spike.diff.toFixed(2) : 'N/A'} cm</td>
+                    <td>突波 (Spike)</td>
+                </tr>
+            `).join('');
+        } else {
+            spikesTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-sub)">無突波數據</td></tr>';
+        }
+
+
+        // --- 5. Render Charts ---
+        const blocks = [
+            { 
+                id: 'chart_angles', 
+                title: '關節角度異常統計 (Joint Angles)', 
+                desc: '統計各關節角度超出合理範圍（如膝蓋過度反折）的比例。', 
+                criteria: '異常率應 < 1%，若過高表示骨架結構崩壞',
+                params: 'X軸: 關節名稱 | Y軸: 異常率 (%)' 
+            },
+            { 
+                id: 'chart1', 
+                title: '骨架長度變異係數 (CV%)', 
+                desc: '顯示各部位骨架長度的穩定性，CV 值越低代表該部位長度在時間軸上越穩定。', 
+                criteria: 'CV < 5% 優秀 | 5-10% 可接受 | > 10% 不穩定',
+                params: 'X軸: 部位名稱 | Y軸: CV (%)' 
+            },
+            { 
+                id: 'chart2', 
+                title: '骨架長度統計 (Mean & Std)', 
+                desc: '顯示各部位的平均長度(Bar)與標準差(Error Bar)。白色工字線代表標準差範圍 (Mean ± Std)。', 
+                criteria: '1. 標準差(Std) 建議 < 2.0 cm (穩定)；若 > 5.0 cm 則視為不穩定。\n2. 長度比例參考: 上臂≈前臂, 大腿>小腿, 脊柱≈30-40%身高。',
+                params: 'X軸: 部位名稱 | Y軸: 長度 (cm)' 
+            },
+            { 
+                id: 'chart3', 
+                title: '左右對稱性比較 (Symmetry)', 
+                desc: '比較左右對稱部位（如手臂、腿部）的平均長度差異。', 
+                criteria: '差異應 < 5%，若差異過大可能表示重建有偏差',
+                params: 'X軸: 部位對 | Y軸: 長度 (cm)' 
+            },
+            {
+                id: 'chart_series',
+                title: '骨架長度時序變化 (Length Time Series)',
+                desc: '顯示特定部位在每一幀的長度變化，可觀察是否有異常跳動。',
+                criteria: '曲線應平滑，無劇烈突波',
+                params: 'X軸: Frame | Y軸: 長度 (cm)'
+            },
+            {
+                id: 'chart_cv_series',
+                title: '骨架穩定度時序分析 (Rolling CV Analysis)',
+                desc: '顯示特定部位在時間軸上的穩定度變化 (Rolling Window CV, Window=30)。',
+                criteria: 'CV 突升表示該時間段檢測不穩定',
+                params: 'X軸: Frame | Y軸: Rolling CV (%)'
+            }
+        ];
+
+        // Inject Body Map Card First (Custom HTML)
+        // 3D-style Perspective Coordinates (Approximate)
+        const bodyMapHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">人體部位健康度地圖 (Body Health Map - 3D View)</h3>
+                </div>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; align-items: center; height: 100%;">
+                    <div style="position: relative; width: 300px; height: 500px;">
+                        <!-- 3D-style SVG Stick Figure -->
+                        <svg viewBox="0 0 300 500" style="width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                            <defs>
+                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="2" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                                <linearGradient id="boneGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:rgba(255,255,255,0.1)" />
+                                    <stop offset="50%" style="stop-color:rgba(255,255,255,0.5)" />
+                                    <stop offset="100%" style="stop-color:rgba(255,255,255,0.1)" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Grid Floor for 3D effect -->
+                            <path d="M50,450 L250,450 L290,480 L10,480 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" />
+                            
+                            <!-- Bones (Lines) - Using Chinese data-name -->
+                            <g stroke-width="6" stroke-linecap="round" opacity="0.9">
+                                <!-- Head & Torso -->
+                                <line id="bone_head" x1="160" y1="35" x2="140" y2="35" stroke="#555" data-name="頭部" />
+                                <line id="visual_neck" x1="150" y1="60" x2="150" y2="90" stroke="#555" />
+                                <line id="bone_spine" x1="150" y1="90" x2="150" y2="220" stroke="#555" data-name="脊柱" />
+                                <line id="bone_torso" x1="110" y1="90" x2="190" y2="90" stroke="#555" data-name="肩寬" />
+                                <line id="bone_pelvis" x1="120" y1="220" x2="180" y2="220" stroke="#555" data-name="骨盆" />
+                                
+                                <!-- Right Arm (Back) -->
+                                <line id="bone_right_upper_arm" x1="110" y1="90" x2="80" y2="160" stroke="#444" data-name="右上臂" />
+                                <line id="bone_right_forearm" x1="80" y1="160" x2="60" y2="230" stroke="#444" data-name="右前臂" />
+                                
+                                <!-- Left Arm (Front) -->
+                                <line id="bone_left_upper_arm" x1="190" y1="90" x2="220" y2="160" stroke="#666" data-name="左上臂" />
+                                <line id="bone_left_forearm" x1="220" y1="160" x2="240" y2="230" stroke="#666" data-name="左前臂" />
+                                
+                                <!-- Right Leg (Back) -->
+                                <line id="bone_right_thigh" x1="120" y1="220" x2="100" y2="340" stroke="#444" data-name="右大腿" />
+                                <line id="bone_right_calf" x1="100" y1="340" x2="90" y2="450" stroke="#444" data-name="右小腿" />
+                                
+                                <!-- Left Leg (Front) -->
+                                <line id="bone_left_thigh" x1="180" y1="220" x2="200" y2="340" stroke="#666" data-name="左大腿" />
+                                <line id="bone_left_calf" x1="200" y1="340" x2="210" y2="450" stroke="#666" data-name="左小腿" />
+                            </g>
+
+                            <!-- Joints (Circles) -->
+                            <g stroke="#fff" stroke-width="2" fill="#222">
+                                <!-- Head Group -->
+                                <circle id="joint_head" cx="150" cy="40" r="25" class="joint-point" data-name="頭部(Head)" fill-opacity="0.3" stroke-dasharray="2,2" />
+                                <circle id="joint_nose" cx="150" cy="45" r="4" class="joint-point" data-name="鼻子(Nose)" />
+                                <circle id="joint_left_eye" cx="160" cy="35" r="3" class="joint-point" data-name="左眼(L.Eye)" />
+                                <circle id="joint_right_eye" cx="140" cy="35" r="3" class="joint-point" data-name="右眼(R.Eye)" />
+                                <circle id="joint_left_ear" cx="170" cy="40" r="3" class="joint-point" data-name="左耳(L.Ear)" />
+                                <circle id="joint_right_ear" cx="130" cy="40" r="3" class="joint-point" data-name="右耳(R.Ear)" />
+
+                                <!-- Upper Body -->
+                                <circle id="joint_left_shoulder" cx="190" cy="90" r="6" class="joint-point" data-name="左肩(L.Shoulder)" />
+                                <circle id="joint_right_shoulder" cx="110" cy="90" r="6" class="joint-point" data-name="右肩(R.Shoulder)" />
+                                <circle id="joint_left_elbow" cx="220" cy="160" r="6" class="joint-point" data-name="左肘(L.Elbow)" />
+                                <circle id="joint_right_elbow" cx="80" cy="160" r="6" class="joint-point" data-name="右肘(R.Elbow)" />
+                                <circle id="joint_left_wrist" cx="240" cy="230" r="5" class="joint-point" data-name="左腕(L.Wrist)" />
+                                <circle id="joint_right_wrist" cx="60" cy="230" r="5" class="joint-point" data-name="右腕(R.Wrist)" />
+
+                                <!-- Lower Body -->
+                                <circle id="joint_left_hip" cx="180" cy="220" r="7" class="joint-point" data-name="左髖(L.Hip)" />
+                                <circle id="joint_right_hip" cx="120" cy="220" r="7" class="joint-point" data-name="右髖(R.Hip)" />
+                                <circle id="joint_left_knee" cx="200" cy="340" r="7" class="joint-point" data-name="左膝(L.Knee)" />
+                                <circle id="joint_right_knee" cx="100" cy="340" r="7" class="joint-point" data-name="右膝(R.Knee)" />
+                                <circle id="joint_left_ankle" cx="210" cy="450" r="6" class="joint-point" data-name="左踝(L.Ankle)" />
+                                <circle id="joint_right_ankle" cx="90" cy="450" r="6" class="joint-point" data-name="右踝(R.Ankle)" />
+                            </g>
+                        </svg>
+                        
+                        <div style="position: absolute; bottom: 0; right: 0; font-size: 0.7rem; color: var(--text-sub); text-align: right;">
+                            <div>🟢 < 5%</div>
+                            <div>🟡 5-10%</div>
+                            <div>🔴 > 10%</div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div class="info-section" style="margin-top: 0; padding: 16px;">
+                            <div class="info-item" style="grid-template-columns: 1fr;">
+                                <div class="info-badge badge-desc" style="width: fit-content;">說明</div>
+                                <p class="info-text" style="font-size: 0.85rem;">
+                                    <strong>骨骼 (線):</strong> 長度 CV% (顏色代表穩定度)<br>
+                                    <strong>關節 (點):</strong> 深度 CV% (顏色代表深度穩定度)<br>
+                                    <span style="color: #fbbf24;">滑鼠懸停查看詳細數據</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        dashboardGrid.innerHTML += bodyMapHtml;
+
+        blocks.forEach(block => {
+            if (block.id === 'chart_angles') {
+                // Custom HTML for Joint Angles (Text based)
+                const angleStats = data.joint_angle_analysis || {};
+                const angleLabels = Object.keys(angleStats);
+                const getLabel = (k) => {
+                    const map = {'left_elbow': '左肘', 'right_elbow': '右肘', 'left_knee': '左膝', 'right_knee': '右膝'};
+                    return map[k] || k;
+                };
+
+                let angleHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 300px; padding-right: 8px;">
+                `;
+
+                if (angleLabels.length > 0) {
+                    angleLabels.forEach(key => {
+                        const stat = angleStats[key];
+                        const rate = stat.abnormal_rate;
+                        let color = '#4ade80';
+                        if (rate >= 1) color = '#fbbf24';
+                        if (rate >= 5) color = '#f87171';
+
+                        angleHtml += `
+                            <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border-left: 4px solid ${color};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 600; font-size: 1rem;">${getLabel(key)}</span>
+                                    <span style="font-family: 'JetBrains Mono'; color: ${color}; font-weight: 700;">${rate.toFixed(2)}% 異常</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; color: var(--text-sub);">
+                                    <div>Mean: <span style="color: var(--text-main);">${stat.mean_angle_deg.toFixed(1)}°</span></div>
+                                    <div>Range: <span style="color: var(--text-main);">${stat.min_angle_deg.toFixed(0)}° - ${stat.max_angle_deg.toFixed(0)}°</span></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    angleHtml += `<div style="text-align: center; color: var(--text-sub); padding: 20px;">無關節角度數據</div>`;
+                }
+
+                angleHtml += `
+                        </div>
+                        <div class="info-section" style="margin-top: 24px;">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-badge badge-criteria">判斷標準</div>
+                                <p class="info-text text-criteria">${block.criteria}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += angleHtml;
+
+            } else if (block.id === 'chart_series') {
+                // Custom HTML for Time Series Chart with Dropdown
+                const seriesHtml = `
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                            <select id="seriesBoneSelect" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 12px; border-radius: 8px; outline: none;">
+                                <!-- Options injected later -->
+                            </select>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="${block.id}"></canvas>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += seriesHtml;
+            } else if (block.id === 'chart_cv_series') {
+                // Custom HTML for Rolling CV Chart with Dropdown
+                const cvSeriesHtml = `
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                            <select id="cvSeriesBoneSelect" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 12px; border-radius: 8px; outline: none;">
+                                <!-- Options injected later -->
+                            </select>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="${block.id}"></canvas>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += cvSeriesHtml;
+            } else if (block.id === 'chart3') {
+                dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+                
+                // Add Body Height Text Block (No Chart) - Moved here
+                if (data.body_height_analysis) {
+                    const bha = data.body_height_analysis;
+                    const meanCm = bha.mean_cm.toFixed(1);
+                    const stdCm = bha.std_cm.toFixed(1);
+                    const minCm = bha.min_cm.toFixed(1);
+                    const maxCm = bha.max_cm.toFixed(1);
+                    
+                    const heightHtml = `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">身高估計分佈 (Body Height)</h3>
+                            </div>
+                            <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                                <div style="display: flex; align-items: baseline; gap: 12px;">
+                                    <span style="font-size: 2.5rem; font-weight: 700; color: var(--text-main);">${meanCm}</span>
+                                    <span style="font-size: 1rem; color: var(--text-sub);">cm</span>
+                                    <span style="font-size: 1.5rem; font-weight: 600; color: var(--accent-primary); margin-left: 12px;">${(bha.mean_cm * 10).toFixed(0)} mm</span>
+                                    <span style="font-size: 1rem; color: ${bha.cv_percent < 5 ? '#4ade80' : '#fbbf24'}; font-weight: 600;">(±${stdCm} cm)</span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-sub); background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px;">
+                                    💡 合理範圍參考: 成人身高通常介於 <strong>140 - 210 cm</strong> 之間。
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px;">
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">Min / Max</div>
+                                        <div style="font-family: 'JetBrains Mono';">${minCm} / ${maxCm} cm</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">CV Stability</div>
+                                        <div style="font-family: 'JetBrains Mono'; color: ${bha.cv_percent < 5 ? '#4ade80' : '#f87171'};">${bha.cv_percent.toFixed(2)}%</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">Assessment</div>
+                                        <div style="font-size: 0.9rem;">${bha.assessment.split('|')[0]}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    dashboardGrid.innerHTML += heightHtml;
+                }
+            } else {
+                dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+            }
+        });
+        
+
+
+        // --- Chart 0: Joint Angles (Updated) ---
+        // Replaced by custom HTML block above
+
+        // --- Chart Series: Time Series Chart Logic ---
+        if (data.bone_statistics) {
+            const boneStats = data.bone_statistics;
+            const boneNames = Object.keys(boneStats);
+            const select = document.getElementById('seriesBoneSelect');
+            
+            if (select) {
+                // Initial render with all datasets
+                const ctx = document.getElementById('chart_series').getContext('2d');
+                const datasets = boneNames.map((boneName, index) => {
+                    const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return null;
+                    return {
+                        label: boneName,
+                        data: stat.series_data.map((val, i) => ({ x: i, y: val })),
+                        borderColor: Chart.defaults.color, // Default color, will be changed
+                        hidden: true, // Initially hide all but the first few
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    };
+                }).filter(Boolean);
+                
+                // Assign unique colors and show first few
+                const colors = ['#6366f1', '#a855f7', '#34d399', '#fbbf24', '#f87171', '#4ade80', '#c084fc', '#818cf8', '#f472b6', '#22d3ee'];
+                datasets.forEach((ds, i) => {
+                    ds.borderColor = colors[i % colors.length];
+                    if (i < 5) ds.hidden = false; // Show first 5 by default
+                });
+
+
+                const seriesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Frame' },
+                                ticks: { precision: 0 }
+                            },
+                            y: { title: { display: true, text: 'Length (cm)' } }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+                charts['chart_series'] = seriesChart; // Store chart instance
+                
+                // Populate dropdown
+                select.innerHTML = '<option value="all">顯示前5 (Show Top 5)</option>' + boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+
+                // Event listener
+                select.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    seriesChart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== val);
+                        if (val === 'all') {
+                            // Re-apply default visibility
+                            const index = seriesChart.data.datasets.indexOf(ds);
+                            ds.hidden = index >= 5;
+                        }
+                    });
+                    seriesChart.update();
+                });
+            }
+        }
+
+        // --- Chart CV Series: Rolling CV Logic ---
+        if (data.bone_statistics) {
+            const boneStats = data.bone_statistics;
+            const boneNames = Object.keys(boneStats);
+            const selectCV = document.getElementById('cvSeriesBoneSelect');
+            
+            if (selectCV) {
+                const calculateRollingCV = (data, windowSize) => {
+                    let result = [];
+                    for (let i = 0; i < data.length; i++) {
+                        let start = Math.max(0, i - Math.floor(windowSize / 2));
+                        let end = Math.min(data.length, i + Math.floor(windowSize / 2) + 1);
+                        let windowData = data.slice(start, end);
+                        
+                        if (windowData.length < 2) {
+                            result.push(0); continue;
+                        }
+
+                        let mean = windowData.reduce((a, b) => a + b, 0) / windowData.length;
+                        let variance = windowData.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / windowData.length;
+                        let std = Math.sqrt(variance);
+                        let cv = mean !== 0 ? (std / mean) * 100 : 0;
+                        result.push(cv);
+                    }
+                    return result;
+                };
+
+                const ctx = document.getElementById('chart_cv_series').getContext('2d');
+                const datasets = boneNames.map((boneName, index) => {
+                     const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return null;
+                     const rollingCV = calculateRollingCV(stat.series_data, 30);
+                     return {
+                        label: `${boneName} Rolling CV`,
+                        data: rollingCV.map((val, i) => ({ x: i, y: val })),
+                        borderColor: Chart.defaults.color,
+                        hidden: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    };
+                }).filter(Boolean);
+
+                const colors = ['#6366f1', '#a855f7', '#34d399', '#fbbf24', '#f87171', '#4ade80', '#c084fc', '#818cf8', '#f472b6', '#22d3ee'];
+                datasets.forEach((ds, i) => {
+                    ds.borderColor = colors[i % colors.length];
+                    if (i < 5) ds.hidden = false;
+                });
+                
+                const cvChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Frame' },
+                                ticks: { precision: 0 }
+                            },
+                            y: { title: { display: true, text: 'CV (%)' }, beginAtZero: true }
+                        },
+                         plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+                charts['chart_cv_series'] = cvChart;
+
+                selectCV.innerHTML = '<option value="all">顯示前5 (Show Top 5)</option>' + boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                selectCV.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    cvChart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== `${val} Rolling CV`);
+                        if (val === 'all') {
+                            const index = cvChart.data.datasets.indexOf(ds);
+                            ds.hidden = index >= 5;
+                        }
+                    });
+                    cvChart.update();
+                });
+            }
+        }
+
+        // --- Chart 1: CV% ---
+        // Sort bones by CV desc
+        const sortedBones = boneNames.sort((a, b) => boneStats[b].cv - boneStats[a].cv);
+        
+        new Chart(document.getElementById('chart1'), {
+            type: 'bar',
+            data: {
+                labels: sortedBones,
+                datasets: [{
+                    label: '變異係數 (CV%)',
+                    data: sortedBones.map(b => boneStats[b].cv),
+                    backgroundColor: sortedBones.map(b => {
+                        const cv = boneStats[b].cv;
+                        if (cv < 5) return '#4ade80';
+                        if (cv < 10) return '#fbbf24';
+                        return '#f87171';
+                    }),
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'CV (%)' } } }
+            }
+        });
+
+        // --- Chart 2: Mean & Std ---
+        // Sort by Mean length desc
+        const sortedByLen = boneNames.sort((a, b) => boneStats[b].mean - boneStats[a].mean);
+        
+        // Custom Plugin for Error Bars
+        const errorBarPlugin = {
+            id: 'errorBar',
+            afterDatasetsDraw: (chart) => {
+                const { ctx, data, scales: { y } } = chart;
+                
+                chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                    const value = data.datasets[0].data[index];
+                    const std = data.datasets[0].error[index];
+                    
+                    if (std === undefined || std === null) return;
+
+                    const x = bar.x;
+                    const yMean = y.getPixelForValue(value);
+                    const yHigh = y.getPixelForValue(value + std);
+                    const yLow = y.getPixelForValue(value - std);
+                    
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // White-ish for visibility
+                    
+                    // Vertical line
+                    ctx.moveTo(x, yLow);
+                    ctx.lineTo(x, yHigh);
+                    
+                    // Top cap
+                    ctx.moveTo(x - 6, yHigh);
+                    ctx.lineTo(x + 6, yHigh);
+                    
+                    // Bottom cap
+                    ctx.moveTo(x - 6, yLow);
+                    ctx.lineTo(x + 6, yLow);
+                    
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        new Chart(document.getElementById('chart2'), {
+            type: 'bar',
+            data: {
+                labels: sortedByLen,
+                datasets: [{
+                    label: '平均長度 (cm)',
+                    data: sortedByLen.map(b => boneStats[b].mean), // Already in cm
+                    error: sortedByLen.map(b => boneStats[b].std), // Pass std here
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Length (cm)' } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const std = context.dataset.error[idx];
+                                return `Std: ±${std.toFixed(2)} cm`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [errorBarPlugin]
+        });
+
+        // --- Chart 3: Symmetry ---
+        if (data.symmetry_analysis) {
+            const symLabels = data.symmetry_analysis.map(s => s.pair_name);
+            const leftData = data.symmetry_analysis.map(s => s.left_mean_cm); // Already in cm
+            const rightData = data.symmetry_analysis.map(s => s.right_mean_cm); // Already in cm
+            
+            new Chart(document.getElementById('chart3'), {
+                type: 'bar',
+                data: {
+                    labels: symLabels,
+                    datasets: [
+                        {
+                            label: '左側 (Left)',
+                            data: leftData,
+                            backgroundColor: data.symmetry_analysis.map(s => (s.left_cv && s.left_cv > 10) ? '#f87171' : '#6366f1'), // Red if unstable
+                            borderRadius: 4
+                        },
+                        {
+                            label: '右側 (Right)',
+                            data: rightData,
+                            backgroundColor: data.symmetry_analysis.map(s => (s.right_cv && s.right_cv > 10) ? '#f87171' : '#a855f7'), // Red if unstable
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Length (cm)' } } },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const idx = context.dataIndex;
+                                    const item = data.symmetry_analysis[idx];
+                                    if (context.dataset.label.includes('Left')) {
+                                        return item.left_cv ? `CV: ${item.left_cv.toFixed(1)}%` : '';
+                                    } else {
+                                        return item.right_cv ? `CV: ${item.right_cv.toFixed(1)}%` : '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize Body Map Coloring
+        initBodyMapColoring(data);
+    }
+
+    // --- Body Map Coloring Logic ---
+    function initBodyMapColoring(data) {
+        if (data.bone_statistics) {
+            const bs = data.bone_statistics;
+            const ds = data.joint_depth_analysis || {}; // Joint depth stats
+            
+            // Helper to get color based on CV
+            const getCvColor = (cv) => {
+                if (cv < 5) return '#4ade80'; // Green
+                if (cv < 10) return '#fbbf24'; // Yellow
+                return '#f87171'; // Red
+            };
+
+            // 1. Color Bones (Lines)
+            const setBoneColor = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                const boneName = el.getAttribute('data-name'); // e.g. "脊柱"
+                const stat = bs[boneName];
+
+                if (stat) {
+                    const color = getCvColor(stat.cv);
+                    el.setAttribute('stroke', color);
+                    el.dataset.cv = stat.cv.toFixed(2);
+                    el.dataset.mean = stat.mean.toFixed(1); // Already in cm
+                }
+            };
+
+            // Apply to all lines starting with bone_
+            document.querySelectorAll('svg line[id^="bone_"]').forEach(el => {
+                setBoneColor(el.id);
+            });
+
+            // 2. Color Joints (Circles)
+            const setJointColor = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                // id is like "joint_left_shoulder"
+                // JSON keys are like "left_shoulder"
+                let jointKey = id.replace('joint_', '');
+                
+                // Map special keys if needed
+                if (jointKey === 'head') jointKey = 'nose'; // Use nose for head if available
+                
+                let stat = ds[jointKey];
+                
+                if (stat) {
+                    const color = getCvColor(stat.cv_percent);
+                    el.setAttribute('fill', color);
+                    el.setAttribute('stroke', color); // Make border same color
+                    el.dataset.cv = stat.cv_percent.toFixed(2);
+                    el.dataset.z_mean = stat.mean_z_cm.toFixed(1); // Already in cm
+                } else {
+                    // If no depth data, maybe use bone color or default
+                    el.setAttribute('fill', '#555');
+                    el.setAttribute('stroke', '#777');
+                }
+            };
+
+            // Apply to all circles starting with joint_
+            document.querySelectorAll('svg circle[id^="joint_"]').forEach(el => {
+                setJointColor(el.id);
+            });
+
+            // 3. Tooltip Event Listeners
+            const tooltip = document.getElementById('mapTooltip');
+
+            const showTooltip = (e) => {
+                const target = e.target;
+                let content = '';
+                
+                if (target.tagName === 'line' && target.id.startsWith('bone_')) {
+                    // Bone Tooltip
+                    const name = target.getAttribute('data-name') || target.id;
+                    const cv = target.dataset.cv;
+                    const mean = target.dataset.mean;
+                    if (cv) {
+                        content = `<strong>${name}</strong><br>Length: ${mean} cm<br>CV: ${cv}%`;
+                    }
+                } else if (target.tagName === 'circle' && target.classList.contains('joint-point')) {
+                    // Joint Tooltip
+                    const name = target.getAttribute('data-name') || target.id;
+                    const cv = target.dataset.cv;
+                    const z = target.dataset.z_mean;
+                    if (cv) {
+                        content = `<strong>${name}</strong><br>Depth (Z): ${z} cm<br>Stability (CV): ${cv}%`;
+                    } else {
+                        content = `<strong>${name}</strong><br>No depth data`;
+                    }
+                }
+
+                if (content) {
+                    tooltip.innerHTML = content;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.pageX + 15) + 'px';
+                    tooltip.style.top = (e.pageY + 15) + 'px';
+                }
+            };
+
+            const hideTooltip = () => {
+                tooltip.style.display = 'none';
+            };
+
+            // Attach events to all SVG elements
+            document.querySelectorAll('svg line, svg circle').forEach(el => {
+                el.addEventListener('mousemove', showTooltip);
+                el.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+    }
+</script>
+
+</body>
+</html>
