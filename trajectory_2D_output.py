@@ -4,23 +4,10 @@ import json
 import time
 import torch
 import gc
-import math
 from torch.cuda.amp import autocast
 from ultralytics import YOLO
 import threading
 import queue
-
-class NanToNullEncoder(json.JSONEncoder):
-    """自定義 JSON encoder，將 NaN 轉換為 null"""
-    def encode(self, obj):
-        if isinstance(obj, float):
-            if math.isnan(obj) or math.isinf(obj):
-                return 'null'
-        return super().encode(obj)
-    
-    def iterencode(self, obj, _one_shot=False):
-        for chunk in super().iterencode(obj, _one_shot):
-            yield chunk.replace('NaN', 'null').replace('Infinity', 'null').replace('-Infinity', 'null')
 
 def frame_reader(video_path, frame_queue, stop_event):
     """持續讀取影片 frame 並放入 queue"""
@@ -76,64 +63,83 @@ def process_single_frame(body_result, ball_result,paddle_result, keypoint_names,
     return frame_data
 """
 def process_single_frame(body_result, ball_result, paddle_result, keypoint_names, frame_number):
-    """處理單一 frame 的結果，回傳 frame_data 字典"""
+    """處理單一 frame 的結果，回傳 frame_data 字典 (包含信心值 conf)"""
+    
+    # 1. 初始化結構 (您原本改的地方)
     frame_data = {
         "frame": frame_number,
-        "tennis_ball": {"x": None, "y": None},
+        "tennis_ball": {"x": None, "y": None, "conf": None},
         "paddle": {
-            "top": {"x": None, "y": None},
-            "right": {"x": None, "y": None},
-            "bottom": {"x": None, "y": None},
-            "left": {"x": None, "y": None},
-            "center": {"x": None, "y": None}
+            "top": {"x": None, "y": None, "conf": None},
+            "right": {"x": None, "y": None, "conf": None},
+            "bottom": {"x": None, "y": None, "conf": None},
+            "left": {"x": None, "y": None, "conf": None},
+            "center": {"x": None, "y": None, "conf": None} # 中心點通常是計算值，這裡預設 None
         }
     }
+    
     for keypoint in keypoint_names:
-        frame_data[keypoint] = {"x": None, "y": None}
+        frame_data[keypoint] = {"x": None, "y": None, "conf": None}
+
+    # 2. 下面這段邏輯也要改！不然 conf 永遠會是 None -------------------
 
     # --- 身體關鍵點 ---
-    if body_result.keypoints is not None and len(body_result.keypoints.xy) > 0:
-        # 檢查是否有偵測到任何關鍵點
-        if body_result.keypoints.xy.shape[1] > 0:
-            keypoints = body_result.keypoints.xy[0].cpu().numpy()
-            # 確保關鍵點數量足夠 (YOLOv8 Pose 通常有 17 個關鍵點)
-            if len(keypoints) >= len(keypoint_names):
-                for idx, keypoint in enumerate(keypoint_names):
-                    if idx < len(keypoints):
-                        x, y = keypoints[idx][:2]
-                        coords = {
-                            "x": int(x) if x != 0.0 else None,
-                            "y": int(y) if y != 0.0 else None
-                        }
-                        frame_data[keypoint].update(coords)
+    if body_result.keypoints is not None:
+        keypoints = body_result.keypoints.xy[0].cpu().numpy()
+        # [新增] 取得信心值 (YOLOv8 pose模型通常包含 conf)
+        confs = body_result.keypoints.conf[0].cpu().numpy() if body_result.keypoints.conf is not None else None
+        
+        if len(keypoints) == len(keypoint_names):
+            for idx, keypoint in enumerate(keypoint_names):
+                x, y = keypoints[idx][:2]
+                # [新增] 讀取對應的 conf
+                conf = confs[idx] if confs is not None else 0.0
+                
+                # 若座標有效 (不為0)，則更新 x, y, conf
+                if x != 0.0 or y != 0.0:
+                    frame_data[keypoint].update({
+                        "x": int(x),
+                        "y": int(y),
+                        "conf": float(conf)  # 寫入信心值
+                    })
 
-    # --- 網球位置 (物件偵測) ---
+    # --- 網球位置 ---
     for box in ball_result.boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0])
-        if float(box.conf[0]) > 0.8:
+        confidence = float(box.conf[0])
+        
+        if confidence > 0.8: # 門檻值
             frame_data["tennis_ball"].update({
                 "x": (x1 + x2) // 2,
-                "y": (y1 + y2) // 2
+                "y": (y1 + y2) // 2,
+                "conf": confidence # [新增] 寫入信心值
             })
             break
 
-    # --- 球拍位置 (keypoint 偵測，四點) ---
-        # --- 球拍位置 (keypoint 偵測，四點) ---
+    # --- 球拍位置 ---
     if paddle_result.keypoints is not None and len(paddle_result.keypoints.xy) > 0:
         kpts = paddle_result.keypoints.xy[0].cpu().numpy()
-        if kpts.shape[0] >= 4:  # 確保至少有四個點
+        # [新增] 取得球拍信心值
+        p_confs = paddle_result.keypoints.conf[0].cpu().numpy() if paddle_result.keypoints.conf is not None else None
+
+        if kpts.shape[0] >= 4:
             top, right, bottom, left = kpts[:4]
-            frame_data["paddle"]["top"] = {"x": int(top[0]), "y": int(top[1])}
-            frame_data["paddle"]["right"] = {"x": int(right[0]), "y": int(right[1])}
-            frame_data["paddle"]["bottom"] = {"x": int(bottom[0]), "y": int(bottom[1])}
-            frame_data["paddle"]["left"] = {"x": int(left[0]), "y": int(left[1])}
-            # 計算球拍中心
+            
+            # [新增] 讀取四點信心值
+            c_top = float(p_confs[0]) if p_confs is not None else 0.0
+            c_right = float(p_confs[1]) if p_confs is not None else 0.0
+            c_bottom = float(p_confs[2]) if p_confs is not None else 0.0
+            c_left = float(p_confs[3]) if p_confs is not None else 0.0
+
+            frame_data["paddle"]["top"] = {"x": int(top[0]), "y": int(top[1]), "conf": c_top}
+            frame_data["paddle"]["right"] = {"x": int(right[0]), "y": int(right[1]), "conf": c_right}
+            frame_data["paddle"]["bottom"] = {"x": int(bottom[0]), "y": int(bottom[1]), "conf": c_bottom}
+            frame_data["paddle"]["left"] = {"x": int(left[0]), "y": int(left[1]), "conf": c_left}
+            
+            # 中心點計算 (不一定要 conf，這裡只算座標)
             cx = int((top[0] + right[0] + bottom[0] + left[0]) / 4)
             cy = int((top[1] + right[1] + bottom[1] + left[1]) / 4)
-            frame_data["paddle"]["center"] = {"x": cx, "y": cy}
-    else:
-        # Debug：確認沒偵測到 paddle 的情況
-        print(f"[DEBUG] frame {frame_number}: no paddle detected")
+            frame_data["paddle"]["center"].update({"x": cx, "y": cy}) 
 
     return frame_data
 def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_size=16):
@@ -164,7 +170,7 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
                 with torch.no_grad(), torch.amp.autocast('cuda'):
                     body_results = pose_model(batch_frames, verbose=False)
                     ball_results = ball_model(batch_frames, verbose=False)
-                    paddle_results = paddle_model(batch_frames, verbose=False, conf=0.1)
+                    paddle_results = paddle_model(batch_frames, verbose=False)
                 for idx, (body_result, ball_result,paddle_result) in enumerate(zip(body_results, ball_results,paddle_results)):
                     frame_data = process_single_frame(body_result, ball_result,paddle_result, keypoint_names, batch_indices[idx])
                     frame_json.append(frame_data)
@@ -183,7 +189,7 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
         with torch.no_grad(), torch.amp.autocast('cuda'):
             body_results = pose_model(batch_frames, verbose=False)
             ball_results = ball_model(batch_frames, verbose=False)
-            paddle_results = paddle_model(batch_frames, verbose=False, conf=0.1)
+            paddle_results = paddle_model(batch_frames, verbose=False)
         for idx, (body_result, ball_result, paddle_result) in enumerate(zip(body_results, ball_results,paddle_results)):
             frame_data = process_single_frame(body_result, ball_result,paddle_result, keypoint_names, batch_indices[idx])
             frame_json.append(frame_data)
@@ -206,8 +212,8 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
 def analyze_trajectory(pose_model, ball_model,paddle_model, video_path, batch_size):
     trajectory = process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_size=batch_size)
     output_path = video_path.replace('.mp4', '(2D_trajectory).json')
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(trajectory, f, indent=2, ensure_ascii=False, cls=NanToNullEncoder)
+    with open(output_path, 'w') as f:
+        json.dump(trajectory, f, indent=2)
     return output_path
 
 if __name__ == "__main__":
@@ -216,7 +222,7 @@ if __name__ == "__main__":
     model_load_start = time.time()
     pose_model = YOLO('model/yolov8n-pose.pt')
     ball_model = YOLO('model/tennisball_OD_v1.pt')
-    paddle_model = YOLO('model/tennispaddle.pt')  # 新增：球拍模型
+    paddle_model = YOLO('model/best-paddlekeypoint.pt')  # 新增：球拍模型
     # 將模型移至 GPU（若有 CUDA）
     if torch.cuda.is_available():
         pose_model.model.to('cuda')

@@ -3,13 +3,25 @@ import json
 import asyncio
 import cv2
 import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Form
 from pathlib import Path
 from typing import Optional
 
-from open_gopro import WiredGoPro, Params
+from open_gopro import WiredGoPro
+from open_gopro import constants as Params
 #from open_gopro import WiredGoPro
-app = FastAPI(title="GoPro Controller API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    yield
+    # Shutdown logic
+    global gopro_instance
+    if gopro_instance:
+        await gopro_instance.close()
+
+app = FastAPI(title="GoPro Controller API", lifespan=lifespan)
 
 # -----------------------------------------------------
 # Global Variables
@@ -113,14 +125,7 @@ async def download_latest_media(download_path: Path, custom_filename: str = None
 # -----------------------------------------------------
 # Application Lifecycle Events
 # -----------------------------------------------------
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Clean up GoPro connection when the application shuts down.
-    """
-    global gopro_instance
-    if gopro_instance:
-        await gopro_instance.close()
+# Lifespan managed at app initialization
 
 
 # -----------------------------------------------------

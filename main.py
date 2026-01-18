@@ -8,7 +8,8 @@ from typing import Optional
 import pygame
 import os
 import sys
-from googletrans import Translator
+from contextlib import asynccontextmanager
+from deep_translator import GoogleTranslator
 import aiohttp
 import uvicorn
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
@@ -34,43 +35,7 @@ P2 = np.array([
     [   -0.773895,   591.674918,   358.669757, -16209.393573],
     [    0.038272,    -0.010667,     0.999210,   -68.044380],
 ])
-"""
-P1 = np.array([
-    [  338.943814,     0.000000,   689.299962,     0.000000],
-    [    0.000000,   343.163221,   551.893014,     0.000000],
-    [    0.000000,     0.000000,     1.000000,     0.000000],
-])
-P2 = np.array([
-    [  234.305465,   221.589827,   888.881308, -63641.642298],
-    [ -312.141214,   760.908921,   381.007762, 519415.743557],
-    [   -0.485477,     0.205747,     0.849694,   768.163985],
-])
 
-P1 = np.array([
-    [  682.525930,     0.000000,   637.087464,     0.000000],
-    [    0.000000,   684.519186,   360.040032,     0.000000],
-    [    0.000000,     0.000000,     1.000000,     0.000000],
-])
-
-P2 = np.array([
-    [  572.714085,    27.508121,   700.861208, -159410.297486],
-    [  -27.187871,   663.411218,   332.613656, 51347.982959],
-    [   -0.102197,     0.053920,     0.993302,    73.630082],
-])
-"""
-"""
-P1 = np.array([
-    [ 2199.047061,     0.000000,  2764.837466,     0.000000],
-    [    0.000000,  2208.700298,  2437.493986,     0.000000],
-    [    0.000000,     0.000000,     1.000000,     0.000000],
-])
-
-P2 = np.array([
-    [ 1602.619612,   -35.094977,  3210.224680, -683196.019800],
-    [ -426.660513,  2184.000907,  2380.884968, 80418.748408],
-    [   -0.188707,    -0.001726,     0.982032,    43.029597],
-])
-"""
 # ------------------------------
 # Global Variables & Queue
 # ------------------------------
@@ -86,11 +51,38 @@ trajectory_queue: asyncio.Queue = asyncio.Queue()
 active_task_count = 0
 finished_task_count = 0
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    伺服器啟動時載入 YOLO 模型，並啟動軌跡處理工作者。
+    """
+    global yolo_pose_model, yolo_tennis_ball_model, paddle_model
+    print("正在載入 YOLO 模型...")
+    try:
+        yolo_pose_model = YOLO('model/yolov8n-pose.pt')
+        yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
+        paddle_model = YOLO('model/tennispaddle.pt')
+        print("YOLO 模型載入完成!")
+    except Exception as e:
+        print(f"模型載入失敗: {str(e)}")
+        # 即使載入失敗也繼續，或者根據需求拋出錯誤
+
+    # 啟動軌跡處理工作者
+    worker_task = asyncio.create_task(trajectory_worker())
+    
+    yield
+    
+    # 清理資源
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
 
 # ------------------------------
 # FastAPI App Initialization
 # ------------------------------
-app = FastAPI(title="GoPro Controller API")
+app = FastAPI(title="GoPro Controller API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 允許所有來源
@@ -280,31 +272,6 @@ async def trajectory_worker():
         finally:
             trajectory_queue.task_done()
             print("任務已結束，等待下一個任務...")
-
-# ------------------------------
-# Application Startup Event
-# ------------------------------
-@app.on_event("startup")
-async def startup_event():
-    """
-    伺服器啟動時載入 YOLO 模型，並啟動軌跡處理工作者。
-    """
-    global yolo_pose_model, yolo_tennis_ball_model,paddle_model
-    print("正在載入 YOLO 模型...")
-    try:
-        yolo_pose_model = YOLO('model/yolov8n-pose.pt')
-        yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
-        paddle_model = YOLO('model/tennispaddle.pt')  # 👈 新增球拍模型
-        #yolo_paddle_model = YOLO('model/best.pt')
-        #print("球拍模型載入完成:", yolo_paddle_model)
-
-        print("YOLO 模型載入完成!")
-    except Exception as e:
-        print(f"模型載入失敗: {str(e)}")
-        raise e
-
-    # 啟動軌跡處理工作者，確保任務依序處理
-    asyncio.create_task(trajectory_worker())
 
 # ------------------------------
 # API Endpoints
@@ -578,12 +545,14 @@ async def translate(text: str = Query(..., description="要翻譯的文字")):
     接收文字並將其翻譯成英文。
     """
     try:
-        translator = Translator()
-        result = await translator.translate(text, dest="en")
+        # 使用 deep_translator 替代有版本衝突的 googletrans
+        translated_text = await asyncio.to_thread(
+            lambda: GoogleTranslator(source='auto', target='en').translate(text)
+        )
         return {
             "status": "success",
             "original_text": text,
-            "translated_text": result.text
+            "translated_text": translated_text
         }
     except Exception as e:
         raise HTTPException(
