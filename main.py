@@ -8,7 +8,7 @@ from typing import Optional
 import pygame
 import os
 import sys
-from deep_translator import GoogleTranslator  # 已自動替換 googletrans，使用 deep_translator 來進行翻譯處理
+from googletrans import Translator
 import aiohttp
 import uvicorn
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
@@ -16,24 +16,61 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ultralytics import YOLO
 
+
 from trajector_processing import processing_trajectory
+print("processing_trajectory:", processing_trajectory)
 from trajectory_gpt_overall_feedback import find_and_format_feedback_jsons, conclude
 
 # ------------------------------
 # Calibration Matrices
 # ------------------------------
 P1 = np.array([
-    [  877.037008,     0.000000,   956.954783,     0.000000],
-    [    0.000000,   879.565925,   564.021385,     0.000000],
+    [  613.902729,     0.000000,   638.203915,     0.000000],
+    [    0.000000,   617.251817,   364.556522,     0.000000],
+    [    0.000000,     0.000000,     1.000000,     0.000000],
+    ])
+P2 = np.array([
+     [  616.071259,     7.588060,   617.077541, 154727.853092],
+    [   -0.773895,   591.674918,   358.669757, -16209.393573],
+    [    0.038272,    -0.010667,     0.999210,   -68.044380],
+])
+"""
+P1 = np.array([
+    [  338.943814,     0.000000,   689.299962,     0.000000],
+    [    0.000000,   343.163221,   551.893014,     0.000000],
+    [    0.000000,     0.000000,     1.000000,     0.000000],
+])
+P2 = np.array([
+    [  234.305465,   221.589827,   888.881308, -63641.642298],
+    [ -312.141214,   760.908921,   381.007762, 519415.743557],
+    [   -0.485477,     0.205747,     0.849694,   768.163985],
+])
+
+P1 = np.array([
+    [  682.525930,     0.000000,   637.087464,     0.000000],
+    [    0.000000,   684.519186,   360.040032,     0.000000],
     [    0.000000,     0.000000,     1.000000,     0.000000],
 ])
 
 P2 = np.array([
-    [  408.666240,    -7.066100,  1265.246736, -264697.889698],
-    [ -232.265915,   870.289013,   512.645370, 42861.701021],
-    [   -0.400331,    -0.014736,     0.916252,    76.895470],
+    [  572.714085,    27.508121,   700.861208, -159410.297486],
+    [  -27.187871,   663.411218,   332.613656, 51347.982959],
+    [   -0.102197,     0.053920,     0.993302,    73.630082],
+])
+"""
+"""
+P1 = np.array([
+    [ 2199.047061,     0.000000,  2764.837466,     0.000000],
+    [    0.000000,  2208.700298,  2437.493986,     0.000000],
+    [    0.000000,     0.000000,     1.000000,     0.000000],
 ])
 
+P2 = np.array([
+    [ 1602.619612,   -35.094977,  3210.224680, -683196.019800],
+    [ -426.660513,  2184.000907,  2380.884968, 80418.748408],
+    [   -0.188707,    -0.001726,     0.982032,    43.029597],
+])
+"""
 # ------------------------------
 # Global Variables & Queue
 # ------------------------------
@@ -42,6 +79,7 @@ current_user_name: Optional[str] = None
 
 yolo_pose_model: Optional[YOLO] = None
 yolo_tennis_ball_model: Optional[YOLO] = None
+paddle_model: Optional[YOLO] = None  # 👈 0923新增球拍模型
 
 # 全域隊列，用來儲存軌跡處理任務
 trajectory_queue: asyncio.Queue = asyncio.Queue()
@@ -147,13 +185,13 @@ async def trajectory_worker():
         active_task_count += 1  # 任務開始執行
         try:
             # 解包任務參數
-            P1_, P2_, pose_model, ball_model, side_video, video_45, knn_dataset = task_args
+            P1_, P2_, pose_model, ball_model, paddle_model, side_video, video_45, knn_dataset = task_args
             print("開始處理軌跡任務...")
             await asyncio.to_thread(
                 processing_trajectory,
-                P1_, P2_, pose_model, ball_model,
+                P1_, P2_, pose_model, ball_model,paddle_model,
                 side_video, video_45, knn_dataset
-            )
+            )# 👈0923 加入 paddle 模型
             print("軌跡處理完成，任務結束並釋放資源。")
         except Exception as e:
             print(f"處理軌跡任務時發生錯誤: {str(e)}")
@@ -218,22 +256,24 @@ async def wait_for_file_ready(file_path: str, timeout: int = 120, check_interval
 # Task Worker for Sequential Processing
 # ------------------------------
 async def trajectory_worker():
-    """
-    持續監聽 trajectory_queue，逐一處理軌跡任務。
-    每次取出一個任務後，執行 processing_trajectory，完成後自動結束該任務。
-    """
+    
+    #持續監聽 trajectory_queue，逐一處理軌跡任務。
+    #每次取出一個任務後，執行 processing_trajectory，完成後自動結束該任務。
+    
     while True:
         # 等待新的任務進入隊列
         task_args = await trajectory_queue.get()
         try:
             # 解包任務參數
-            P1_, P2_, pose_model, ball_model, side_video, video_45, knn_dataset = task_args
+            P1_, P2_, pose_model, ball_model,paddle_model, side_video, video_45, knn_dataset = task_args
             print("開始處理軌跡任務...")
+            print("即將執行 processing_trajectory")
             await asyncio.to_thread(
                 processing_trajectory,
-                P1_, P2_, pose_model, ball_model,
+                P1_, P2_, pose_model, ball_model,paddle_model,
                 side_video, video_45, knn_dataset
-            )
+            )# 👈0923 加入 paddle 模型
+            print("已執行 processing_trajectory")
             print("軌跡處理完成，任務結束並釋放資源。")
         except Exception as e:
             print(f"處理軌跡任務時發生錯誤: {str(e)}")
@@ -249,11 +289,15 @@ async def startup_event():
     """
     伺服器啟動時載入 YOLO 模型，並啟動軌跡處理工作者。
     """
-    global yolo_pose_model, yolo_tennis_ball_model
+    global yolo_pose_model, yolo_tennis_ball_model,paddle_model
     print("正在載入 YOLO 模型...")
     try:
         yolo_pose_model = YOLO('model/yolov8n-pose.pt')
         yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
+        paddle_model = YOLO('model/best-paddlekeypoint.pt')  # 👈 新增球拍模型
+        #yolo_paddle_model = YOLO('model/best.pt')
+        #print("球拍模型載入完成:", yolo_paddle_model)
+
         print("YOLO 模型載入完成!")
     except Exception as e:
         print(f"模型載入失敗: {str(e)}")
@@ -272,7 +316,8 @@ async def check_model_status():
     """
     return {
         "pose_model_loaded": yolo_pose_model is not None,
-        "tennis_ball_model_loaded": yolo_tennis_ball_model is not None
+        "tennis_ball_model_loaded": yolo_tennis_ball_model is not None,
+        "paddle_model_loaded": paddle_model is not None  # 👈 0923新增球拍模型
     }
 
 @app.get("/input_data")
@@ -471,10 +516,24 @@ async def download(background_tasks: BackgroundTasks):
                         video_files_ready = True
                         print("Both videos confirmed ready")
                         # 將處理任務加入隊列，等待工作者依序處理
+                        knn_dataset_path = 'knn_dataset.json'
+                        if not Path(knn_dataset_path).exists():
+                            print(f"knn_dataset.json not found at: {knn_dataset_path}")
+                            raise HTTPException(
+                                status_code=500,
+                                detail=f"knn_dataset.json not found at: {knn_dataset_path}"
+                            )
+                        with open(knn_dataset_path, 'r', encoding='utf-8') as f:
+                            knn_data = json.load(f)
+                        # 將處理任務加入隊列，等待工作者依序處理
                         await trajectory_queue.put(
-                            (P1, P2, yolo_pose_model, yolo_tennis_ball_model,
-                             side_video_path, video_45_path, 'knn_dataset.json')
+                            (P1, P2, yolo_pose_model, yolo_tennis_ball_model, paddle_model,
+                            side_video_path, video_45_path, knn_data)
                         )
+                        #await trajectory_queue.put(
+                         #   (P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle_model,
+                          #   side_video_path, video_45_path, 'knn_dataset.json') 
+                        #)# 👈 0923加入 paddle 模型
                     else:
                         if not side_video_ready:
                             print(f"Side video not fully written at: {side_video_path}")
@@ -519,7 +578,7 @@ async def translate(text: str = Query(..., description="要翻譯的文字")):
     接收文字並將其翻譯成英文。
     """
     try:
-        translator = GoogleTranslator()
+        translator = Translator()
         result = await translator.translate(text, dest="en")
         return {
             "status": "success",
@@ -538,4 +597,5 @@ async def translate(text: str = Query(..., description="要翻譯的文字")):
 # Main Entry Point
 # ------------------------------
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+   uvicorn.run(app, host="0.0.0.0", port=8000)
+

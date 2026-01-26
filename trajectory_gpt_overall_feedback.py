@@ -153,8 +153,8 @@ def generate_ai_feedback(my_motion, knn_feedback):
 # --- 最後結論函式 ---
 def conclude(ai_feedback):
     messages = [
-        {"role": "user", "content": INSTRUCTIONS + f"""
-
+        {"role": "system", "content": INSTRUCTIONS},
+        {"role": "user", "content": f"""
         Based on the previous {ai_feedback}, 
         You will see a KNN analysis feedback on different body parts of a tennis beginner during various swing attempts.
         For each body part listed below, conclude the issue in one sentence. Finally, provide one sentence of advice to help improve the beginner's swing.

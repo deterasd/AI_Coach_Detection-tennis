@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from open_gopro import WiredGoPro, Params
-
+#from open_gopro import WiredGoPro
 app = FastAPI(title="GoPro Controller API")
 
 # -----------------------------------------------------
@@ -157,9 +157,10 @@ async def take_photo():
     gopro = await get_gopro()
     try:
         response = await gopro.http_command.set_shutter(shutter=Params.Toggle.ENABLE)
+        #response = await gopro.http_command.set_shutter(shutter=True)
         await asyncio.sleep(0.5)  # Wait for the photo to be captured
         await gopro.http_command.set_shutter(shutter=Params.Toggle.DISABLE)
-
+        #await gopro.http_command.set_shutter(shutter=False)
         if response.ok:
             return {
                 "message": "Photo captured successfully",
@@ -184,14 +185,16 @@ async def take_photo():
 
 @app.post("/start_recording")
 async def start_recording():
-    """
-    Start video recording on the GoPro.
-    Note: Ensure the GoPro is manually set to video mode.
-    """
+    
+    #Start video recording on the GoPro.
+    #Note: Ensure the GoPro is manually set to video mode.
+    
     start_time = time.time()
     gopro = await get_gopro()
     try:
+        #await gopro.http_command.set_mode("Video")
         response = await gopro.http_command.set_shutter(shutter=Params.Toggle.ENABLE)
+        #response = await gopro.http_command.set_shutter(shutter=True)
         if response.ok:
             return {
                 "message": "Recording started",
@@ -213,7 +216,26 @@ async def start_recording():
                 "execution_time": f"{time.time() - start_time:.2f} seconds"
             }
         )
-
+""" 
+@app.post("/start_recording")
+async def start_recording():
+    start_time = time.time()
+    gopro = await get_gopro()
+    try:
+        await gopro.http_command.set_mode("Video")
+        await asyncio.sleep(1.5)  # 等待 GoPro 切換模式
+        status = await gopro.http_command.get_status()
+        if status.data.get("recording"):
+            return {"message": "Already recording"}
+        response = await gopro.http_command.set_shutter(shutter=True)
+        #response = await gopro.http_command.set_shutter(shutter=Params.Toggle.ENABLE)
+        if response.ok:
+            return {"message": "Recording started", "execution_time": f"{time.time() - start_time:.2f} seconds"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to start recording")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+"""
 @app.post("/stop_recording")
 async def stop_recording():
     """
@@ -223,6 +245,7 @@ async def stop_recording():
     gopro = await get_gopro()
     try:
         response = await gopro.http_command.set_shutter(shutter=Params.Toggle.DISABLE)
+        #response = await gopro.http_command.set_shutter(shutter=False)
         if response.ok:
             return {
                 "message": "Recording stopped successfully",

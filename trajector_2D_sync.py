@@ -54,9 +54,6 @@ def sync_trajectories(file1, file2):
         json.dump(synced_data1, f, indent=2)
     with open(file2, 'w') as f:
         json.dump(synced_data2, f, indent=2)
-    
-    # 返回同步後的檔案路徑
-    return file1, file2
 
     
 if __name__ == "__main__":

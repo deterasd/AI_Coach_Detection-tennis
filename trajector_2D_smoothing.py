@@ -35,10 +35,7 @@ def smooth_2D_trajectory(input_file, window_length=15, polyorder=3, tennis_windo
     first_valid = None
     last_valid = None
     for i, frame in enumerate(data):
-        # 檢查 tennis_ball 是否存在且不為 None
-        if frame.get('tennis_ball') is not None and \
-           frame['tennis_ball'].get('x') is not None and \
-           frame['tennis_ball'].get('y') is not None:
+        if frame['tennis_ball']['x'] is not None and frame['tennis_ball']['y'] is not None:
             if first_valid is None:
                 first_valid = i
             last_valid = i
@@ -47,20 +44,8 @@ def smooth_2D_trajectory(input_file, window_length=15, polyorder=3, tennis_windo
         valid_range_data = data[first_valid:last_valid + 1]
         frames = np.array([frame['frame'] for frame in valid_range_data])
         
-        # 安全地提取 tennis_ball 數據(處理 None 的情況)
-        tb_x = []
-        tb_y = []
-        for frame in valid_range_data:
-            ball = frame.get('tennis_ball')
-            if ball is not None and isinstance(ball, dict):
-                tb_x.append(ball.get('x', np.nan))
-                tb_y.append(ball.get('y', np.nan))
-            else:
-                tb_x.append(np.nan)
-                tb_y.append(np.nan)
-        
-        tb_x = np.array(tb_x, dtype=float)
-        tb_y = np.array(tb_y, dtype=float)
+        tb_x = np.array([frame['tennis_ball']['x'] for frame in valid_range_data], dtype=float)
+        tb_y = np.array([frame['tennis_ball']['y'] for frame in valid_range_data], dtype=float)
         
         valid_tb = ~np.isnan(tb_x)
         if np.any(~valid_tb):
@@ -80,10 +65,6 @@ def smooth_2D_trajectory(input_file, window_length=15, polyorder=3, tennis_windo
                     angle = calculate_angle(p1, p2, p3)
                 else:
                     angle = 0
-                
-                # 確保 tennis_ball 是字典(不是 None)
-                if data[i + first_valid]['tennis_ball'] is None:
-                    data[i + first_valid]['tennis_ball'] = {}
                 
                 data[i + first_valid]['tennis_ball'].update({
                     'x': float(tb_x_smooth[i]),
@@ -134,7 +115,81 @@ def smooth_2D_trajectory(input_file, window_length=15, polyorder=3, tennis_windo
                         'x': float(sx),
                         'y': float(sy)
                     })
-    
+            
+        """
+    paddle_x = [frame['paddle']['x'] for frame in data]
+    paddle_y = [frame['paddle']['y'] for frame in data]
+
+    valid_points = [i for i, (x, y) in enumerate(zip(paddle_x, paddle_y))
+                   if x is not None and y is not None]
+
+    if len(valid_points) > window_length:
+        x_array = np.array(paddle_x, dtype=object)
+        y_array = np.array(paddle_y, dtype=object)
+
+        # 插補缺失值
+        for i in range(len(x_array)):
+            if x_array[i] is None or y_array[i] is None:
+                valid_indices = np.where([x is not None and y is not None 
+                                          for x, y in zip(x_array, y_array)])[0]
+                if len(valid_indices) > 0:
+                    nearest_idx = valid_indices[np.argmin(np.abs(valid_indices - i))]
+                    x_array[i] = x_array[nearest_idx]
+                    y_array[i] = y_array[nearest_idx]
+
+        x_array = x_array.astype(float)
+        y_array = y_array.astype(float)
+
+        smooth_x = savgol_filter(x_array, window_length, polyorder)
+        smooth_y = savgol_filter(y_array, window_length, polyorder)
+
+        for i, (sx, sy) in enumerate(zip(smooth_x, smooth_y)):
+            if paddle_x[i] is not None and paddle_y[i] is not None:
+                data[i]['paddle'].update({
+                    'x': float(sx),
+                    'y': float(sy)
+                })
+        """
+
+        paddle_points = ["top", "bottom", "right", "left", "grip_top", "grip_bottom", "center"]
+
+        for point in paddle_points:
+            x_coords = [frame['paddle'][point]['x'] for frame in data]
+            y_coords = [frame['paddle'][point]['y'] for frame in data]
+
+            valid_points = [i for i, (x, y) in enumerate(zip(x_coords, y_coords))
+                        if x is not None and y is not None]
+
+            if len(valid_points) > window_length:
+                x_array = np.array(x_coords, dtype=object)
+                y_array = np.array(y_coords, dtype=object)
+
+                # 插補缺失值
+                for i in range(len(x_array)):
+                    if x_array[i] is None or y_array[i] is None:
+                        valid_indices = np.where([x is not None and y is not None 
+                                                for x, y in zip(x_array, y_array)])[0]
+                        if len(valid_indices) > 0:
+                            nearest_idx = valid_indices[np.argmin(np.abs(valid_indices - i))]
+                            x_array[i] = x_array[nearest_idx]
+                            y_array[i] = y_array[nearest_idx]
+
+                x_array = x_array.astype(float)
+                y_array = y_array.astype(float)
+
+                smooth_x = savgol_filter(x_array, window_length, polyorder)
+                smooth_y = savgol_filter(y_array, window_length, polyorder)
+
+                for i, (sx, sy) in enumerate(zip(smooth_x, smooth_y)):
+                    if x_coords[i] is not None and y_coords[i] is not None:
+                        data[i]['paddle'][point].update({
+                            'x': float(sx),
+                            'y': float(sy)
+                        })
+
+
+
+    # 輸出檔案
     output_file = input_file.replace(').json', '_smoothed).json')
     with open(output_file, 'w') as f:
         json.dump(data, f, indent=2)
