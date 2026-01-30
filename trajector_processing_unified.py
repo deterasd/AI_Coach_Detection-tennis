@@ -22,6 +22,24 @@ import queue
 from pathlib import Path
 from ultralytics import YOLO
 
+def load_segmentation_config():
+    """載入分割設定檔，如果不存在則回傳預設值"""
+    config_path = Path("segmentation_config.json")
+    default_config = {
+        "segmentation": {
+            "next_ball_offset": 1.2,
+            "exit_buffer_time": 0.2,
+            "preview_start_time": -0.2
+        }
+    }
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"⚠️ 讀取設定檔失敗: {e}，使用預設值")
+    return default_config
+
 class NanToNullEncoder(json.JSONEncoder):
     """自定義 JSON encoder，將 NaN 轉換為 null"""
     def encode(self, obj):
@@ -423,7 +441,7 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
                 if not self.q.full():
                     ret, frame = self.cap.read()
                     if not ret:
-                        self.stop()
+                        self.stopped = True
                         return
                     self.q.put(frame)
                 else:
@@ -437,9 +455,11 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
             
         def stop(self):
             self.stopped = True
-            if self.thread.is_alive():
-                self.thread.join()
-            self.cap.release()
+            # 只有在非當前執行緒時才進行 join，避免 "cannot join current thread" 錯誤
+            if self.thread.is_alive() and threading.current_thread() != self.thread:
+                self.thread.join(timeout=1.0)
+            if self.cap.isOpened():
+                self.cap.release()
 
     # 啟動多執行緒讀取
     # 注意：原本的 cap 已經被用來讀取屬性，這裡重新開啟一個用於讀取幀
@@ -846,7 +866,7 @@ def merge_quick_reentry_segments(ball_entries, ball_exits, gap_threshold=0.4, ma
 
 
 def segment_video_dynamic(video_path, ball_entries, ball_exits, output_folder, 
-                         name, angle, preview_start_time=-0.5):
+                         name, angle, preview_start_time=-0.2):
     """
     動態分割影片，根據球進入和出場時間點創建片段
     支援多球分割
@@ -867,6 +887,11 @@ def segment_video_dynamic(video_path, ball_entries, ball_exits, output_folder,
     original_exits_count = len(ball_exits)
     
     if len(ball_exits) < len(ball_entries):
+        # 載入動態設定
+        config = load_segmentation_config()
+        seg_cfg = config.get("segmentation", {})
+        next_ball_offset = seg_cfg.get("next_ball_offset", 1.2)
+        
         # 如果出場點不足，使用智能補充邏輯
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -875,11 +900,10 @@ def segment_video_dynamic(video_path, ball_entries, ball_exits, output_folder,
         cap.release()
         
         default_segment_duration = 2.0  # 預設片段長度2秒
-        next_ball_offset = 0.1  # 下一球進入前的間隔時間（縮短至0.1秒）
         
         # 從第一個缺失的出場點開始補充
         missing_exits = len(ball_entries) - len(ball_exits)
-        print(f"   ⚠️ 缺少 {missing_exits} 個出場時間，進行智能補充...")
+        print(f"   ⚠️ 缺少 {missing_exits} 個出場時間，進行智能補充 (offset={next_ball_offset}s)...")
         
         # 重新構建完整的出場時間列表
         complete_exits = []
@@ -944,12 +968,18 @@ def segment_video_dynamic(video_path, ball_entries, ball_exits, output_folder,
         else:
             print(f"      ✅ 球#{i+1} 片段時間正常")
     
+    # 載入動態設定（用於 preview 和 exit buffer）
+    config = load_segmentation_config()
+    seg_cfg = config.get("segmentation", {})
+    cfg_preview = seg_cfg.get("preview_start_time", -0.2)
+    cfg_buffer = seg_cfg.get("exit_buffer_time", 0.2)
+    
     for i, (entry_time, exit_time) in enumerate(zip(ball_entries, ball_exits)):
         segment_num = i + 1
         
         # 計算片段時間範圍
-        start_time = max(0, entry_time + preview_start_time)  # 提前0.5秒開始
-        end_time = exit_time + 0.1  # 延後0.1秒（縮短延遲時間）
+        start_time = max(0, entry_time + cfg_preview)
+        end_time = exit_time + cfg_buffer
         duration = end_time - start_time
         
         if duration < 0.5:  # 片段太短，跳過
@@ -1136,7 +1166,7 @@ def process_video_segmentation(video_side, video_45, yolo_tennis_ball_model, nam
             
             side_segments = segment_video_dynamic(
                 video_side, ball_entries, ball_exits, segments_folder,
-                name, "side", preview_start_time=-0.5
+                name, "side", preview_start_time=-0.2
             )
             
             segmentation_results["side_segments"] = side_segments
@@ -1172,7 +1202,7 @@ def process_video_segmentation(video_side, video_45, yolo_tennis_ball_model, nam
             
             deg45_segments = segment_video_dynamic(
                 video_45, ball_entries, ball_exits, segments_folder,
-                name, "45", preview_start_time=-0.5
+                name, "45", preview_start_time=-0.2
             )
             
             segmentation_results["deg45_segments"] = deg45_segments
@@ -1535,10 +1565,20 @@ def process_multiple_balls(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
             if success:
                 print(f"✅ 第 {ball_number} 顆球處理完成")
                 # 記錄第一顆球完成時間
-                if i == 0 and start_total_time is not None:
-                    first_ball_time = time.perf_counter() - start_total_time
-                    timing_results['第一顆球執行完成'] = first_ball_time
-                    print(f"⏱️ 第一顆球執行完成時間: {first_ball_time:.4f} 秒")
+                if i == 0:
+                    if start_total_time is not None:
+                        first_ball_time = time.perf_counter() - start_total_time
+                        timing_results['第一顆球執行完成'] = first_ball_time
+                        print(f"⏱️ 第一顆球執行完成時間: {first_ball_time:.4f} 秒")
+                    
+                    # === 新增：第一球完成時立即建立標記檔案，讓前端能即時通知 ===
+                    try:
+                        ready_file_path = os.path.join(ball_folder, "ready.txt")
+                        with open(ready_file_path, "w", encoding='utf-8') as f:
+                            f.write(f"First ball ready at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                        print(f"🚩 [第一球完成標記] 已建立：{ready_file_path}")
+                    except Exception as e:
+                        print(f"⚠️ 無法建立第一球標記檔案: {e}")
             else:
                 print(f"⚠️ 第 {ball_number} 顆球處理有部分問題，但已完成可執行的步驟")
                 # 不將 overall_success 設為 False，允許繼續處理下一顆球
@@ -1840,6 +1880,15 @@ def process_single_video_set(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
                 print("⚠️ 無法保存 GPT 反饋檔案，繼續處理...")
             
             timing_results['GPT 反饋生成'] = time.perf_counter() - start
+
+        # === 確保全部檔案都寫入後，建立完成標記檔案 ===
+        try:
+            ready_file_path = os.path.join(output_folder, "ready.txt")
+            with open(ready_file_path, "w", encoding='utf-8') as f:
+                f.write(f"Done at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"🚩 [完成標記] 已建立：{ready_file_path}")
+        except Exception as e:
+            print(f"⚠️ 無法建立標記檔案: {e}")
 
         return True
         

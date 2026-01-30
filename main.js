@@ -34,29 +34,46 @@ async function fetchFolderList() {
     }
 }
 
-async function fetchVideoList(folder) {
+async function fetchVideoList(folder, autoSelectFirst = false) {
     // 新增預設選項
     videoSelect.innerHTML = `<option value="">select trajectory</option>`;
     for (let i = 1; i <= 100; i++) {
         try {
+            const currentTrajectory = `trajectory_${i}`;
+            const response = await fetch(`/getVideos?folder=${folder}__trajectory/${currentTrajectory}`);
+            if (!response.ok) continue;
 
-            const response = await fetch(`/getVideos?folder=${folder}__trajectory/trajectory_${i}`);
-            if (!response.ok) {
-                console.warn(`trajectory_${i} not found, skip.`);
-                continue;
-            }
             const videos_all = await response.json();
             const videos = videos_all.filter(v => v.includes('full_video'));
-            console.log(videos);
-            videoSelect.innerHTML += videos
-                .filter(video => video.endsWith('.mp4'))
-                .map(video => `<option value="${basePath}${folder}/trajectory_${i}/${video}">${video}</option>`)
-                .join('');
+            
+            if (videos.length > 0) {
+                const videoFile = videos[0];
+                const optionValue = `${basePath}${folder}/${currentTrajectory}/${videoFile}`;
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = videoFile;
+                videoSelect.appendChild(option);
+
+                // 如果是自動選擇模式且是第一球
+                if (autoSelectFirst && i === 1) {
+                    videoSelect.value = optionValue;
+                    // 手動觸發 change 事件以載入影片和 JSON
+                    videoSelect.dispatchEvent(new Event('change'));
+                    highlightSelection();
+                }
+            }
         } catch (error) {
-            // console.error(`Error fetching trajectory_${i}:`, error);
             continue;
         }
     }
+}
+
+function highlightSelection() {
+    const containers = [folderSelect, videoSelect];
+    containers.forEach(el => {
+        el.classList.add('highlight-pulse');
+        setTimeout(() => el.classList.remove('highlight-pulse'), 5000);
+    });
 }
 
 folderSelect.addEventListener('change', e => {
@@ -64,7 +81,126 @@ folderSelect.addEventListener('change', e => {
     selectedFolder ? fetchVideoList(selectedFolder) : videoSelect.innerHTML = '<option value="">Choose Video</option>';
 });
 
-document.addEventListener('DOMContentLoaded', fetchFolderList);
+// --- Polling for First Ball Ready ---
+let lastCheckedFolder = null;
+let isFirstBallNotified = false;
+
+async function checkFirstBallReady() {
+    try {
+        const response = await fetch('/getFolders');
+        if (!response.ok) return;
+        const folders = await response.json();
+        if (folders.length === 0) return;
+
+        // 排序取得最新的一個
+        folders.sort();
+        const latestFolderFull = folders[folders.length - 1]; // 例如 "John__trajectory"
+        const cleanName = latestFolderFull.split('__')[0];
+
+        // 如果換了新資料夾（新客戶），重設通知狀態
+        if (latestFolderFull !== lastCheckedFolder) {
+            lastCheckedFolder = latestFolderFull;
+            isFirstBallNotified = false;
+        }
+
+        if (isFirstBallNotified) return;
+
+        // 檢查 trajectory_1 資料夾下是否有 ready.txt
+        const videoResponse = await fetch(`/getVideos?folder=${latestFolderFull}/trajectory_1`);
+        if (videoResponse.ok) {
+            const files = await videoResponse.json();
+            if (files.includes('ready.txt')) {
+                notifyFirstBall(cleanName);
+                isFirstBallNotified = true;
+            }
+        }
+    } catch (error) {
+        console.error("Polling error:", error);
+    }
+}
+
+function notifyFirstBall(playerName) {
+    // 視覺通知 (升級版)
+    const notification = document.createElement('div');
+    notification.id = 'readyNotification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 25px;
+        right: 25px;
+        background: rgba(30, 30, 30, 0.95);
+        color: white;
+        padding: 24px;
+        border-radius: 12px;
+        border-left: 6px solid #4CAF50;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        z-index: 10000;
+        min-width: 300px;
+        animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    `;
+    notification.innerHTML = `
+        <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>🔔 分析完成！</strong></div>
+        <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">客戶 <strong>${playerName}</strong> 的第一球結果已產出。</div>
+        <div style="display: flex; gap: 10px;">
+            <button id="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">立即查看結果</button>
+            <button id="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">忽略</button>
+        </div>
+    `;
+    document.body.appendChild(notification);
+
+    // 語音通知
+    const msg = new SpeechSynthesisUtterance(`${playerName}的第一顆球結果已產出，請至大螢幕查看。`);
+    msg.lang = "zh-TW";
+    window.speechSynthesis.speak(msg);
+
+    // 點擊「立即查看」
+    document.getElementById('viewResultBtn').onclick = () => {
+        // 自動選擇下拉選單
+        const options = Array.from(folderSelect.options);
+        const targetOption = options.find(opt => opt.value === playerName);
+        if (targetOption) {
+            folderSelect.value = playerName;
+            fetchVideoList(playerName, true); // true 表示自動選擇第一球
+        }
+        notification.remove();
+    };
+
+    document.getElementById('closeNotifyBtn').onclick = () => notification.remove();
+
+    // 20秒後自動消失
+    setTimeout(() => {
+        if (document.getElementById('readyNotification')) {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 1s ease';
+            setTimeout(() => notification.remove(), 1000);
+        }
+    }, 20000);
+}
+
+// 每 3 秒檢查一次
+setInterval(checkFirstBallReady, 3000);
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchFolderList();
+    
+    // 加入動畫樣式
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .highlight-pulse {
+            animation: pulse-border 1.5s infinite;
+            border: 2px solid #4CAF50 !important;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+    `;
+    document.head.appendChild(style);
+});
 
 videoSelect.addEventListener('change', e => {
     const selected_path = e.target.value;
@@ -98,11 +234,6 @@ videoSelect.addEventListener('change', e => {
         }
     }
 });
-
-
-
-
-document.addEventListener('DOMContentLoaded', fetchFolderList);
 
 
 async function handleFileSelection(filePath45, filePathSide) {

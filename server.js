@@ -5,7 +5,17 @@ const fs = require('fs');
 const app = express();
 const port = 3000;
 
+// 新增：簡單的 CORS 中間件
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
+
 app.use(express.static(path.join(__dirname)));
+
+// 靜音 favicon.ico 404 錯誤 (開發環境常用)
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.listen(port, () => {
     console.log(`伺服器運行於 http://localhost:${port}`);
@@ -17,6 +27,7 @@ app.get('/', (req, res) => {
 
 app.get('/getFolders', (req, res) => {
     const assetsDir = path.join(__dirname, 'trajectory');
+    // console.log(`[API] 正在讀取資料夾列表: ${assetsDir}`);
     fs.readdir(assetsDir, (err, files) => {
         if (err) {
             // console.error("讀取資料夾失敗：", err);
@@ -37,14 +48,21 @@ app.get('/getVideos', (req, res) => {
         return res.status(400).json({ error: '請提供 folder 參數' });
     }
     const videoDir = path.join(__dirname, 'trajectory', folder);
+    
+    // 先檢查目錄是否存在
+    if (!fs.existsSync(videoDir)) {
+        return res.json([]); // 目錄不存在，回傳空列表而不是報錯 500
+    }
+
     fs.readdir(videoDir, (err, files) => {
         if (err) {
-            // console.error(`讀取 ${folder} 資料夾失敗：`, err);
             return res.status(500).json({ error: `無法讀取 ${folder} 資料夾` });
         }
-        // 過濾出副檔名為 .mp4 的檔案
-        const mp4Files = files.filter(file => file.toLowerCase().endsWith('.mp4'));
-        res.json(mp4Files);
+        // 過濾出副檔名為 .mp4 的檔案，或標記檔案 ready.txt
+        const resultFiles = files.filter(file => 
+            file.toLowerCase().endsWith('.mp4') || file === 'ready.txt'
+        );
+        res.json(resultFiles);
     });
 });
 

@@ -238,21 +238,31 @@ def _update_ball_tracking(active_balls, position, current_time, fps):
 
 
 def _check_ball_exits(active_balls, edges, current_time, exit_timeout):
-    """檢查球是否出場"""
+    """檢查球是否出場，加入高速保底機制"""
     exited_balls = []
     balls_to_remove = []
     
     for ball_id, ball_info in active_balls.items():
         time_since_last_seen = current_time - ball_info['last_seen']
         
+        # 如果一段時間沒看到球了
         if time_since_last_seen > exit_timeout:
+            # 1. 嘗試偵測是否從邊緣出場
             if len(ball_info['positions']) >= 2:
                 is_exit, reason = _is_ball_exit_right_edge(ball_info['positions'], edges)
                 if is_exit:
+                    print(f"   📊 球#{ball_id} 偵測到邊緣出場 ({reason})")
                     exited_balls.append((ball_id, ball_info['last_seen']))
-                    balls_to_remove.append(ball_id)
+                else:
+                    # 2. 高速保底：如果追蹤丟失但沒有明確出場，且已有進入，則給予保底時長 (預設進場後 3s)
+                    fallback_exit = ball_info['entry_time'] + 2.3
+                    print(f"   🕒 球#{ball_id} 高速追蹤丟失，套用 3.0s 保底時長")
+                    exited_balls.append((ball_id, min(current_time, fallback_exit)))
             else:
-                balls_to_remove.append(ball_id)
+                # 偵測點太少，可能只是雜訊
+                pass
+            
+            balls_to_remove.append(ball_id)
     
     for ball_id in balls_to_remove:
         del active_balls[ball_id]
@@ -320,7 +330,7 @@ def _analyze_movement_trend(positions, edges):
 
 
 def segment_video_dynamic(video_path, ball_entries, ball_exits, output_folder, 
-                         name, angle, preview_start_time=-0.5):
+                         name, angle, preview_start_time=-0.2):
     """
     動態分割影片，根據球進入和出場時間點創建片段
     支援多球分割
@@ -367,7 +377,7 @@ def segment_video_dynamic(video_path, ball_entries, ball_exits, output_folder,
     for segment_info in segments_info:
         ball_num = segment_info['ball_number']
         start_time = max(0, segment_info['entry'] + preview_start_time)
-        end_time = min(duration, segment_info['exit'] + 0.1)
+        end_time = min(duration, segment_info['exit'] + 0.2)
         segment_duration = end_time - start_time
         
         output_path = output_folder / f"{name}_{ball_num}_{angle}_segment.mp4"

@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Pose Visualization</title>
   
   <!-- 基本重置與佈局 -->
@@ -587,28 +588,33 @@
   
 </head>
 <body>
+  <!-- 用於螢幕閱讀器的通知區域 -->
+  <div id="notification-live-region" aria-live="polite" aria-atomic="true" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;"></div>
+
   <!-- 控制面板 (左側) -->
   <div id="toggleControls"></div>
   <div id="controls" class="expanded">
     <div class="control-group">
-      <button id="playButton">play</button>
-      <button id="showFullTrajectoryButton">Show full trajectory</button>
+      <button id="playButton" title="Play/Pause">play</button>
+      <button id="showFullTrajectoryButton" title="Show/Hide Full Trajectory">Show full trajectory</button>
       <div id="frameInfo">frame: 0</div>
-      <input type="range" id="slider" class="slider" value="0">
+      <label for="slider" style="display:none;">Timeline</label>
+      <input type="range" id="slider" class="slider" value="0" title="Timeline">
       <div>speed: <span id="speedValue">1x</span></div>
-      <input type="range" id="speedControl" class="slider" min="0.1" max="2" step="0.1" value="1">
+      <label for="speedControl" style="display:none;">Playback Speed</label>
+      <input type="range" id="speedControl" class="slider" min="0.1" max="2" step="0.1" value="1" title="Playback Speed">
     </div>
     <div id="jointControls" class="checkbox-grid"></div>
   </div>
   
   <!-- Feedback 區塊 (右側) -->
-  <button id="feedbackToggle"></button>
+  <button id="feedbackToggle" title="Toggle Feedback Panel" aria-label="Toggle Feedback Panel"></button>
   <div id="feedbackGroup" class="expanded">
     <div class="feedback-container">
       <div id="feedbackBox" class="feedback-box">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div class="control-header_error">Feedback</div>
-          <button id="toggleLanguage" class="toggle-language-btn"></button>
+          <button id="toggleLanguage" class="toggle-language-btn" title="Toggle Language" aria-label="Toggle Language"></button>
         </div>
         <div id="feedbackContent" class="feedback-content"></div>
       </div>      
@@ -616,15 +622,15 @@
         <div class="control-header">Overall Suggestion</div>
         <div id="overallContent" class="feedback-content"></div>
         <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button id="trajectoryAnalysis" style="flex: 9.5; font-size: 25px;">Trajectory Analysis</button>
-          <button id="resetOverallContent" style="flex: 0.5; font-size: 25px;">↺</button>
+          <button id="trajectoryAnalysis" style="flex: 9.5; font-size: 25px;" title="Analyze Trajectory">Trajectory Analysis</button>
+          <button id="resetOverallContent" style="flex: 0.5; font-size: 25px;" title="Reset Content" aria-label="Reset Content">↺</button>
         </div>
       </div>      
     </div>
   </div>
   
   <!-- 控制面板 (右下) -->
-  <button id="controlPanelToggle"></button>
+  <button id="controlPanelToggle" title="Toggle Control Panel" aria-label="Toggle Control Panel"></button>
   <div id="controlPanel">
     <div class="control-container">
       <div class="control-content">
@@ -634,26 +640,33 @@
           <div class="control-header">Personal Info</div>
           <form class="api-form" data-endpoint="/input_data">
             <div class="input-row">
-              <input type="text" name="name" placeholder="Name" class="control-input" required>
-              <input type="number" name="height" placeholder="Height" class="control-input" required>
+              <label for="pName" style="display:none;">Name</label>
+              <input type="text" id="pName" name="name" placeholder="Name" class="control-input" title="Name" required>
+              <label for="pHeight" style="display:none;">Height</label>
+              <input type="number" id="pHeight" name="height" placeholder="Height" class="control-input" title="Height" required>
             </div>
-            <select name="dominant_hand" class="control-input">
+            <label for="dominantHand" style="display:none;">Dominant Hand</label>
+            <select id="dominantHand" name="dominant_hand" class="control-input" title="Dominant Hand">
               <option value="0">Right Hand</option>
               <option value="1">Left Hand</option>
             </select>
-            <button type="submit" class="control-button">Submit Info</button>
+            <button type="submit" class="control-button" title="Submit Personal Information">Submit Info</button>
           </form>
         </div>
         <div class="control-group">
           <div class="control-header">Recording Control</div>
           <!-- Auto 按鈕 -->
           <form class="api-form" data-endpoint="">
-            <button id="auto" type="submit" class="control-button">auto</button>
+            <button id="auto" type="submit" class="control-button" title="Automatic Recording Mode">auto</button>
           </form>
           <!-- Queue Status 按鈕 -->
           <form class="api-form" data-endpoint="">
-            <button id="queueStatusButton" type="submit" class="control-button">Check Queue Status</button>
+            <button id="queueStatusButton" type="submit" class="control-button" title="Check Current Queue Status">Check Queue Status</button>
           </form>
+          <!-- 測試通知 按鈕 (僅供開發測試) -->
+          <div style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+            <button id="testNotifyBtn" type="button" class="control-button" style="background: #34495e; font-size: 16px;" title="Test the notification system UI and sound">Test Notification UI</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1246,6 +1259,7 @@
       toggleBtn.textContent = 'Joint Controls';
       toggleBtn.className = 'collapsible collapsed';
       toggleBtn.style.marginBottom = '10px';
+      toggleBtn.title = 'Toggle visibility of joint markers';
       jointControlGroup.appendChild(toggleBtn);
       
       // 創建內容容器 (預設收合)
@@ -1260,6 +1274,7 @@
       selectAllCheckbox.type = 'checkbox';
       selectAllCheckbox.id = 'selectAllJoints';
       selectAllCheckbox.checked = true;
+      selectAllCheckbox.title = 'Toggle all joints';
       const selectAllLabel = document.createElement('label');
       selectAllLabel.htmlFor = 'selectAllJoints';
       selectAllLabel.textContent = 'Select All Joints';
@@ -1274,6 +1289,7 @@
           ck.type = 'checkbox';
           ck.id = `show_${name}`;
           ck.checked = true;
+          ck.title = `Toggle ${name} visibility`;
           ck.addEventListener('change', () => {
               visibilityState[name] = ck.checked;
               updateFrame();
@@ -1282,8 +1298,11 @@
               const allCk = container.querySelectorAll('input[type="checkbox"]:not(#selectAllJoints)');
               selectAllCheckbox.checked = Array.from(allCk).every(c => c.checked);
           });
+          const label = document.createElement('label');
+          label.htmlFor = ck.id;
+          label.textContent = name;
           div.appendChild(ck);
-          div.appendChild(document.createTextNode(name));
+          div.appendChild(label);
           container.appendChild(div);
           visibilityState[name] = true;
       });
@@ -2439,6 +2458,160 @@
     
     // 初始化：建立場景、控制器與各種設定
     init();
+    console.log("🚀 [系統啟動] 3D 軌跡頁面載入完成");
+
+    // --- 自動偵測第一球完成標記 ---
+    let notifiedFolders = new Set();
+    let isInitialLoad = true;
+    let isChecking = false; // 掃描鎖，防止重複执行
+    const FILE_SERVER_PORT = 3000;
+
+    // 啟動定時輪詢
+    setInterval(checkFirstBallReady, 3000);
+
+    // 立即執行一次
+    setTimeout(() => {
+        console.log("⏱️ [通知系統] 啟動監控機制...");
+        checkFirstBallReady();
+    }, 500);
+
+    document.getElementById('testNotifyBtn').onclick = () => {
+        notifyFirstBall("測試用戶");
+    };
+
+    async function checkFirstBallReady() {
+        if (isChecking) return; // 如果還在檢查中，跳過這一次
+        isChecking = true;
+
+        try {
+            const host = window.location.hostname || 'localhost';
+            const response = await fetch(`http://${host}:${FILE_SERVER_PORT}/getFolders`);
+            if (!response.ok) {
+                isChecking = false;
+                return;
+            }
+            
+            const folders = await response.json();
+            if (!folders || !Array.isArray(folders)) {
+                isChecking = false;
+                return;
+            }
+
+            // 如果是第一次啟動，直接把「當下所有資料夾」都加入已處理清單，絕對不彈窗
+            if (isInitialLoad) {
+                folders.forEach(f => notifiedFolders.add(f));
+                console.log(`[通知系統] ⚡ 系統啟動，已將現有 ${folders.length} 個資料夾設為靜音。`);
+                isInitialLoad = false;
+                isChecking = false;
+                return;
+            }
+
+            // 非初始化階段：找出「新出現在清單中」或「還沒通知過」的資料夾
+            const pendingFolders = folders.filter(f => !notifiedFolders.has(f));
+            
+            for (const folderName of pendingFolders) {
+                const checkPaths = [
+                    folderName,
+                    `${folderName}/trajectory_1`
+                ];
+
+                let foundReady = false;
+                for (const pathSuffix of checkPaths) {
+                    try {
+                        const vRes = await fetch(`http://${host}:${FILE_SERVER_PORT}/getVideos?folder=${encodeURIComponent(pathSuffix)}`);
+                        if (vRes.ok) {
+                            const files = await vRes.json();
+                            if (files && files.includes('ready.txt')) {
+                                foundReady = true;
+                                break;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                if (foundReady) {
+                    console.log(`[通知系統] 🚩 發現新完成標記: ${folderName}`);
+                    notifyFirstBall(folderName.split('__')[0]);
+                    notifiedFolders.add(folderName); // 立即標記，防止重複
+                }
+            }
+        } catch (error) {
+            console.error("[通知系統] 輪詢異常:", error);
+        } finally {
+            isChecking = false; // 釋放鎖
+        }
+    }
+
+    function notifyFirstBall(playerName) {
+        const notification = document.createElement('div');
+        notification.id = 'readyNotification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            background: rgba(30, 30, 30, 0.95);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            border-left: 6px solid #4CAF50;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 99999;
+            min-width: 300px;
+            font-family: Arial, sans-serif;
+            animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
+        notification.innerHTML = `
+            <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>Analysis Complete!</strong></div>
+            <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">The first pitch for <strong> ${playerName}</strong> has been completed.</div>
+            <div style="display: flex; gap: 10px;">
+                <button id="viewResultBtn" title="View 3D Result Now" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View 3D Trajectory</button>
+                <button id="closeNotifyBtn" title="Dismiss Notification" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+
+        // 更新 aria-live 區域供螢幕閱讀器讀取
+        const liveRegion = document.getElementById('notification-live-region');
+        if (liveRegion) liveRegion.textContent = `Analysis complete! User ${playerName}'s first ball is finished.`;
+
+        const msg = new SpeechSynthesisUtterance(`Analysis for ${playerName} is complete. You can view the result now.`);
+        msg.lang = "en-US";
+        window.speechSynthesis.speak(msg);
+
+        document.getElementById('viewResultBtn').onclick = () => {
+            // 在 3D 頁面中，點擊後開啟資料夾選擇器 (dirInput)
+            const dirInput = document.getElementById('dirInput');
+            if (dirInput) {
+                dirInput.click();
+            } else {
+                console.warn("[通知系統] 找不到 dirInput，請手動選擇資料夾");
+            }
+            notification.remove();
+        };
+
+        document.getElementById('closeNotifyBtn').onclick = () => notification.remove();
+
+        setTimeout(() => {
+            if (document.getElementById('readyNotification')) {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 1s ease';
+                setTimeout(() => notification.remove(), 1000);
+            }
+        }, 20000);
+    }
+
+    // 加入動畫樣式到 head
+    const style3D = document.createElement('style');
+    style3D.innerHTML = `
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style3D);
+
+    // 每 3 秒檢查一次
+    setInterval(checkFirstBallReady, 3000);
   </script>
 </body>
 </html>

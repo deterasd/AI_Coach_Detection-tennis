@@ -541,6 +541,15 @@ def process_single_video_set(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
             
             timing_results['GPT 反饋生成'] = time.perf_counter() - start
 
+        # === 確保全部檔案都寫入後，建立完成標記檔案 ===
+        try:
+            ready_file_path = os.path.join(output_folder, "ready.txt")
+            with open(ready_file_path, "w", encoding='utf-8') as f:
+                f.write(f"Done at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"🚩 [完成標記] 已建立：{ready_file_path}")
+        except Exception as e:
+            print(f"⚠️ 無法建立標記檔案: {e}")
+
         return True
         
     except Exception as e:
