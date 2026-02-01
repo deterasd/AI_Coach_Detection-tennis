@@ -1,0 +1,56 @@
+{
+  "analysis_timestamp": "2026-02-01T01:48:01.783900",
+  "trajectory_file": "/Users/cindychang/Desktop/pickleball_ai_coach/trajectory/Cindy__trajectory/player6_1_2/outdoor6__1_45_segment(3D_trajectory_smoothed).json",
+  "nearest_expert": "outdoor6__1_45_segment(3D_trajectory_smoothed).json",
+  "expert_distance": 0.0,
+  "analyses": {
+    "backswing_advice": "A.側身:拉拍側身完整B.手腕高度:拉拍右手腕高度太高（手腕 Y=93.0，肩 Y=413.0，建議在肩～肩腰中點 413.0～193.0），建議拉拍準備時可以將手腕降低到胸部位置C.球拍朝向:拉拍球拍頭得宜D.準備時機:拉拍過慢，建議提早在球落地彈起時做好拉拍準備動作。",
+    "forwardswing_advice": "球落地幀在擊球幀之後，數據異常",
+    "hitballswing_advice": "A.轉身:擊球時轉身動作得宜B.手腕位置:擊球時右手腕位置得宜",
+    "followthrough_advice": "收拍:擊球後收拍動作得宜",
+    "contact_zone_advice": "左右位置在理想區間，揮拍距離掌握良好。上下高度在理想區間，擊球高度掌握良好。前後深度在理想區間，擊球時機掌握良好。",
+    "head_stability_advice": "成功擊球，整體擊球品質佳，維持目前的動作節奏即可。擊球過程中頭部略不穩定（與專家中位數差 0.22），建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。"
+  },
+  "combined_advice": "A.側身:拉拍側身完整B.手腕高度:拉拍右手腕高度太高（手腕 Y=93.0，肩 Y=413.0，建議在肩～肩腰中點 413.0～193.0），建議拉拍準備時可以將手腕降低到胸部位置C.球拍朝向:拉拍球拍頭得宜D.準備時機:拉拍過慢，建議提早在球落地彈起時做好拉拍準備動作。\n\n球落地幀在擊球幀之後，數據異常\n\nA.轉身:擊球時轉身動作得宜B.手腕位置:擊球時右手腕位置得宜\n\n收拍:擊球後收拍動作得宜\n\n左右位置在理想區間，揮拍距離掌握良好。上下高度在理想區間，擊球高度掌握良好。前後深度在理想區間，擊球時機掌握良好。",
+  "statistics": {
+    "backswing_confidence": 1.0,
+    "forwardswing_confidence": 0.0,
+    "hitballswing_confidence": 1.0,
+    "followthrough_confidence": 1.0,
+    "contact_zone": {
+      "user_values": {
+        "lateral": 152.46142141654474,
+        "height": 277.36555870981533,
+        "depth": -813.9613161973672,
+        "lateral_n": 0.775938941115822,
+        "height_n": 0.18517701101503392,
+        "depth_n": -0.5434233591092126,
+        "pelvis_width": 196.4863642457497,
+        "body_height": 1497.8401324735548
+      },
+      "pro_ranges": {
+        "lateral_n": {
+          "p10": -2.905377279017541,
+          "p50": 1.8988145479591996,
+          "p90": 3.607803372580126
+        },
+        "height_n": {
+          "p10": 0.016171167406202294,
+          "p50": 0.11288468380680201,
+          "p90": 0.327614406465293
+        },
+        "depth_n": {
+          "p10": -0.7879133826921177,
+          "p50": -0.5929672693221113,
+          "p90": -0.22514627185746716
+        }
+      },
+      "flags": {
+        "lateral_in_range": true,
+        "height_in_range": true,
+        "depth_in_range": true
+      }
+    },
+    "head_stability_confidence": 1.0
+  }
+}
