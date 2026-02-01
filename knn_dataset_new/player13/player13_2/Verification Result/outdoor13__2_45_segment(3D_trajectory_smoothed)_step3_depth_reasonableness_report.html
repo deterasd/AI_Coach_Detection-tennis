@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step3. 深度合理性驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+             border-bottom: none;
+             padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .section-header-row h3 {
+            margin: 0;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
+  "Global": {
+    "metadata": {
+      "analysis_time": "2026-01-27T12:14:17.801608",
+      "source_file": "data/player13/player13_2/outdoor13__2_45_segment(3D_trajectory_smoothed).json",
+      "total_frames": 212,
+      "analysis_type": "Depth Reasonableness Analysis",
+      "view": "Global"
+    },
+    "overall_summary": {
+      "average_cv": 7.217760881743209,
+      "quality_level": "可接受",
+      "total_keypoints_analyzed": 18,
+      "total_logic_violations": 108,
+      "mean_depth_mm": 2894.8796539678656,
+      "quality_score": {
+        "score": 70.18711974594754,
+        "deductions": [
+          {
+            "reason": "深度略有雜訊 (CV 7.2%)",
+            "points": 4.435521763486419
+          },
+          {
+            "reason": "手肘反向彎曲 (24.5%)",
+            "points": 15
+          },
+          {
+            "reason": "膝蓋反向彎曲 (0.9%)",
+            "points": 0.9433962264150944
+          },
+          {
+            "reason": "深度瞬間跳動 (1.9% 幀)",
+            "points": 9.433962264150944
+          }
+        ],
+        "level": "Acceptable"
+      }
+    },
+    "depth_range_analysis": {
+      "nose": {
+        "sample_count": 212,
+        "mean_z_mm": 2860.6126385204107,
+        "std_z_mm": 104.44387304721234,
+        "cv_percent": 3.651101573166287,
+        "min_z_mm": 2595.4893235003524,
+        "max_z_mm": 3021.81488062431,
+        "depth_range_mm": 426.3255571239574,
+        "mean_gradient_mm": 9.43570127620296,
+        "max_gradient_mm": 34.386036940631584,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_eye": {
+        "sample_count": 212,
+        "mean_z_mm": 2906.556029322817,
+        "std_z_mm": 115.52551459443754,
+        "cv_percent": 3.9746529373236688,
+        "min_z_mm": 2660.240184278417,
+        "max_z_mm": 3106.9565842884595,
+        "depth_range_mm": 446.71640001004243,
+        "mean_gradient_mm": 9.519570391306793,
+        "max_gradient_mm": 42.74830841173343,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_eye": {
+        "sample_count": 212,
+        "mean_z_mm": 2850.404678493921,
+        "std_z_mm": 107.8145798699761,
+        "cv_percent": 3.7824306381275834,
+        "min_z_mm": 2585.3866558230616,
+        "max_z_mm": 3033.3248771828976,
+        "depth_range_mm": 447.938221359836,
+        "mean_gradient_mm": 9.690227911996846,
+        "max_gradient_mm": 30.175386069003707,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_ear": {
+        "sample_count": 212,
+        "mean_z_mm": 3024.517332896846,
+        "std_z_mm": 156.2920188454604,
+        "cv_percent": 5.167502832452469,
+        "min_z_mm": 2796.5876978785964,
+        "max_z_mm": 3353.3661804019202,
+        "depth_range_mm": 556.7784825233239,
+        "mean_gradient_mm": 15.802161220266967,
+        "max_gradient_mm": 74.27420928483525,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_ear": {
+        "sample_count": 212,
+        "mean_z_mm": 2846.7435967793695,
+        "std_z_mm": 110.30446311725092,
+        "cv_percent": 3.8747593299952476,
+        "min_z_mm": 2681.776304078416,
+        "max_z_mm": 3083.385095750721,
+        "depth_range_mm": 401.60879167230496,
+        "mean_gradient_mm": 7.8857538788440635,
+        "max_gradient_mm": 32.14165019136635,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_shoulder": {
+        "sample_count": 212,
+        "mean_z_mm": 3114.718508906958,
+        "std_z_mm": 241.1158946539178,
+        "cv_percent": 7.741177700791077,
+        "min_z_mm": 2654.2141185220985,
+        "max_z_mm": 3765.0424597734673,
+        "depth_range_mm": 1110.8283412513688,
+        "mean_gradient_mm": 24.819385203171535,
+        "max_gradient_mm": 91.29324790966893,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_shoulder": {
+        "sample_count": 212,
+        "mean_z_mm": 2823.3305120899954,
+        "std_z_mm": 145.42461139195984,
+        "cv_percent": 5.15081782912862,
+        "min_z_mm": 2467.334141512182,
+        "max_z_mm": 3105.926721080398,
+        "depth_range_mm": 638.5925795682156,
+        "mean_gradient_mm": 14.526396797246775,
+        "max_gradient_mm": 54.39772240722323,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_elbow": {
+        "sample_count": 212,
+        "mean_z_mm": 3257.7973177457143,
+        "std_z_mm": 569.9036819741779,
+        "cv_percent": 17.49352787755783,
+        "min_z_mm": 1934.8438772443046,
+        "max_z_mm": 5009.22836323695,
+        "depth_range_mm": 3074.3844859926453,
+        "mean_gradient_mm": 63.89970732044821,
+        "max_gradient_mm": 366.7649043621818,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 3,
+        "outlier_rate": 1.4150943396226416
+      },
+      "right_elbow": {
+        "sample_count": 212,
+        "mean_z_mm": 2764.334919728992,
+        "std_z_mm": 255.61035976284478,
+        "cv_percent": 9.246721804169233,
+        "min_z_mm": 1913.839545739144,
+        "max_z_mm": 3207.7328249912075,
+        "depth_range_mm": 1293.8932792520636,
+        "mean_gradient_mm": 30.23765377327879,
+        "max_gradient_mm": 169.89775433928617,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 6,
+        "outlier_rate": 2.8301886792452833
+      },
+      "left_wrist": {
+        "sample_count": 212,
+        "mean_z_mm": 3033.900073853264,
+        "std_z_mm": 749.5161197580148,
+        "cv_percent": 24.704706862875586,
+        "min_z_mm": 1708.2829941576301,
+        "max_z_mm": 5867.453156359962,
+        "depth_range_mm": 4159.170162202332,
+        "mean_gradient_mm": 80.0464639246535,
+        "max_gradient_mm": 638.9513200281453,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 6,
+        "outlier_rate": 2.8301886792452833
+      },
+      "right_wrist": {
+        "sample_count": 212,
+        "mean_z_mm": 2739.322601636337,
+        "std_z_mm": 269.26727603371154,
+        "cv_percent": 9.82970300295644,
+        "min_z_mm": 1980.558699840641,
+        "max_z_mm": 3449.146243136772,
+        "depth_range_mm": 1468.5875432961307,
+        "mean_gradient_mm": 36.78590177389125,
+        "max_gradient_mm": 207.64032057561326,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_hip": {
+        "sample_count": 212,
+        "mean_z_mm": 3129.962700199293,
+        "std_z_mm": 130.51582442212757,
+        "cv_percent": 4.169884338040746,
+        "min_z_mm": 2909.88019922451,
+        "max_z_mm": 3466.6857300474476,
+        "depth_range_mm": 556.8055308229377,
+        "mean_gradient_mm": 14.59049697077653,
+        "max_gradient_mm": 65.92453354484041,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_hip": {
+        "sample_count": 212,
+        "mean_z_mm": 2930.344148032912,
+        "std_z_mm": 99.39558489401924,
+        "cv_percent": 3.391942375121425,
+        "min_z_mm": 2713.2410047224444,
+        "max_z_mm": 3111.2437672203796,
+        "depth_range_mm": 398.00276249793524,
+        "mean_gradient_mm": 11.109023161662488,
+        "max_gradient_mm": 55.43337720189402,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_knee": {
+        "sample_count": 212,
+        "mean_z_mm": 3134.6493206655987,
+        "std_z_mm": 157.46848628743044,
+        "cv_percent": 5.023480146544565,
+        "min_z_mm": 2777.2235776535795,
+        "max_z_mm": 3479.1271972306927,
+        "depth_range_mm": 701.9036195771132,
+        "mean_gradient_mm": 15.184927683012516,
+        "max_gradient_mm": 49.39017561061837,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_knee": {
+        "sample_count": 212,
+        "mean_z_mm": 2916.4237693793248,
+        "std_z_mm": 103.85850044720321,
+        "cv_percent": 3.5611594425218405,
+        "min_z_mm": 2685.7445423158183,
+        "max_z_mm": 3174.846486152095,
+        "depth_range_mm": 489.10194383627686,
+        "mean_gradient_mm": 11.675319053248442,
+        "max_gradient_mm": 58.26991601788632,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_ankle": {
+        "sample_count": 212,
+        "mean_z_mm": 3105.424151201266,
+        "std_z_mm": 141.28311628271817,
+        "cv_percent": 4.5495593968400705,
+        "min_z_mm": 2792.319725034656,
+        "max_z_mm": 3388.7066224128876,
+        "depth_range_mm": 596.3868973782314,
+        "mean_gradient_mm": 13.015516340149178,
+        "max_gradient_mm": 47.747894669286325,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_ankle": {
+        "sample_count": 212,
+        "mean_z_mm": 2908.144460319316,
+        "std_z_mm": 161.15930503857902,
+        "cv_percent": 5.5416540422095695,
+        "min_z_mm": 2672.686278883547,
+        "max_z_mm": 3247.698424183758,
+        "depth_range_mm": 575.0121453002112,
+        "mean_gradient_mm": 15.794687740170692,
+        "max_gradient_mm": 63.96545930303637,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "tennis_ball": {
+        "sample_count": 53,
+        "mean_z_mm": 1760.64701164924,
+        "std_z_mm": 159.60113289927807,
+        "cv_percent": 9.064913741555491,
+        "min_z_mm": 1459.109734379619,
+        "max_z_mm": 2025.8023383695759,
+        "depth_range_mm": 566.6926039899568,
+        "mean_gradient_mm": 11.020507832948065,
+        "max_gradient_mm": 21.749788977139815,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      }
+    },
+    "depth_logic_check": {
+      "elbow_hyperextension": {
+        "checks": {
+          "total": 424,
+          "left": 212,
+          "right": 212
+        },
+        "violations": {
+          "total": 104,
+          "left": 96,
+          "right": 8
+        },
+        "rate": 24.528301886792452,
+        "anomalies": [
+          {
+            "frame": 0,
+            "side": "left",
+            "val_z": 3651.4,
+            "ref_z": 3257.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 1,
+            "side": "left",
+            "val_z": 3550.2,
+            "ref_z": 3185.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 2,
+            "side": "left",
+            "val_z": 3464.7,
+            "ref_z": 3124.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 3,
+            "side": "left",
+            "val_z": 3393.3,
+            "ref_z": 3072.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 4,
+            "side": "left",
+            "val_z": 3334.2,
+            "ref_z": 3028.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 5,
+            "side": "left",
+            "val_z": 3286.0,
+            "ref_z": 2992.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 6,
+            "side": "left",
+            "val_z": 3246.9,
+            "ref_z": 2961.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 7,
+            "side": "left",
+            "val_z": 3215.3,
+            "ref_z": 2935.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 8,
+            "side": "left",
+            "val_z": 3188.4,
+            "ref_z": 2911.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 9,
+            "side": "left",
+            "val_z": 3163.1,
+            "ref_z": 2889.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 10,
+            "side": "left",
+            "val_z": 3140.2,
+            "ref_z": 2868.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 11,
+            "side": "left",
+            "val_z": 3121.0,
+            "ref_z": 2850.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 12,
+            "side": "left",
+            "val_z": 3105.6,
+            "ref_z": 2836.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 13,
+            "side": "left",
+            "val_z": 3094.5,
+            "ref_z": 2827.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 14,
+            "side": "left",
+            "val_z": 3089.0,
+            "ref_z": 2821.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 15,
+            "side": "left",
+            "val_z": 3086.7,
+            "ref_z": 2818.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 16,
+            "side": "left",
+            "val_z": 3088.5,
+            "ref_z": 2818.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 17,
+            "side": "left",
+            "val_z": 3095.4,
+            "ref_z": 2820.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 18,
+            "side": "left",
+            "val_z": 3104.3,
+            "ref_z": 2825.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 19,
+            "side": "left",
+            "val_z": 3112.4,
+            "ref_z": 2829.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 20,
+            "side": "left",
+            "val_z": 3115.3,
+            "ref_z": 2830.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 21,
+            "side": "left",
+            "val_z": 3112.3,
+            "ref_z": 2830.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 22,
+            "side": "left",
+            "val_z": 3101.0,
+            "ref_z": 2828.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 23,
+            "side": "left",
+            "val_z": 3080.8,
+            "ref_z": 2823.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 24,
+            "side": "left",
+            "val_z": 3053.0,
+            "ref_z": 2819.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 25,
+            "side": "left",
+            "val_z": 3020.3,
+            "ref_z": 2814.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 44,
+            "side": "right",
+            "val_z": 3049.8,
+            "ref_z": 2810.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 45,
+            "side": "right",
+            "val_z": 3085.5,
+            "ref_z": 2808.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 46,
+            "side": "right",
+            "val_z": 3106.1,
+            "ref_z": 2802.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 47,
+            "side": "right",
+            "val_z": 3113.3,
+            "ref_z": 2795.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 48,
+            "side": "right",
+            "val_z": 3102.0,
+            "ref_z": 2785.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 49,
+            "side": "right",
+            "val_z": 3070.1,
+            "ref_z": 2771.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 50,
+            "side": "right",
+            "val_z": 3023.2,
+            "ref_z": 2756.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 51,
+            "side": "right",
+            "val_z": 2963.5,
+            "ref_z": 2740.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 93,
+            "side": "left",
+            "val_z": 3284.7,
+            "ref_z": 3026.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 94,
+            "side": "left",
+            "val_z": 3525.2,
+            "ref_z": 3239.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 95,
+            "side": "left",
+            "val_z": 3774.1,
+            "ref_z": 3509.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 96,
+            "side": "left",
+            "val_z": 3997.6,
+            "ref_z": 3780.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 127,
+            "side": "left",
+            "val_z": 4910.7,
+            "ref_z": 4706.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 128,
+            "side": "left",
+            "val_z": 4988.3,
+            "ref_z": 4701.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 129,
+            "side": "left",
+            "val_z": 5009.2,
+            "ref_z": 4632.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 130,
+            "side": "left",
+            "val_z": 4980.5,
+            "ref_z": 4512.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 131,
+            "side": "left",
+            "val_z": 4898.7,
+            "ref_z": 4352.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 132,
+            "side": "left",
+            "val_z": 4758.3,
+            "ref_z": 4166.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 133,
+            "side": "left",
+            "val_z": 4569.5,
+            "ref_z": 3975.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 134,
+            "side": "left",
+            "val_z": 4343.9,
+            "ref_z": 3782.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 135,
+            "side": "left",
+            "val_z": 4162.0,
+            "ref_z": 3638.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 136,
+            "side": "left",
+            "val_z": 3952.4,
+            "ref_z": 3482.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 137,
+            "side": "left",
+            "val_z": 3747.2,
+            "ref_z": 3337.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 138,
+            "side": "left",
+            "val_z": 3600.8,
+            "ref_z": 3240.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 139,
+            "side": "left",
+            "val_z": 3469.5,
+            "ref_z": 3160.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 140,
+            "side": "left",
+            "val_z": 3348.6,
+            "ref_z": 3096.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 155,
+            "side": "left",
+            "val_z": 3411.5,
+            "ref_z": 3174.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 156,
+            "side": "left",
+            "val_z": 3491.1,
+            "ref_z": 3187.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 157,
+            "side": "left",
+            "val_z": 3582.3,
+            "ref_z": 3205.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 158,
+            "side": "left",
+            "val_z": 3678.4,
+            "ref_z": 3226.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 159,
+            "side": "left",
+            "val_z": 3765.6,
+            "ref_z": 3244.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 160,
+            "side": "left",
+            "val_z": 3835.8,
+            "ref_z": 3257.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 161,
+            "side": "left",
+            "val_z": 3885.3,
+            "ref_z": 3264.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 162,
+            "side": "left",
+            "val_z": 3905.8,
+            "ref_z": 3263.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 163,
+            "side": "left",
+            "val_z": 3892.8,
+            "ref_z": 3254.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 164,
+            "side": "left",
+            "val_z": 3853.4,
+            "ref_z": 3239.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 165,
+            "side": "left",
+            "val_z": 3797.7,
+            "ref_z": 3221.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 166,
+            "side": "left",
+            "val_z": 3730.5,
+            "ref_z": 3199.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 167,
+            "side": "left",
+            "val_z": 3655.6,
+            "ref_z": 3176.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 168,
+            "side": "left",
+            "val_z": 3586.9,
+            "ref_z": 3158.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 169,
+            "side": "left",
+            "val_z": 3534.1,
+            "ref_z": 3146.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 170,
+            "side": "left",
+            "val_z": 3500.8,
+            "ref_z": 3141.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 171,
+            "side": "left",
+            "val_z": 3485.9,
+            "ref_z": 3141.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 172,
+            "side": "left",
+            "val_z": 3487.1,
+            "ref_z": 3144.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 173,
+            "side": "left",
+            "val_z": 3494.6,
+            "ref_z": 3149.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 174,
+            "side": "left",
+            "val_z": 3505.8,
+            "ref_z": 3153.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 175,
+            "side": "left",
+            "val_z": 3520.4,
+            "ref_z": 3157.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 176,
+            "side": "left",
+            "val_z": 3532.6,
+            "ref_z": 3161.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 177,
+            "side": "left",
+            "val_z": 3544.4,
+            "ref_z": 3162.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 178,
+            "side": "left",
+            "val_z": 3558.7,
+            "ref_z": 3163.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 179,
+            "side": "left",
+            "val_z": 3575.4,
+            "ref_z": 3162.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 180,
+            "side": "left",
+            "val_z": 3589.5,
+            "ref_z": 3159.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 181,
+            "side": "left",
+            "val_z": 3603.0,
+            "ref_z": 3156.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 182,
+            "side": "left",
+            "val_z": 3613.9,
+            "ref_z": 3153.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 183,
+            "side": "left",
+            "val_z": 3620.0,
+            "ref_z": 3149.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 184,
+            "side": "left",
+            "val_z": 3619.7,
+            "ref_z": 3143.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 185,
+            "side": "left",
+            "val_z": 3609.2,
+            "ref_z": 3137.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 186,
+            "side": "left",
+            "val_z": 3590.9,
+            "ref_z": 3131.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 187,
+            "side": "left",
+            "val_z": 3565.2,
+            "ref_z": 3128.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 188,
+            "side": "left",
+            "val_z": 3538.5,
+            "ref_z": 3129.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 189,
+            "side": "left",
+            "val_z": 3517.1,
+            "ref_z": 3138.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 190,
+            "side": "left",
+            "val_z": 3500.9,
+            "ref_z": 3152.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 191,
+            "side": "left",
+            "val_z": 3494.2,
+            "ref_z": 3170.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 192,
+            "side": "left",
+            "val_z": 3490.6,
+            "ref_z": 3190.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 193,
+            "side": "left",
+            "val_z": 3485.2,
+            "ref_z": 3211.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 194,
+            "side": "left",
+            "val_z": 3477.8,
+            "ref_z": 3230.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 195,
+            "side": "left",
+            "val_z": 3474.6,
+            "ref_z": 3249.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 196,
+            "side": "left",
+            "val_z": 3472.8,
+            "ref_z": 3266.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 200,
+            "side": "left",
+            "val_z": 3490.8,
+            "ref_z": 3279.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 201,
+            "side": "left",
+            "val_z": 3518.3,
+            "ref_z": 3275.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 202,
+            "side": "left",
+            "val_z": 3561.9,
+            "ref_z": 3271.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 203,
+            "side": "left",
+            "val_z": 3616.0,
+            "ref_z": 3266.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 204,
+            "side": "left",
+            "val_z": 3666.2,
+            "ref_z": 3257.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 205,
+            "side": "left",
+            "val_z": 3703.5,
+            "ref_z": 3243.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 206,
+            "side": "left",
+            "val_z": 3709.5,
+            "ref_z": 3225.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 207,
+            "side": "left",
+            "val_z": 3672.8,
+            "ref_z": 3201.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 208,
+            "side": "left",
+            "val_z": 3581.8,
+            "ref_z": 3170.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 209,
+            "side": "left",
+            "val_z": 3424.9,
+            "ref_z": 3133.3,
+            "severity": "moderate"
+          }
+        ]
+      },
+      "knee_hyperextension": {
+        "checks": {
+          "total": 424,
+          "left": 212,
+          "right": 212
+        },
+        "violations": {
+          "total": 4,
+          "left": 4,
+          "right": 0
+        },
+        "rate": 0.9433962264150944,
+        "anomalies": [
+          {
+            "frame": 133,
+            "side": "left",
+            "val_z": 3461.5,
+            "ref_z": 3258.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 134,
+            "side": "left",
+            "val_z": 3478.0,
+            "ref_z": 3258.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 135,
+            "side": "left",
+            "val_z": 3479.1,
+            "ref_z": 3257.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 136,
+            "side": "left",
+            "val_z": 3464.7,
+            "ref_z": 3251.1,
+            "severity": "moderate"
+          }
+        ]
+      }
+    },
+    "overall_statistics": {
+      "overall_mean_depth_mm": 2894.8796539678656,
+      "overall_std_depth_mm": 308.5449606546785,
+      "average_cv_percent": 7.217760881743209,
+      "average_range_mm": 994.9294082030489,
+      "max_range_mm": 4159.170162202332,
+      "min_mean_depth_mm": 1760.64701164924,
+      "max_mean_depth_mm": 3257.7973177457143
+    },
+    "temporal_stability": {
+      "mean_frame_change_mm": 22.521187333693362,
+      "max_frame_change_mm": 81.91091072498308,
+      "unstable_frames": [
+        {
+          "frame_index": 94,
+          "avg_depth_change_mm": 76.39603667269367
+        },
+        {
+          "frame_index": 95,
+          "avg_depth_change_mm": 81.91091072498308
+        },
+        {
+          "frame_index": 104,
+          "avg_depth_change_mm": 81.55468442404995
+        },
+        {
+          "frame_index": 105,
+          "avg_depth_change_mm": 78.22921368707955
+        }
+      ],
+      "unstable_frame_count": 4,
+      "unstable_rate": 1.8867924528301887,
+      "threshold_mm": 76.19274750565971,
+      "series_data": [
+        35.102457558417825,
+        27.876935570671534,
+        21.945940536182874,
+        17.336722316531556,
+        14.332805494913988,
+        11.877599257667766,
+        10.837245401934577,
+        10.760871262180686,
+        10.59513318209196,
+        10.141553894639,
+        9.345352556653832,
+        8.582774667516064,
+        8.033115827129409,
+        7.223547247237334,
+        6.531502595482914,
+        5.376440841537046,
+        5.939604388774703,
+        6.053482369777559,
+        5.708538764985834,
+        5.59517742336822,
+        5.925488481237982,
+        7.2057394203434875,
+        8.113447463228594,
+        9.01265058598697,
+        9.563047959397569,
+        9.56667960053496,
+        9.726809207567571,
+        10.119734711056989,
+        9.767240591301448,
+        10.12483497996022,
+        10.613425302795475,
+        9.207185400800931,
+        9.067304817243818,
+        10.065386082962643,
+        10.96057637177671,
+        12.679763057010607,
+        14.83592080397183,
+        17.1266891265653,
+        17.760337116247836,
+        17.18181666377349,
+        14.83687098966781,
+        13.994747124234562,
+        15.022696300201321,
+        15.71687577436267,
+        18.6212497707733,
+        19.782628928784206,
+        20.61931875863301,
+        22.466837594330727,
+        23.165381231141623,
+        20.73888648529482,
+        17.637202579748696,
+        14.443308230907974,
+        12.969705097893275,
+        12.595897392402398,
+        12.09868665602547,
+        13.078594094659467,
+        15.344927603710353,
+        16.679971467857904,
+        16.54937316676085,
+        15.196435109092274,
+        14.58141909828391,
+        14.046335266935152,
+        15.19739515334086,
+        13.7222974135888,
+        11.671789968551252,
+        10.538903500938723,
+        10.452318899627825,
+        10.790525747399707,
+        11.5418713173893,
+        13.194872546205538,
+        16.761333497483534,
+        20.193755561877325,
+        20.935172226550677,
+        22.11797723983763,
+        22.22016122340017,
+        22.033242438988523,
+        20.890986677747733,
+        20.37869943826648,
+        19.15641306592973,
+        18.50662211204547,
+        17.43923757034243,
+        20.440333288643373,
+        23.492213789287074,
+        24.498377821359608,
+        24.885264346748954,
+        22.955326845347425,
+        19.046331928312984,
+        10.18889255297876,
+        8.936026889539308,
+        17.541151806014675,
+        25.31500131061549,
+        44.21943488543243,
+        60.88326108100308,
+        76.39603667269367,
+        81.91091072498308,
+        71.78914364501287,
+        54.96460341297595,
+        41.54339968386589,
+        27.99127259084694,
+        21.783567415804434,
+        36.17380111362271,
+        54.34030257863611,
+        73.3716056849727,
+        81.55468442404995,
+        78.22921368707955,
+        74.60151060065158,
+        72.42462083364714,
+        59.445639208342755,
+        47.842079105876685,
+        34.27652793760872,
+        20.43264302244838,
+        18.939369838740316,
+        22.878405274695552,
+        26.597479420414214,
+        33.392533397109524,
+        40.13671454032689,
+        49.77563820231018,
+        56.45281159170498,
+        59.33800708051954,
+        59.07031918839429,
+        72.05917661103791,
+        70.54659429766959,
+        62.24602476238092,
+        61.84191759179936,
+        55.57619714693101,
+        44.55292066840053,
+        31.307001858191008,
+        23.228604707312865,
+        23.925705139772646,
+        34.20557610171609,
+        45.308797286351954,
+        52.42768211809982,
+        53.9349740696563,
+        54.69685014361761,
+        45.27959749713861,
+        44.49387516300762,
+        40.17162558285701,
+        31.01299250573335,
+        29.345781087087744,
+        27.55428583060487,
+        25.693425994620398,
+        26.49269542183931,
+        24.27265093574461,
+        20.459521048521818,
+        17.148186177272024,
+        11.78759684379512,
+        9.682450058217883,
+        9.775221233541421,
+        10.426680913415726,
+        11.749551174185747,
+        14.186891837451507,
+        17.101080041757513,
+        17.31029966102254,
+        17.579622125268408,
+        17.59521540244679,
+        17.663269013222415,
+        17.72668909892365,
+        18.302037076987798,
+        16.954229759361812,
+        16.15755501407557,
+        16.69691970907348,
+        17.18186762017197,
+        19.083353229015675,
+        20.826215338033574,
+        19.646027679196617,
+        17.827127946347204,
+        16.3627706508565,
+        14.16310925075539,
+        11.476826544904457,
+        9.195136568488792,
+        7.761462478964137,
+        7.1788593924684125,
+        7.790499432463093,
+        7.474095030537255,
+        7.029760916144369,
+        7.036070922146417,
+        7.771232418988936,
+        8.027692468283263,
+        7.773612893742719,
+        6.667392017247761,
+        5.507653024711785,
+        4.907930992820906,
+        4.576399789569945,
+        5.162489391360636,
+        7.560753248683608,
+        8.858013313695771,
+        9.887985690733224,
+        10.152168714028475,
+        9.627908359794379,
+        8.679241557900669,
+        7.755623803239039,
+        8.949443564465449,
+        9.381407071117632,
+        10.668254097517869,
+        10.912219954126881,
+        12.645898842642696,
+        12.15196923516479,
+        13.508083263306029,
+        13.595233199975958,
+        13.916666356286495,
+        14.088961882718918,
+        16.231281624624415,
+        18.58760475095508,
+        18.911889924376283,
+        18.294381108294413,
+        15.886465574940678,
+        17.941472173866632,
+        22.80104440992152,
+        31.573331774025277,
+        41.71000928742096,
+        54.981399272853594
+      ]
+    }
+  }
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>深度合理性驗證</span></h1>
+        <div class="header-controls">
+            <div id="summaryViewContainer" style="display:none;">
+                <label for="summaryViewSelect" style="color:var(--text-sub); margin-right:8px; font-size:0.9rem;">Summary View:</label>
+                <select id="summaryViewSelect" class="styled-select"></select>
+            </div>
+            <div class="upload-section">
+                <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+                <input type="file" id="fileInput" accept=".json">
+            </div>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Injected by JS -->
+    </div>
+    
+    <!-- Score Card -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+
+    <div class="grid" id="dashboardGrid">
+        <!-- Cards will be injected here by JS -->
+    </div>
+
+    <h2 class="section-title">📋 詳細數據分析</h2>
+    
+    <div class="two-col-grid">
+        <div>
+            <div class="section-header-row">
+                <h3 style="color: var(--text-sub);">關鍵點深度統計 (Depth Statistics)</h3>
+                <select id="depthTableViewSelect" class="styled-select" style="display:none; padding: 4px 12px; font-size: 0.8rem;"></select>
+            </div>
+            <div class="data-table-container">
+                <table id="depthTable">
+                    <thead>
+                        <tr>
+                            <th>關鍵點</th>
+                            <th>平均深度 (mm)</th>
+                            <th>範圍 (mm)</th>
+                            <th>CV (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div>
+            <div class="section-header-row" style="margin-top: 0;">
+                <h3 style="color: var(--text-sub);">邏輯異常檢測 (Logic Violations)</h3>
+            </div>
+            <div class="data-table-container">
+                <table id="logicTable">
+                    <thead>
+                        <tr>
+                            <th>檢測項目</th>
+                            <th>說明</th>
+                            <th>左側異常</th>
+                            <th>右側異常</th>
+                            <th>異常率</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Chart.js Global Defaults for Premium Dark Theme
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    // Tooltip styling
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">深度檢查未觸發任何警示</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep3(data) {
+        if (!data) return null;
+
+        // 如果後端已經計算了詳細的分數結構，直接使用後端的結果
+        if (data.overall_summary && data.overall_summary.quality_score && data.overall_summary.quality_score.deductions) {
+            const qs = data.overall_summary.quality_score;
+            const breakdown = qs.deductions.map(d => ({
+                label: d.reason.split('(')[0].trim(), // 簡化標籤
+                value: d.reason.match(/\((.*?)\)/) ? d.reason.match(/\((.*?)\)/)[1] : '', // 提取括號內的數值
+                detail: d.reason,
+                impact: d.points
+            }));
+            
+            return {
+                score: qs.score,
+                level: qs.level,
+                summary: breakdown.length > 0 
+                    ? `主要扣分項目: ${breakdown[0].detail}` 
+                    : '檢測結果優良，無顯著深度異常。',
+                breakdown: breakdown
+            };
+        }
+
+        // Fallback: 前端計算邏輯
+        let score = 100;
+        let deductions = [];
+
+        const summary = data.overall_summary || {};
+        const logic = data.depth_logic_check || {};
+        const temporal = data.temporal_stability || {};
+        const stats = data.overall_statistics || {};
+
+        // Metric 1: Stability (CV)
+        const cv = summary.average_cv || stats.average_cv_percent || 0;
+        if (cv > 10) {
+            const penalty = 20;
+            score -= penalty;
+            deductions.push({
+                label: '深度不穩定',
+                value: `CV ${cv.toFixed(1)}%`,
+                detail: '深度變異係數過高，數據雜訊大',
+                impact: penalty
+            });
+        } else if (cv > 5) {
+            const penalty = 10;
+            score -= penalty;
+            deductions.push({
+                label: '深度略有雜訊',
+                value: `CV ${cv.toFixed(1)}%`,
+                detail: '深度變異係數稍高',
+                impact: penalty
+            });
+        }
+
+        // Metric 2: Logic Violations
+        let logicPenalty = 0;
+        if (logic.elbow_hyperextension && logic.elbow_hyperextension.rate > 0) {
+            const p = 15;
+            logicPenalty += p;
+            deductions.push({
+                label: '手肘反向彎曲',
+                value: `${logic.elbow_hyperextension.rate.toFixed(1)}%`,
+                detail: '檢測到手肘深度異常反折',
+                impact: p
+            });
+        }
+        if (logic.knee_hyperextension && logic.knee_hyperextension.rate > 0) {
+            const p = 15;
+            logicPenalty += p;
+            deductions.push({
+                label: '膝蓋反向彎曲',
+                value: `${logic.knee_hyperextension.rate.toFixed(1)}%`,
+                detail: '檢測到膝蓋深度異常反折',
+                impact: p
+            });
+        }
+        score -= logicPenalty;
+
+        // Metric 3: Temporal Instability
+        if (temporal.unstable_rate > 0) {
+            const penalty = 20;
+            score -= penalty;
+            deductions.push({
+                label: '時間軸跳動',
+                value: `${temporal.unstable_rate.toFixed(1)}%`,
+                detail: '深度在時間軸上出現劇烈跳動',
+                impact: penalty
+            });
+        }
+
+        score = Math.max(0, Math.round(score));
+        
+        let level = 'Excellent';
+        if (score < 60) level = 'Poor';
+        else if (score < 80) level = 'Average';
+        else if (score < 90) level = 'Good';
+
+        return {
+            score: score,
+            level: level,
+            summary: deductions.length > 0 ? `主要扣分項目: ${deductions[0].label}` : '整體深度合理，無顯著異常。',
+            breakdown: deductions
+        };
+    }
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    
+    let fullAnalysisData = null; // Store full data for view switching
+    let charts = {}; // Store chart instances by ID
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let jsonString = e.target.result;
+                // Enhanced NaN/Infinity handling
+                jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                // Handle array cases
+                jsonString = jsonString.replace(/,\s*NaN\b/g, ', null');
+                jsonString = jsonString.replace(/\[\s*NaN\b/g, '[ null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('載入失敗：\n' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter or Offline Data
+    if (window.OFFLINE_DATA) {
+        try {
+            renderDashboard(window.OFFLINE_DATA);
+        } catch (e) {
+            console.error("Offline data load error:", e);
+        }
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(text => {
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    // Don't alert on auto-load fail to avoid annoyance if param is wrong
+                });
+        }
+    }
+
+    function renderDashboard(data) {
+        if (!data) {
+            throw new Error("JSON 數據為空");
+        }
+
+        let viewData = data;
+
+        // 優先使用 Global 視角，若無則檢查是否為舊格式
+        if (data.Global) {
+            viewData = data.Global;
+        } else if (data.global) {
+            viewData = data.global;
+        } else if (!data.overall_summary) {
+             // 嘗試尋找其他視角作為備案
+             const views = Object.keys(data).filter(k => typeof data[k] === 'object' && data[k].overall_summary);
+             if (views.length > 0) {
+                 viewData = data[views[0]];
+             } else {
+                 throw new Error("JSON 格式不符：缺少 overall_summary 欄位，請確認是否為正確的分析結果檔案。");
+             }
+        }
+
+        // 隱藏所有視角選擇器
+        document.getElementById('summaryViewContainer').style.display = 'none';
+        document.querySelectorAll('.view-select, #depthTableViewSelect, #symmetryTableViewSelect, #logicTableViewSelect').forEach(el => el.style.display = 'none');
+
+        // 初始化儀表板結構 (不啟用多視角選擇)
+        fullAnalysisData = null; 
+        initializeDashboardStructure();
+        
+        // 渲染所有區塊
+        updateSummary(viewData);
+        updateDepthTable(viewData);
+        updateLogicTable(viewData);
+        
+        updateChart1(viewData);
+        updateChart2(viewData);
+        updateChartVelocity(viewData);
+        updateChartTemporal(viewData);
+    }
+
+    function initializeDashboardStructure() {
+        // Cleanup existing charts before removing canvas elements
+        Object.keys(charts).forEach(id => {
+            if (charts[id]) {
+                charts[id].destroy();
+            }
+        });
+        charts = {};
+
+        dashboardGrid.innerHTML = '';
+        
+        const blocks = [
+            { 
+                id: 'chart1', 
+                selectId: 'chart1Select',
+                title: '關鍵點深度穩定性 (Depth Stability CV%)', 
+                desc: '顯示各關鍵點在 Z 軸深度的穩定性，CV 值越低代表該點深度在時間軸上越穩定，無劇烈跳動。', 
+                criteria: 'CV < 5% 優秀 | 5-10% 可接受 | > 10% 不穩定',
+                params: 'X軸: 關鍵點 | Y軸: CV (%)' 
+            },
+            { 
+                id: 'chart_velocity',
+                selectId: 'chartVelocitySelect',
+                title: '深度變化速率 (Depth Velocity)',
+                desc: '顯示各關鍵點在 Z 軸上的平均變化速度 (mm/frame)。數值越高代表該點在深度方向移動越劇烈或抖動越嚴重。',
+                criteria: '應與動作幅度成正比。若靜止部位(如軀幹)數值過高，可能為雜訊。',
+                params: 'X軸: 關鍵點 | Y軸: 速度 (mm/frame)'
+            },
+            { 
+                id: 'chart2', 
+                selectId: 'chart2Select',
+                title: '深度範圍分佈 (Depth Range)', 
+                desc: '顯示各關鍵點的平均深度(Bar)與深度變化範圍(Error Bar)。', 
+                criteria: '範圍過大可能表示該點深度估計不穩定或運動幅度極大。',
+                params: 'X軸: 關鍵點 | Y軸: 深度 Z (mm)' 
+            },
+            { 
+                id: 'chart_temporal', 
+                selectId: 'chartTemporalSelect',
+                title: '時間軸深度穩定性 (Temporal Stability)', 
+                desc: '顯示每一幀相對於前一幀的平均深度變化量。突波代表畫面出現整體性的深度跳動。', 
+                criteria: '平穩的曲線為佳。突波 > 50mm 通常代表追蹤丟失或深度估計錯誤。',
+                params: 'X軸: 幀數 (Frame) | Y軸: 平均變化 (mm)' 
+            }
+        ];
+
+        // Generate HTML in one go to prevent DOM thrashing
+        dashboardGrid.innerHTML = blocks.map(block => 
+            createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId)
+        ).join('');
+
+        // Setup Chart Selectors if multi-view
+        if (fullAnalysisData) {
+            const views = Object.keys(fullAnalysisData).filter(k => typeof fullAnalysisData[k] === 'object' && fullAnalysisData[k].overall_summary);
+            const optionsHTML = views.map(key => {
+                const label = key === 'Global' ? 'Global (World)' : 
+                              key === '45' ? 'Camera 45°' : 
+                              key === 'Side' ? 'Camera Side' : key;
+                return `<option value="${key}">${label}</option>`;
+            }).join('');
+
+            const setupChartSelector = (selectId, updateFunc) => {
+                const sel = document.getElementById(selectId);
+                if (sel) {
+                    sel.innerHTML = optionsHTML;
+                    sel.style.display = 'inline-block';
+                    sel.addEventListener('change', (e) => {
+                        const view = e.target.value;
+                        console.log(`Chart ${selectId} switching to ${view}`);
+                        if (fullAnalysisData && fullAnalysisData[view]) {
+                            updateFunc(fullAnalysisData[view]);
+                        }
+                    });
+                }
+            };
+
+            setupChartSelector('chart1Select', updateChart1);
+            setupChartSelector('chartVelocitySelect', updateChartVelocity);
+            setupChartSelector('chart2Select', updateChart2);
+            setupChartSelector('chartTemporalSelect', updateChartTemporal);
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params, selectId) {
+        const selectHTML = selectId ? `<select id="${selectId}" class="styled-select view-select" style="display:none; padding: 4px 12px; font-size: 0.8rem;"></select>` : '';
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusBadge(value, type) {
+        if (value === null || value === undefined || (type !== 'quality' && isNaN(value))) {
+            return '<span class="status-badge status-neutral">N/A</span>';
+        }
+
+        let status = 'neutral';
+        let text = value;
+        
+        if (type === 'cv') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        } else if (type === 'quality') {
+            if (value === '優秀' || value === 'Excellent' || value === 'Good') { status = 'success'; }
+            else if (value === '可接受' || value === 'Acceptable') { status = 'warning'; }
+            else { status = 'danger'; }
+        } else if (type === 'diff') {
+            if (value < 50) { status = 'success'; }
+            else if (value < 100) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(1) + ' mm';
+        } else if (type === 'rate') {
+            if (value < 1) { status = 'success'; }
+            else if (value < 5) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(1) + '%';
+        }
+        
+        return `<span class="status-badge status-${status}">${text}</span>`;
+    }
+
+    // --- Render Functions ---
+
+    function updateSummary(data) {
+        const statsContainer = document.getElementById('summaryStats');
+        const summary = data.overall_summary;
+        
+        renderCompositeScoreCard(calculateCompositeScoreStep3(data));
+
+        const summaryItems = [
+            { label: '平均深度 (Mean Z)', value: `${summary.mean_depth_mm.toFixed(0)} mm`, sub: '整體平均深度' },
+            { label: '平均變異係數 (CV)', value: `${summary.average_cv.toFixed(2)}%`, sub: '越低越穩定' },
+            { label: '整體品質', value: summary.quality_level, sub: `Analyzed ${summary.total_keypoints_analyzed} keypoints` },
+            { label: '邏輯異常數', value: summary.total_logic_violations, sub: 'Wrist/Knee depth violations' }
+        ];
+
+        statsContainer.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+    }
+
+    function updateDepthTable(data) {
+        const depthTableBody = document.querySelector('#depthTable tbody');
+        const depthStats = data.depth_range_analysis;
+        const kpNames = Object.keys(depthStats).sort((a, b) => depthStats[b].cv_percent - depthStats[a].cv_percent);
+        
+        depthTableBody.innerHTML = kpNames.map(name => {
+            const stat = depthStats[name];
+            return `
+                <tr>
+                    <td>${name}</td>
+                    <td>${stat.mean_z_mm.toFixed(1)}</td>
+                    <td>${stat.depth_range_mm.toFixed(1)}</td>
+                    <td>${getStatusBadge(stat.cv_percent, 'cv')}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function updateLogicTable(data) {
+        const logicTableBody = document.querySelector('#logicTable tbody');
+        const logic = data.depth_logic_check;
+        if (logic) {
+            const definitions = {
+                'elbow_hyperextension': { name: '手肘反向彎曲', desc: '檢測手肘是否異常反折 (深度 > 連線 + 200mm)' },
+                'knee_hyperextension': { name: '膝蓋反向彎曲', desc: '檢測膝蓋是否異常反折 (深度 > 連線 + 200mm)' }
+            };
+
+            const rows = Object.keys(logic).map(key => {
+                const item = logic[key];
+                if (!item || !item.violations) return '';
+                
+                const def = definitions[key] || { name: key, desc: 'N/A' };
+                const leftCount = item.violations.left;
+                const rightCount = item.violations.right;
+                const rate = item.rate;
+                
+                return `
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-main);">${def.name}</td>
+                    <td style="font-size: 0.85rem; color: var(--text-sub); max-width: 300px;">${def.desc}</td>
+                    <td>${leftCount}</td>
+                    <td>${rightCount}</td>
+                    <td>${getStatusBadge(rate, 'rate')}</td>
+                    <td>${rate === 0 ? '<span class="status-badge status-success">Pass</span>' : '<span class="status-badge status-warning">Check</span>'}</td>
+                </tr>
+                `;
+            }).join('');
+            
+            logicTableBody.innerHTML = rows;
+        }
+    }
+
+    function updateChart1(data) {
+        const ctx = document.getElementById('chart1');
+        if (charts['chart1']) charts['chart1'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedKeys = Object.keys(depthStats).sort((a, b) => (depthStats[b].cv_percent || 0) - (depthStats[a].cv_percent || 0));
+
+        charts['chart1'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedKeys,
+                datasets: [{
+                    label: '變異係數 (CV%)',
+                    data: sortedKeys.map(k => depthStats[k].cv_percent || 0),
+                    backgroundColor: sortedKeys.map(k => {
+                        const cv = depthStats[k].cv_percent || 0;
+                        if (cv < 5) return '#4ade80';
+                        if (cv < 10) return '#fbbf24';
+                        return '#f87171';
+                    }),
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'CV (%)' } } }
+            }
+        });
+    }
+
+    function updateChartVelocity(data) {
+        const ctx = document.getElementById('chart_velocity');
+        if (charts['chart_velocity']) charts['chart_velocity'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedByGrad = Object.keys(depthStats).sort((a, b) => depthStats[b].mean_gradient_mm - depthStats[a].mean_gradient_mm);
+        
+        charts['chart_velocity'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedByGrad,
+                datasets: [{
+                    label: '平均深度速度 (mm/frame)',
+                    data: sortedByGrad.map(k => depthStats[k].mean_gradient_mm),
+                    backgroundColor: '#818cf8',
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Velocity (mm/frame)' } } }
+            }
+        });
+    }
+
+    function updateChart2(data) {
+        const ctx = document.getElementById('chart2');
+        if (charts['chart2']) charts['chart2'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedByZ = Object.keys(depthStats).sort((a, b) => depthStats[b].mean_z_mm - depthStats[a].mean_z_mm);
+        
+        const errorBarPlugin = {
+            id: 'errorBar',
+            afterDatasetsDraw: (chart) => {
+                const { ctx, data, scales: { y } } = chart;
+                chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                    const minZ = data.datasets[0].min[index];
+                    const maxZ = data.datasets[0].max[index];
+                    if (minZ === undefined || maxZ === undefined) return;
+                    const x = bar.x;
+                    const yMin = y.getPixelForValue(minZ);
+                    const yMax = y.getPixelForValue(maxZ);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; 
+                    ctx.moveTo(x, yMin); ctx.lineTo(x, yMax);
+                    ctx.moveTo(x - 6, yMax); ctx.lineTo(x + 6, yMax);
+                    ctx.moveTo(x - 6, yMin); ctx.lineTo(x + 6, yMin);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        charts['chart2'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedByZ,
+                datasets: [{
+                    label: '平均深度 (mm)',
+                    data: sortedByZ.map(k => depthStats[k].mean_z_mm),
+                    min: sortedByZ.map(k => depthStats[k].min_z_mm),
+                    max: sortedByZ.map(k => depthStats[k].max_z_mm),
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: false, title: { display: true, text: 'Depth Z (mm)' } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const min = context.dataset.min[idx];
+                                const max = context.dataset.max[idx];
+                                return `Range: ${min.toFixed(0)} - ${max.toFixed(0)} mm`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [errorBarPlugin]
+        });
+    }
+
+    function updateChartTemporal(data) {
+        const ctx = document.getElementById('chart_temporal');
+        if (charts['chart_temporal']) charts['chart_temporal'].destroy();
+        
+        const temporalStats = data.temporal_stability;
+        if (!temporalStats || !temporalStats.series_data) return;
+
+        const seriesData = temporalStats.series_data;
+        const labels = seriesData.map((_, i) => i + 1);
+        const threshold = temporalStats.threshold_mm || 50;
+
+        charts['chart_temporal'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '平均深度變化 (mm)',
+                    data: seriesData,
+                    borderColor: '#a855f7',
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: '異常閾值',
+                    data: Array(labels.length).fill(threshold),
+                    borderColor: 'rgba(248, 113, 113, 0.6)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: { 
+                    x: { title: { display: true, text: 'Frame Index' } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Change (mm)' } } 
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

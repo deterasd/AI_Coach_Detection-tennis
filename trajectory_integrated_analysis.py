@@ -175,7 +175,20 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
 
     # 合併所有建議
     result["combined_advice"] = combine_all_advice(result["analyses"])
-    
+
+    # 依擊球點左右位置判斷動作類型：正拍 / 反拍
+    # lateral_n > 0 → 正拍，lateral_n < 0 → 反拍
+    cz = result.get("statistics", {}).get("contact_zone", {}).get("user_values", {})
+    lateral_n = cz.get("lateral_n")
+    if lateral_n is not None:
+        if lateral_n > 0.1:
+            result["action_type"] = "正拍"
+        elif lateral_n < -0.1:
+            result["action_type"] = "反拍"
+        else:
+            result["action_type"] = "未知動作"  # 擊球點接近身體中線時保留未知
+    # 若 contact_zone 未產出則不寫入 action_type，前端會沿用舊邏輯或顯示未知
+
     print("整合分析完成")
     return result
 

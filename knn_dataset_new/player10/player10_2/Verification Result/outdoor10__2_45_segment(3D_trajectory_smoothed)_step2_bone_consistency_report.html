@@ -1,0 +1,3866 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step2. 骨架一致性驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* New Styles for Comprehensive View */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .file-upload-btn span {
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
+  "metadata": {
+    "analysis_time": "2026-01-27T12:13:16.418130",
+    "source_file": "data/player10/player10_2/outdoor10__2_45_segment(3D_trajectory_smoothed).json",
+    "total_frames": 82,
+    "analysis_type": "Bone Consistency Analysis"
+  },
+  "overall_summary": {
+    "average_cv": 21.575259913467676,
+    "quality_level": "需改進",
+    "total_bones_analyzed": 16,
+    "total_spikes_detected": 92
+  },
+  "overall_quality": {
+    "average_cv": 21.575259913467676,
+    "quality_level": "需改進"
+  },
+  "bone_statistics": {
+    "頭部": {
+      "mean": 7.925185797569718,
+      "std": 1.6551461142500363,
+      "cv": 20.884634840454993,
+      "count": 82,
+      "mean_diff": 0.28756758290380524,
+      "max_diff": 1.4312195415374154,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.928631319315867,
+        "p_value": 0.00020705131556184874,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          2.7137035593657504,
+          12.783319318520412
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        6.300195793683604,
+        6.271875904633869,
+        6.240679779782425,
+        6.208842397937582,
+        6.179318494601633,
+        6.154955655788314,
+        6.137927392997474,
+        6.129446041415876,
+        6.119919040471735,
+        6.131754672671193,
+        6.144275523452238,
+        6.162895509450412,
+        6.2075783881376925,
+        6.29444142998571,
+        6.4534120502893035,
+        6.716789420652347,
+        7.055299307406936,
+        7.513739766803928,
+        8.094721871181092,
+        8.700471716387243,
+        9.292041164392673,
+        9.830676625398228,
+        10.303839153502093,
+        10.722779926983781,
+        10.989151499023032,
+        11.130338886060796,
+        11.188530719751835,
+        11.060551144390768,
+        10.804261494277693,
+        10.43062202780924,
+        9.972455607541029,
+        9.505035999269579,
+        9.033350388252718,
+        8.572243485832733,
+        8.170500416015354,
+        7.812675391838418,
+        7.562552129299431,
+        7.429966229278724,
+        7.426557938021482,
+        7.477704295733853,
+        7.5582940191163175,
+        7.545287042746655,
+        7.533650914119474,
+        7.499733230115686,
+        7.510325827947575,
+        7.551370839665928,
+        7.647028834938898,
+        7.862599852636744,
+        8.141410715498669,
+        8.494367397949404,
+        8.928802470591503,
+        9.445015032769223,
+        10.08997099661175,
+        10.64679239291849,
+        10.98367829326658,
+        11.00188686687725,
+        10.780784603299828,
+        10.249445213056216,
+        9.52650437949539,
+        8.858687767967892,
+        8.288530750678804,
+        7.835340171987866,
+        7.4891832818081,
+        7.294417307174991,
+        7.174426912154354,
+        7.061101869435267,
+        6.901951214342658,
+        6.7261638666564565,
+        6.552484182704754,
+        6.376894825279272,
+        6.248603808544781,
+        6.269363342143112,
+        6.46891789783008,
+        6.742188794813488,
+        7.113946769902574,
+        7.634409460955316,
+        8.005938454415919,
+        8.06920884443017,
+        7.685024499646621,
+        6.75745643541848,
+        5.326236893881065,
+        4.0534344445191595
+      ]
+    },
+    "脊柱": {
+      "mean": 61.51888361891284,
+      "std": 3.908547413168222,
+      "cv": 6.3534108280967105,
+      "count": 82,
+      "mean_diff": 0.36629534033246536,
+      "max_diff": 1.704620145779451,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9161837453042391,
+        "p_value": 5.144475039845655e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          49.04835684857738,
+          74.6343425200539
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        55.667423975516684,
+        55.37700822713018,
+        55.16543162815269,
+        55.01146160758329,
+        54.90455185358725,
+        54.84162935926672,
+        54.824374789252,
+        54.85707132331007,
+        54.9411891177028,
+        55.11172211261525,
+        55.371418949271856,
+        55.69251927888716,
+        56.0706084267632,
+        56.49903543588238,
+        56.982435344499116,
+        57.51307762403169,
+        58.02083092683432,
+        58.48434809128404,
+        58.85720747420131,
+        59.07939857370508,
+        59.167139602022246,
+        59.13752636680257,
+        59.01241287090595,
+        58.85089773858751,
+        58.69502488033277,
+        58.58519199960722,
+        58.55748722210611,
+        58.625793673730506,
+        58.8077396614604,
+        59.120116577008254,
+        59.5144083791267,
+        60.0168516249071,
+        60.602457857942134,
+        61.26753073253591,
+        62.015875714564004,
+        62.82381867490086,
+        63.61254731432945,
+        64.36209533225006,
+        65.04277588115448,
+        65.64720451730975,
+        66.0369085328769,
+        66.21089060011737,
+        66.29043622806377,
+        66.2035739957215,
+        65.98787069085643,
+        65.819002016988,
+        65.73121600773268,
+        65.79761947028138,
+        65.97483609467585,
+        66.22758944478846,
+        66.47721801444307,
+        66.75373330625385,
+        66.95185629413366,
+        66.98503842590479,
+        66.8329864872774,
+        66.43131572364328,
+        65.84453960634285,
+        65.08741872118387,
+        64.4314031066024,
+        63.961451477407095,
+        63.561644757199666,
+        63.197225842373406,
+        62.85478202584083,
+        62.52579851737856,
+        62.23777811615251,
+        62.098761880186736,
+        62.17161094355107,
+        62.41954684553578,
+        62.76799594957815,
+        63.19390928748508,
+        63.698132689231656,
+        64.15294750022085,
+        64.60323762917912,
+        64.99618342347416,
+        65.17024054929284,
+        65.03006392953739,
+        64.6592074178416,
+        64.03444420124339,
+        63.137556990719986,
+        61.959160681495874,
+        60.50415136637868,
+        58.79953122059923
+      ]
+    },
+    "肩寬": {
+      "mean": 36.31228292815085,
+      "std": 8.17984214926203,
+      "cv": 22.526378100344285,
+      "count": 82,
+      "mean_diff": 1.1924230827516173,
+      "max_diff": 16.075833658592693,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.7612300771145404,
+        "p_value": 3.1918694799982767e-10,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 14,
+        "rate": 17.073170731707318,
+        "bounds": [
+          28.16752308649595,
+          49.0051487965643
+        ]
+      },
+      "outliers_zscore": {
+        "count": 1,
+        "rate": 1.2195121951219512
+      },
+      "series_data": [
+        37.48542857243382,
+        38.278931779647436,
+        39.03858585762364,
+        39.6811256072579,
+        40.16115925151694,
+        40.460564803797396,
+        40.58047206202996,
+        40.53541578835254,
+        40.379948375722904,
+        40.10830244425516,
+        39.71289604521609,
+        39.26937888613794,
+        38.802084828454426,
+        38.3124514391366,
+        37.84928693051788,
+        37.44405320444176,
+        37.09782538395482,
+        36.80825383208532,
+        36.5559880346694,
+        36.33605583812399,
+        36.13228043034528,
+        35.9545295654413,
+        35.81184913243654,
+        35.71381494727959,
+        35.67367861483113,
+        35.71403395699522,
+        35.850780893224126,
+        36.06294221476245,
+        36.352044725934405,
+        36.70331079953406,
+        37.093229325397985,
+        37.50793055794746,
+        37.94493907659641,
+        38.4036829358426,
+        38.89120009824178,
+        39.42294052643082,
+        39.99392858705126,
+        40.5557354375696,
+        41.108817348869415,
+        41.63986998048872,
+        42.05513850777079,
+        42.329563083191864,
+        42.443657524280496,
+        42.501637632055015,
+        42.5912477246776,
+        42.6592269269603,
+        42.708172217518836,
+        42.68998396369784,
+        42.57513400612936,
+        42.3674524085583,
+        42.13323994248728,
+        41.88328448460011,
+        41.67444781529501,
+        41.50786697642765,
+        41.370914598729755,
+        41.21744433162239,
+        41.01651244751615,
+        40.86954083997913,
+        40.88343612190701,
+        41.11182362628752,
+        41.53515333715261,
+        41.96747377406595,
+        41.87648200184833,
+        40.98716177454508,
+        39.129464419140575,
+        35.80318577086426,
+        31.45284742206694,
+        26.734168273587493,
+        22.785585442406266,
+        20.338961119434224,
+        19.611982728169796,
+        20.04786077185885,
+        20.804373046320247,
+        21.003079074980896,
+        19.693125916395694,
+        16.500760128533006,
+        12.384265017853131,
+        9.836872416208696,
+        14.029881738580126,
+        24.065969859660164,
+        37.46161955790833,
+        53.53745321650102
+      ]
+    },
+    "骨盆": {
+      "mean": 25.031140380595083,
+      "std": 3.9481172037072616,
+      "cv": 15.772821947688668,
+      "count": 82,
+      "mean_diff": 0.6578985232149908,
+      "max_diff": 7.81952655671757,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.8245874561211115,
+        "p_value": 1.855607783502405e-08,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 6,
+        "rate": 7.317073170731707,
+        "bounds": [
+          18.638522834531535,
+          33.84626925239822
+        ]
+      },
+      "outliers_zscore": {
+        "count": 2,
+        "rate": 2.4390243902439024
+      },
+      "series_data": [
+        26.064647748740278,
+        26.699456260544736,
+        27.320708934342598,
+        27.83536953583975,
+        28.194126679114568,
+        28.378078564470815,
+        28.38901528305292,
+        28.24267105244013,
+        27.986289625964254,
+        27.614716239253436,
+        27.13930177084801,
+        26.657486468668615,
+        26.157301415528774,
+        25.658211184047975,
+        25.201201511816777,
+        24.818162720378574,
+        24.525779385207986,
+        24.331363750314054,
+        24.21931655472188,
+        24.17840480308107,
+        24.19071020658951,
+        24.23026794820676,
+        24.29134659598325,
+        24.371619713984014,
+        24.458957428487036,
+        24.52117441812586,
+        24.632722246899363,
+        24.758582819153315,
+        24.88570289570867,
+        25.001033847413872,
+        25.09714931802549,
+        25.165365587302748,
+        25.22094812458265,
+        25.272536412789883,
+        25.32964365569863,
+        25.418595022176337,
+        25.548883386818325,
+        25.683189288769164,
+        25.79212515566469,
+        25.904557454880422,
+        26.006658343557966,
+        26.153316055915933,
+        26.352225706240652,
+        26.627496285357147,
+        26.97450607580572,
+        27.344126891043448,
+        27.68766760257531,
+        27.991077345449167,
+        28.222904738759308,
+        28.369267489581585,
+        28.443535968683598,
+        28.43623636100541,
+        28.40264669047812,
+        28.362026527990302,
+        28.334744822237212,
+        28.29068681842829,
+        28.224631174672073,
+        28.25560131213108,
+        28.454158444050012,
+        28.844388766719618,
+        29.340641653080997,
+        29.739740380514707,
+        29.643370152147696,
+        28.845406964320603,
+        27.28159287023942,
+        24.864558374121213,
+        22.04553000583885,
+        19.66613463313923,
+        18.51264230785537,
+        18.697744438614055,
+        19.63154565126997,
+        20.538040030875692,
+        20.976445725185975,
+        20.65435538673578,
+        19.349150456623104,
+        16.898143289852154,
+        13.989083393506826,
+        11.494007919893937,
+        11.248088227756517,
+        14.623218585602762,
+        20.76495988429261,
+        28.58448644101018
+      ]
+    },
+    "左上臂": {
+      "mean": 33.54946583372201,
+      "std": 4.824463770895072,
+      "cv": 14.380150774400096,
+      "count": 82,
+      "mean_diff": 0.9375418441886793,
+      "max_diff": 5.745082015964172,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.9780781554861944,
+        "p_value": 0.17334449186805156,
+        "is_normal": true
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          22.165326697414038,
+          45.215406783069646
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        32.65093737227446,
+        32.1049298811754,
+        31.709946160488897,
+        31.402502351452927,
+        31.150831140499292,
+        30.943259523346853,
+        30.77983225278997,
+        30.668010899346978,
+        30.639413725475862,
+        30.741605714809225,
+        31.04487463570169,
+        31.591317431361517,
+        32.42917573443339,
+        33.56532889708937,
+        34.947391570318004,
+        36.523225899959826,
+        38.054308952390485,
+        39.4291976890654,
+        40.57541712324381,
+        41.4153822218346,
+        42.05545544116712,
+        42.408348229236296,
+        42.48015231720214,
+        42.29683183944179,
+        41.95683640291245,
+        41.42783763631652,
+        40.772051410049606,
+        39.91637948377595,
+        38.88286180105917,
+        37.74532734243503,
+        36.437592030571764,
+        35.16956140601979,
+        34.08225831886405,
+        33.245155265262945,
+        32.698920970295966,
+        32.365171033232954,
+        32.21752311972834,
+        32.228535298482775,
+        32.469519921063785,
+        32.92571950278145,
+        33.55997192005027,
+        34.2688391105965,
+        35.01442623498984,
+        35.60770117232837,
+        35.997178472668374,
+        36.2595673002623,
+        36.50361444556398,
+        36.75511064535311,
+        36.79020662764796,
+        36.64283057056459,
+        36.314590495360605,
+        35.966217026842585,
+        35.60715848387455,
+        35.06168235915073,
+        34.31885937567648,
+        33.32489230759636,
+        32.24350018079246,
+        30.737806000578814,
+        29.123295330218912,
+        27.762323714276107,
+        26.686793939401554,
+        25.900999632589127,
+        25.253960892613144,
+        24.84239073400658,
+        24.67503728942265,
+        24.86229785599155,
+        25.33252185208858,
+        26.031354638102222,
+        26.880075841052122,
+        27.861247353650782,
+        29.12783601787401,
+        30.896930159769664,
+        33.16492443609729,
+        35.509560559388724,
+        37.43064428173752,
+        38.66244612620683,
+        38.54503255143074,
+        36.587760367945116,
+        32.52121344790195,
+        26.776131431937777,
+        22.336683033499195,
+        27.161656201146776
+      ]
+    },
+    "左前臂": {
+      "mean": 20.360025705996694,
+      "std": 7.5511789989107445,
+      "cv": 37.08825866897936,
+      "count": 82,
+      "mean_diff": 1.5116727786985933,
+      "max_diff": 7.3644768605956905,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.9683068327335086,
+        "p_value": 0.040074173555138794,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          1.8251158860010115,
+          40.20098680458071
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        23.15274855541708,
+        15.78827169482139,
+        11.424251362250669,
+        9.413071238139322,
+        8.871743080432672,
+        9.306554857376495,
+        10.74867749325363,
+        13.243914924560048,
+        16.283486646539583,
+        19.78817140251408,
+        23.461303876577162,
+        26.781210379719205,
+        29.420831755698835,
+        31.284106227365292,
+        32.403420028959324,
+        32.706173144633844,
+        32.53556984159694,
+        32.14223287701825,
+        31.577796677577275,
+        30.99546100930691,
+        30.186798394265196,
+        29.326692264619037,
+        28.50876951028352,
+        27.70174290850891,
+        26.91739548589743,
+        26.031331448756553,
+        25.18019430689468,
+        24.475310070887726,
+        23.857068734687143,
+        23.28628475076407,
+        22.884223619759716,
+        22.552576374273315,
+        22.219653013718602,
+        21.96501051787661,
+        21.681456798981998,
+        21.378264209795596,
+        20.97758819883014,
+        20.45073168745902,
+        19.63492836211764,
+        18.81000419165982,
+        18.115570389286223,
+        17.62492953176317,
+        17.301327860977807,
+        17.134519184850713,
+        16.930026667910028,
+        16.594610923183172,
+        16.193594425111336,
+        15.936150647093502,
+        16.090539708665315,
+        16.871974162414677,
+        18.511701719587737,
+        20.95488290120153,
+        23.77113436824255,
+        25.380856718714107,
+        25.474247498092335,
+        24.069937255590553,
+        21.51492297146934,
+        18.07808632310059,
+        14.52708408466086,
+        10.787569242098755,
+        7.134657662612741,
+        4.00505527537529,
+        2.110326689182507,
+        3.34229217623036,
+        4.771045455988607,
+        6.399947221026318,
+        8.644862556479787,
+        11.448703247111013,
+        14.015452781141283,
+        16.446839010204098,
+        18.87012236804579,
+        21.35680796800308,
+        23.77818912497282,
+        25.92196444745365,
+        27.576660840890764,
+        28.761310566518738,
+        29.19581884229002,
+        28.697961680218686,
+        27.17700745861648,
+        24.77793544525842,
+        22.24716694885333,
+        21.62329161744607
+      ]
+    },
+    "左整臂": {
+      "mean": 38.8813606573718,
+      "std": 12.633311099640807,
+      "cv": 32.49194700506337,
+      "count": 82,
+      "mean_diff": 1.8578552025296995,
+      "max_diff": 7.490316237533754,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.918355471310546,
+        "p_value": 6.510154258043465e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          -6.817484037847308,
+          84.42322673080456
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        31.46688105471707,
+        28.17329701905934,
+        26.496518615141603,
+        25.69462908981284,
+        25.34456212098052,
+        25.35890462522784,
+        25.88172994084032,
+        27.139277660843078,
+        29.164821831358033,
+        32.12968040671336,
+        36.005626222057934,
+        40.32604698684893,
+        44.68191898184131,
+        48.75605021830221,
+        52.35021573136669,
+        55.29011942142174,
+        57.50849249885438,
+        59.168306635136204,
+        60.287887956985095,
+        60.95748469557101,
+        61.12595130678002,
+        60.83915469480432,
+        60.20845566486738,
+        59.232052641389714,
+        58.04749264053621,
+        56.48748370247375,
+        54.744163651456404,
+        52.803462333517714,
+        50.6090789766266,
+        48.20207870166982,
+        45.60744299953064,
+        43.02754686249109,
+        40.60813620264294,
+        38.57190591244749,
+        36.93982954014932,
+        35.682248292976396,
+        34.75362087414018,
+        34.09792376355693,
+        33.627564333021866,
+        33.555729414661954,
+        33.87191669471038,
+        34.44594092231275,
+        35.14490112168543,
+        35.70060038773888,
+        35.70591282036054,
+        35.02882489308429,
+        33.74125644613336,
+        31.859449030366868,
+        29.464793551035985,
+        26.778784659652153,
+        24.086544256371972,
+        22.100778651157768,
+        21.260776963524982,
+        21.387849358889003,
+        21.79833806843337,
+        22.140309554470193,
+        22.33109007759325,
+        22.594974147394307,
+        23.003396499153233,
+        23.46426960436937,
+        23.98381496881114,
+        24.71095993838022,
+        25.740344080581384,
+        27.04488811504903,
+        28.464863436472875,
+        30.163382911465032,
+        32.207936068958944,
+        34.513501491228865,
+        36.823657492356084,
+        39.15561868465317,
+        41.801072523449804,
+        45.06306275368322,
+        49.00460384036065,
+        52.96979261783555,
+        56.254553227588644,
+        58.665160488803664,
+        59.12908873131348,
+        56.94686108555287,
+        51.77026021350804,
+        44.279943975974284,
+        38.43136789852924,
+        44.282357428673905
+      ]
+    },
+    "右上臂": {
+      "mean": 44.551629927749005,
+      "std": 11.33130127010378,
+      "cv": 25.434089142148476,
+      "count": 82,
+      "mean_diff": 1.587305388495371,
+      "max_diff": 8.199109302392479,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.7614076637084777,
+        "p_value": 3.2250461632331797e-10,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 7,
+        "rate": 8.536585365853659,
+        "bounds": [
+          20.620098128540242,
+          63.65506563817309
+        ]
+      },
+      "outliers_zscore": {
+        "count": 3,
+        "rate": 3.6585365853658534
+      },
+      "series_data": [
+        34.73328222940927,
+        34.603668979451776,
+        34.53935169607449,
+        34.533659204126394,
+        34.59109036799352,
+        34.722328951523124,
+        34.939884449217125,
+        35.25449879996093,
+        35.731492259124714,
+        36.36413847617909,
+        37.04212591735371,
+        37.68876000383382,
+        38.29790393774273,
+        38.78058362006002,
+        39.04093742452523,
+        38.9581475963886,
+        38.64223905202719,
+        38.17749664188561,
+        37.56145604211421,
+        36.907987956332974,
+        36.33955504955617,
+        35.975713596882905,
+        35.80410057918017,
+        35.780200680933895,
+        35.874421456311055,
+        36.17679246405952,
+        36.708285274092425,
+        37.44648470839489,
+        38.38696518170521,
+        39.44933921206102,
+        40.63426577083966,
+        41.92198166223536,
+        43.27015746303162,
+        44.66026308917567,
+        46.1729164828205,
+        47.72210366669828,
+        49.16153714930053,
+        50.448974418517075,
+        51.329421081030816,
+        51.97112940063623,
+        52.23512269112638,
+        52.14612912512315,
+        51.551870516003795,
+        50.391438193317,
+        48.72650500857698,
+        46.90150028814826,
+        45.10283171496961,
+        43.48800597865756,
+        42.364593628529164,
+        41.652543215676346,
+        41.23819018161972,
+        41.050677085955144,
+        41.03343787952543,
+        41.110375744100295,
+        41.213264106788415,
+        41.336973481161564,
+        41.47333920410786,
+        41.81140030743614,
+        42.26316301004883,
+        42.5858263925414,
+        42.51727649297385,
+        41.91797866396274,
+        41.42145410202933,
+        42.301087533365276,
+        45.552334404451095,
+        50.88002426365364,
+        58.130515025765135,
+        66.27018283772689,
+        73.96156414926796,
+        79.95047346868819,
+        82.62244491504597,
+        81.16228297745712,
+        76.67110607555415,
+        69.89431126191057,
+        62.02907172134454,
+        53.829962418952064,
+        46.190168137987335,
+        40.04642402814982,
+        36.17795387964941,
+        34.7459834592543,
+        35.038962468051615,
+        35.899262043976506
+      ]
+    },
+    "右前臂": {
+      "mean": 42.76771153356065,
+      "std": 29.319278548012175,
+      "cv": 68.55470516584636,
+      "count": 82,
+      "mean_diff": 4.414791680453086,
+      "max_diff": 26.715768110491048,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.591075404852524,
+        "p_value": 9.11587948980526e-14,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 13,
+        "rate": 15.853658536585366,
+        "bounds": [
+          8.415929405542556,
+          58.377528354994865
+        ]
+      },
+      "outliers_zscore": {
+        "count": 4,
+        "rate": 4.878048780487805
+      },
+      "series_data": [
+        31.86500945431853,
+        37.109523259903554,
+        40.25557358059904,
+        41.55333830988924,
+        41.306322903526805,
+        39.84011029168089,
+        37.49225210357224,
+        34.60767655177633,
+        31.87911893096406,
+        29.327668712813743,
+        27.10779119742377,
+        25.491447105787792,
+        24.632173209323888,
+        24.39046217545576,
+        24.734888028426454,
+        25.476000175195942,
+        26.087260287719193,
+        26.570169788620774,
+        26.891952960465186,
+        26.874067395868444,
+        26.60868764128777,
+        26.190212687292416,
+        25.6856085166149,
+        25.143134278771615,
+        24.642494231363436,
+        24.50470429887779,
+        24.67819931695512,
+        25.000546018026686,
+        25.469920807992597,
+        26.00486865976503,
+        26.557870790247115,
+        27.28274245407738,
+        28.23238997019458,
+        29.321767383655434,
+        30.570619129723873,
+        31.942301987561496,
+        33.34064658398353,
+        34.56857007624217,
+        35.42240726805031,
+        36.09645013691968,
+        36.39092259510906,
+        36.253442748003025,
+        35.698487286560464,
+        34.72819583665576,
+        33.532334140577824,
+        32.43999531356154,
+        31.44394615052708,
+        30.55357674959938,
+        29.77322904710299,
+        29.190011457233105,
+        28.79753605692553,
+        28.553200573142153,
+        28.48161052256147,
+        28.79779388250926,
+        29.44602550615365,
+        30.48592336262517,
+        31.894422620055167,
+        33.78980838595386,
+        36.05383442769671,
+        38.26015662154417,
+        39.04738412075834,
+        37.71834118373018,
+        33.420158360912566,
+        30.91532641601765,
+        40.14515190530195,
+        61.11930334758025,
+        87.8350714580713,
+        113.90319864995028,
+        134.9142227913506,
+        147.4604611036549,
+        149.858237283008,
+        141.31550637708102,
+        123.53699144844475,
+        99.21485243975266,
+        72.53388837647128,
+        46.793684745508195,
+        36.58992469876849,
+        46.461910232131544,
+        59.93633533359796,
+        66.47044021984604,
+        61.24319413123219,
+        41.19735918377096
+      ]
+    },
+    "右整臂": {
+      "mean": 75.71827709138444,
+      "std": 43.31474440683568,
+      "cv": 57.205137346903825,
+      "count": 82,
+      "mean_diff": 5.031119229343596,
+      "max_diff": 35.517032212744624,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.6393440915246296,
+        "p_value": 6.923957210641123e-13,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 10,
+        "rate": 12.195121951219512,
+        "bounds": [
+          18.87532651437261,
+          105.0868700526627
+        ]
+      },
+      "outliers_zscore": {
+        "count": 4,
+        "rate": 4.878048780487805
+      },
+      "series_data": [
+        40.81755852032743,
+        43.90817809450723,
+        46.06821269316471,
+        47.04516504084258,
+        46.95071975661892,
+        46.071309444134094,
+        44.776693767273755,
+        43.457325198594035,
+        42.55003102156918,
+        42.15319617297338,
+        42.29937449552973,
+        42.87562015735006,
+        43.697207156143804,
+        44.591686877754725,
+        45.45943834804298,
+        46.28077281010697,
+        47.152713522427426,
+        48.07379852780217,
+        49.038876091821706,
+        50.01339671787535,
+        50.97150344496849,
+        51.90411103002011,
+        52.829022568539926,
+        53.7677464421364,
+        54.70844737660294,
+        55.70467490585834,
+        56.77566751810283,
+        57.909606798283264,
+        59.07851344891092,
+        60.22595938440385,
+        61.32797979528656,
+        62.246681197412805,
+        62.961761001848494,
+        63.54129985893659,
+        64.05546869225526,
+        64.50060059350614,
+        64.87528255977236,
+        65.20959580689303,
+        65.4689474552802,
+        65.71297410797311,
+        65.94436487742402,
+        66.19755638513173,
+        66.39282274008272,
+        66.4930028799782,
+        66.5119360566878,
+        66.45954071510988,
+        66.46200473580936,
+        66.5369235915273,
+        66.74659773293772,
+        66.98949768587381,
+        67.2732262536703,
+        67.60253414166746,
+        68.01556326503865,
+        68.56578610552235,
+        69.26788214770218,
+        70.18006577496487,
+        71.32143355497253,
+        73.12976166405113,
+        75.42802038009668,
+        77.53587336445977,
+        78.07593477638058,
+        76.18172873309621,
+        72.48973989267844,
+        72.84680833684575,
+        85.340279603958,
+        110.33732922977921,
+        143.64290809552068,
+        177.80369261759478,
+        206.67002056023134,
+        225.40343506886705,
+        230.59706113263604,
+        220.6355151865329,
+        198.3692720000792,
+        167.21217570607283,
+        132.39512852224516,
+        96.87809630950053,
+        71.51081002843667,
+        65.21951403905871,
+        73.72601100135951,
+        82.58076229389313,
+        82.23146504011598,
+        68.6395208640807
+      ]
+    },
+    "左大腿": {
+      "mean": 50.70120910821951,
+      "std": 4.19271043080698,
+      "cv": 8.269448607937187,
+      "count": 82,
+      "mean_diff": 0.485622440645669,
+      "max_diff": 1.973742908939414,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9146768123132677,
+        "p_value": 4.3767869933985806e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 4,
+        "rate": 4.878048780487805,
+        "bounds": [
+          40.23004197355074,
+          59.79754871614473
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        45.269690457764085,
+        45.538414756076605,
+        45.78555344902078,
+        45.93881820223099,
+        45.97869307062239,
+        45.91975656143832,
+        45.79605081703691,
+        45.64969104377885,
+        45.53851152940386,
+        45.50510049667167,
+        45.540996745683586,
+        45.616316660067646,
+        45.754072453010416,
+        45.92468501190102,
+        46.09229850381654,
+        46.28043740853788,
+        46.45359334686791,
+        46.63918670435545,
+        46.84587319806097,
+        47.10623092312672,
+        47.45172820128043,
+        47.91624340425265,
+        48.611745897627486,
+        49.6308727993421,
+        50.91047405943623,
+        52.42850126317743,
+        54.29515089216106,
+        56.268893801100475,
+        58.14432610154917,
+        59.757946561426195,
+        60.839528336257715,
+        61.33457521164111,
+        61.18061852828706,
+        60.47878698796243,
+        59.37296291858138,
+        58.075461143428626,
+        56.90049582801201,
+        55.968387697286786,
+        55.255803741236534,
+        54.84660552016455,
+        54.76314544335294,
+        54.65574389054128,
+        54.402067483478234,
+        53.837203654327865,
+        53.07550983440193,
+        52.221709429577665,
+        51.439355604954855,
+        50.819742653947316,
+        50.36931144820003,
+        50.10539705879005,
+        50.030471184198134,
+        50.129790872777015,
+        50.28986229844124,
+        50.36540472241664,
+        50.27616779777728,
+        49.90632033390451,
+        49.34930208635346,
+        48.61901222956863,
+        48.20934369342422,
+        48.227831901412586,
+        48.625224769753856,
+        49.092821385161145,
+        49.44425005116166,
+        49.5870893345899,
+        49.621961619927546,
+        49.83214888255266,
+        50.3097182292522,
+        50.9313245259244,
+        51.61627378591413,
+        52.222389394090655,
+        52.61887013655146,
+        52.470144495836834,
+        52.10385818111879,
+        51.5789783099331,
+        51.11412014875902,
+        50.69322914586253,
+        50.25567008678102,
+        49.81797194496688,
+        49.398679133218735,
+        49.01980820092197,
+        48.708693872379584,
+        48.500147383811864
+      ]
+    },
+    "左小腿": {
+      "mean": 46.18888261592774,
+      "std": 5.267929070417957,
+      "cv": 11.405188374488558,
+      "count": 82,
+      "mean_diff": 0.6414168151234387,
+      "max_diff": 2.2426684228646465,
+      "quality_level": "需改進",
+      "shapiro_test": {
+        "statistic": 0.8449910876236362,
+        "p_value": 8.350396142056873e-08,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          31.394409817652864,
+          60.28147380867792
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        53.75810301111769,
+        56.00077143398234,
+        57.65933583614643,
+        58.71008737877471,
+        59.17393255595749,
+        59.099567686671115,
+        58.553470615642105,
+        57.61363768655606,
+        56.33736487074697,
+        54.75239282973632,
+        53.07667382828565,
+        51.62306488562416,
+        50.25152784363427,
+        48.96919835000942,
+        47.87558975038485,
+        46.834530674466535,
+        45.96293293009347,
+        45.174461861953716,
+        44.46830476255103,
+        43.757844721060884,
+        43.09665213301574,
+        42.49762806825386,
+        41.99616686551696,
+        41.693186812148255,
+        41.66693692487097,
+        41.81116591172047,
+        42.09241366613356,
+        42.39329523903039,
+        42.574775980267525,
+        42.60836403964103,
+        42.47937071824911,
+        42.27422147103332,
+        42.1008673302659,
+        42.05984740907989,
+        42.23028130856805,
+        42.589976671413766,
+        42.99222175702123,
+        43.39812292235883,
+        43.83791526007625,
+        44.103547819878116,
+        43.91384605005855,
+        43.477344819378466,
+        42.84321442248982,
+        42.225984649527,
+        41.65337949111114,
+        41.14039531421355,
+        40.72930665731705,
+        40.47174006790622,
+        40.40321344410255,
+        40.52520354344688,
+        40.83158979688824,
+        41.221429705846255,
+        41.61899568694502,
+        41.982493815045125,
+        42.29584519942421,
+        42.46952724293355,
+        42.44374722834099,
+        42.21163402076397,
+        42.06351215224201,
+        42.057590399242436,
+        42.354532832015124,
+        43.020648014125086,
+        44.15742992006132,
+        45.73403378369232,
+        47.751116215276646,
+        49.81740378751467,
+        51.32355064082951,
+        52.13639817137023,
+        52.26004951791634,
+        51.9734798823603,
+        51.49503988105634,
+        50.69192298522488,
+        49.608700299388225,
+        48.569165595135715,
+        47.69384504848601,
+        46.9605807467432,
+        46.29167337998071,
+        45.70293768161732,
+        45.26756477833801,
+        45.15046887445041,
+        45.63995015437497,
+        47.158136786955666
+      ]
+    },
+    "左整腿": {
+      "mean": 94.44722333209945,
+      "std": 4.916683622263752,
+      "cv": 5.205747134540414,
+      "count": 82,
+      "mean_diff": 0.845462318305297,
+      "max_diff": 2.548464062046179,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9505691373923961,
+        "p_value": 0.003214492748481007,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          79.36235857924328,
+          108.4917921315236
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        97.9301809003061,
+        100.46024131706073,
+        102.373827327086,
+        103.56862731725239,
+        104.04641250577022,
+        103.87500002359039,
+        103.16273524632993,
+        102.04053481756463,
+        100.64904848942875,
+        99.08310171104691,
+        97.53526617784527,
+        96.25485883320624,
+        95.16130071979632,
+        94.21248151880346,
+        93.441448988837,
+        92.76171141295845,
+        92.20222740447167,
+        91.7100535990748,
+        91.27191341294039,
+        90.8213286835511,
+        90.4039282265746,
+        90.01295854020132,
+        89.67826962859274,
+        89.44543811081442,
+        89.45983857742779,
+        89.76239576378875,
+        90.24655213960632,
+        90.94431317530776,
+        91.82813416728183,
+        92.79862653632227,
+        93.87911777336873,
+        94.93448514211443,
+        95.88292321176075,
+        96.60510887226732,
+        97.15867159930056,
+        97.46834409243036,
+        97.54257449377486,
+        97.57681456796634,
+        97.68800683800455,
+        97.71841863206883,
+        97.39294424446639,
+        96.70420115426643,
+        95.5990114493936,
+        94.23155628686524,
+        92.74367385094047,
+        91.2408021869462,
+        89.89181305266354,
+        88.79667436530836,
+        88.0265363641482,
+        87.51113538161482,
+        87.25522727941338,
+        87.18695570943564,
+        87.21649418806155,
+        87.26061588284303,
+        87.30412974298575,
+        87.38142895800284,
+        87.57469482778306,
+        87.9310109797498,
+        88.40455228412368,
+        88.96413648850958,
+        89.65709550874548,
+        90.46292390547231,
+        91.48204381670863,
+        92.85666403474627,
+        94.86201849223298,
+        97.41048255427916,
+        99.7981905657578,
+        101.67378457699593,
+        102.83998299906371,
+        103.2945511045892,
+        103.14940846209063,
+        102.04163547842926,
+        100.35926476504159,
+        98.54631929111811,
+        96.95479636108317,
+        95.61541840386981,
+        94.42841390266821,
+        93.46037548054039,
+        92.81486173614671,
+        92.6549890677679,
+        93.2256475771753,
+        94.86862997421456
+      ]
+    },
+    "右大腿": {
+      "mean": 46.17649417542114,
+      "std": 3.020228295271278,
+      "cv": 6.540618444955242,
+      "count": 82,
+      "mean_diff": 0.37530513306986185,
+      "max_diff": 1.6715230294056127,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9177400008192602,
+        "p_value": 6.088070602946583e-05,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          34.93889635865377,
+          57.59505164526683
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        47.10218526502676,
+        48.10942048320238,
+        48.618669737833706,
+        48.62491017812083,
+        48.20168582152345,
+        47.46540773491044,
+        46.55083153575146,
+        45.59161375069296,
+        44.7301160469255,
+        44.03529719740871,
+        43.53133169627694,
+        43.20922844692246,
+        43.028555712910666,
+        42.91545478082127,
+        42.841043075593596,
+        42.82624991520779,
+        42.867552633385415,
+        42.9844195958522,
+        43.166443815411085,
+        43.410535028861396,
+        43.70642944660564,
+        44.01801157945509,
+        44.35540403536324,
+        44.75135504334544,
+        45.12671840992797,
+        45.41631128056284,
+        45.66835765477617,
+        45.79871473218029,
+        45.82760275482337,
+        45.84401058914585,
+        45.80973825810902,
+        45.7121229403413,
+        45.6210163187791,
+        45.599056069928686,
+        45.63105693826379,
+        45.67919111750968,
+        45.75465905158451,
+        45.85273808787022,
+        45.86785872687634,
+        45.70242194923618,
+        45.44564753920737,
+        44.98189187985286,
+        44.29194557444304,
+        43.508213277950475,
+        42.789704350038015,
+        42.246900398861925,
+        42.01142198981378,
+        41.995491900451285,
+        42.10070112034087,
+        42.259093523385,
+        42.45337050169329,
+        42.65768835829357,
+        42.85667919287546,
+        43.01578326570897,
+        43.1393986691468,
+        43.28085040295455,
+        43.56385400953998,
+        44.31128289900664,
+        45.62609604700605,
+        47.24919918172979,
+        48.920722211135406,
+        50.39441665431112,
+        51.46818229752633,
+        52.01415424698507,
+        52.07954996914202,
+        51.72321414258181,
+        51.27655859782516,
+        50.721357674335664,
+        50.10006286597493,
+        49.58274258367648,
+        49.23712883189222,
+        49.15841714667077,
+        49.17898196786807,
+        49.2326993257776,
+        49.3761564199125,
+        49.62865728992785,
+        49.930472403424076,
+        50.2659451291981,
+        50.62359796978013,
+        50.99842396332046,
+        51.39446699201191,
+        51.82767218163254
+      ]
+    },
+    "右小腿": {
+      "mean": 44.40816385598751,
+      "std": 2.7537362714034512,
+      "cv": 6.200968543382294,
+      "count": 82,
+      "mean_diff": 0.287845612136296,
+      "max_diff": 2.120772294413449,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.931717336071101,
+        "p_value": 0.0002974362481156275,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          35.5536877049706,
+          53.13103568630305
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        47.19761200699365,
+        46.74346226387742,
+        46.46321339241677,
+        46.3029212170834,
+        46.232278035404576,
+        46.234422869639374,
+        46.29728125424297,
+        46.40694249397106,
+        46.4956554019376,
+        46.578638778364805,
+        46.645851158297006,
+        46.636529364764485,
+        46.55293459814515,
+        46.345154634975955,
+        46.044844229049176,
+        45.61852362152062,
+        45.20839255464405,
+        44.85653509567753,
+        44.531972306916046,
+        44.22453777898092,
+        43.94076593145837,
+        43.648291143808066,
+        43.338195188466116,
+        43.013088452323146,
+        42.70142735609648,
+        42.384118960698125,
+        42.065551277060976,
+        41.714261491552826,
+        41.37359011761281,
+        41.051482777351026,
+        40.77382428827806,
+        40.545082957283554,
+        40.35469533327749,
+        40.20191631052259,
+        40.065981818924016,
+        39.94363659609354,
+        39.856768016941196,
+        39.79778043212541,
+        39.742425274905976,
+        39.70037040868756,
+        39.73294097000802,
+        39.859938070139606,
+        40.055588181791336,
+        40.35191896369821,
+        40.783649961950644,
+        41.28540544057022,
+        41.89281692838121,
+        42.517128063289384,
+        42.98565989994606,
+        43.2978294880833,
+        43.46177990066765,
+        43.54270869103486,
+        43.55154316636296,
+        43.60920905588788,
+        43.73352221155095,
+        43.9493861759833,
+        44.22177800763382,
+        44.582373343347655,
+        44.99330688911754,
+        45.45434219042673,
+        45.916639095209675,
+        46.34913082586546,
+        46.74872390078147,
+        47.13652390832817,
+        47.483778209851344,
+        47.76327164242566,
+        47.93051481622681,
+        47.988962879886124,
+        47.94771006084026,
+        47.83388914129982,
+        47.65221287682147,
+        47.43804641231394,
+        47.16397945191191,
+        46.86244406298503,
+        46.49931697877807,
+        46.18667215934749,
+        45.996406123122696,
+        46.022388097818755,
+        46.37674984066003,
+        47.18633794245386,
+        48.585591339696286,
+        50.706363634109735
+      ]
+    },
+    "右整腿": {
+      "mean": 88.86589862857166,
+      "std": 6.123441323226161,
+      "cv": 6.890653690252998,
+      "count": 82,
+      "mean_diff": 0.567322108082243,
+      "max_diff": 1.9072415205384203,
+      "quality_level": "可接受",
+      "shapiro_test": {
+        "statistic": 0.9567475717969887,
+        "p_value": 0.007505866410919549,
+        "is_normal": false
+      },
+      "outliers_iqr": {
+        "count": 0,
+        "rate": 0.0,
+        "bounds": [
+          67.59930460745777,
+          110.43314621266545
+        ]
+      },
+      "outliers_zscore": {
+        "count": 0,
+        "rate": 0.0
+      },
+      "series_data": [
+        93.85477589733247,
+        93.96025471753423,
+        93.89721396410968,
+        93.67769894727047,
+        93.32487634971598,
+        92.86833635407872,
+        92.34024875627294,
+        91.77224267959834,
+        91.16767188796925,
+        90.59682209517945,
+        90.08942985204595,
+        89.63696544887326,
+        89.27522031761347,
+        88.91753829709084,
+        88.58057997065924,
+        88.25017896085053,
+        87.98813363355782,
+        87.82090672244749,
+        87.69298441776449,
+        87.5856104513111,
+        87.49703970522765,
+        87.37169707348575,
+        87.21461726032285,
+        87.03936448551283,
+        86.83340768333497,
+        86.53700013890167,
+        86.18778887750872,
+        85.69458324970515,
+        85.15140006794083,
+        84.59328616697302,
+        84.05439066180091,
+        83.54738677270159,
+        83.06316976656605,
+        82.63077952451481,
+        82.21912004839564,
+        81.79868059477722,
+        81.38497894892393,
+        80.98626083431478,
+        80.60681787971386,
+        80.15351263816413,
+        79.65109302094412,
+        79.15414133891773,
+        78.7622266004315,
+        78.57758448733684,
+        78.67688049797063,
+        79.13407420495409,
+        79.87157105161226,
+        80.76386398218878,
+        81.63380095478345,
+        82.38228634913222,
+        83.01700032319519,
+        83.50212596717216,
+        84.00582051953782,
+        84.61659299112128,
+        85.32932710510508,
+        86.21012197010744,
+        87.25684853003636,
+        88.64259768440405,
+        90.33219176829903,
+        92.19655431724287,
+        94.10379583778129,
+        95.86148752306707,
+        97.22986019016473,
+        98.15204112041691,
+        98.63257925056466,
+        98.65384768232795,
+        98.39860769623246,
+        97.88871020292365,
+        97.18164408633875,
+        96.44815571614527,
+        95.77694676590099,
+        95.30317820611947,
+        94.92493946235354,
+        94.63211156020628,
+        94.45934220168967,
+        94.53818410591198,
+        94.8349673696941,
+        95.38146583946772,
+        96.2081510780206,
+        97.34393399866089,
+        98.81654665400914,
+        100.65351523032281
+      ]
+    }
+  },
+  "symmetry_analysis": [
+    {
+      "pair_name": "上臂",
+      "left_mean_cm": 33.54946583372201,
+      "right_mean_cm": 44.551629927749005,
+      "difference_cm": 11.002164094026995,
+      "difference_percent": 28.17416064847224,
+      "assessment": "[X] 不對稱 (右側不穩 CV:25.4%)",
+      "left_cv": 14.380150774400096,
+      "right_cv": 25.434089142148476
+    },
+    {
+      "pair_name": "前臂",
+      "left_mean_cm": 20.360025705996694,
+      "right_mean_cm": 42.76771153356065,
+      "difference_cm": 22.407685827563956,
+      "difference_percent": 70.99156981512324,
+      "assessment": "[X] 不對稱 (右側不穩 CV:68.6%)",
+      "left_cv": 37.08825866897936,
+      "right_cv": 68.55470516584636
+    },
+    {
+      "pair_name": "整臂",
+      "left_mean_cm": 38.8813606573718,
+      "right_mean_cm": 75.71827709138444,
+      "difference_cm": 36.836916434012636,
+      "difference_percent": 64.28801549054187,
+      "assessment": "[X] 不對稱 (右側不穩 CV:57.2%)",
+      "left_cv": 32.49194700506337,
+      "right_cv": 57.205137346903825
+    },
+    {
+      "pair_name": "大腿",
+      "left_mean_cm": 50.70120910821951,
+      "right_mean_cm": 46.17649417542114,
+      "difference_cm": 4.524714932798368,
+      "difference_percent": 9.341086296298352,
+      "assessment": "[X] 不對稱",
+      "left_cv": 8.269448607937187,
+      "right_cv": 6.540618444955242
+    },
+    {
+      "pair_name": "小腿",
+      "left_mean_cm": 46.18888261592774,
+      "right_mean_cm": 44.40816385598751,
+      "difference_cm": 1.7807187599402283,
+      "difference_percent": 3.931074641582813,
+      "assessment": "[!] 可接受",
+      "left_cv": 11.405188374488558,
+      "right_cv": 6.200968543382294
+    },
+    {
+      "pair_name": "整腿",
+      "left_mean_cm": 94.44722333209945,
+      "right_mean_cm": 88.86589862857166,
+      "difference_cm": 5.581324703527798,
+      "difference_percent": 6.0893891761062715,
+      "assessment": "[X] 不對稱",
+      "left_cv": 5.205747134540414,
+      "right_cv": 6.890653690252998
+    }
+  ],
+  "body_height_analysis": {
+    "sample_count": 82,
+    "mean_cm": 167.61215881866377,
+    "std_cm": 5.027197190797191,
+    "cv_percent": 2.9993034074789375,
+    "min_cm": 159.41307249822577,
+    "max_cm": 174.70461939667237,
+    "max_mean_ratio": 1.0423147140875488,
+    "assessment": "[!] 身高比例尚可（有輕微 scaling 變化）",
+    "scale_warning": null
+  },
+  "joint_depth_stability": {
+    "nose": {
+      "sample_count": 82,
+      "mean_z_cm": 279.71181049513905,
+      "std_z_cm": 23.719756785252546,
+      "cv_percent": 8.480069805870695,
+      "min_z_cm": 254.7555740007669,
+      "max_z_cm": 317.33496966702205
+    },
+    "left_shoulder": {
+      "sample_count": 82,
+      "mean_z_cm": 301.3587265700678,
+      "std_z_cm": 19.674527377105687,
+      "cv_percent": 6.528607152357088,
+      "min_z_cm": 270.49215236133097,
+      "max_z_cm": 332.6433772682391
+    },
+    "right_shoulder": {
+      "sample_count": 82,
+      "mean_z_cm": 302.52517905076553,
+      "std_z_cm": 20.224024892568895,
+      "cv_percent": 6.68507162148483,
+      "min_z_cm": 276.7816328883136,
+      "max_z_cm": 348.27947875215995
+    },
+    "left_hip": {
+      "sample_count": 82,
+      "mean_z_cm": 293.616403313428,
+      "std_z_cm": 22.133417656942548,
+      "cv_percent": 7.5382088354633545,
+      "min_z_cm": 267.7366489664779,
+      "max_z_cm": 328.99318147016095
+    },
+    "right_hip": {
+      "sample_count": 82,
+      "mean_z_cm": 291.68908317465974,
+      "std_z_cm": 22.07302506518685,
+      "cv_percent": 7.567312710146852,
+      "min_z_cm": 269.0000798533537,
+      "max_z_cm": 337.0290965275593
+    },
+    "left_wrist": {
+      "sample_count": 82,
+      "mean_z_cm": 287.4998834545126,
+      "std_z_cm": 40.56049158812163,
+      "cv_percent": 14.108002793169478,
+      "min_z_cm": 235.4823621959443,
+      "max_z_cm": 370.4060167787186
+    },
+    "right_wrist": {
+      "sample_count": 82,
+      "mean_z_cm": 318.21448446943367,
+      "std_z_cm": 72.37532890548239,
+      "cv_percent": 22.74419689793676,
+      "min_z_cm": 249.4650556492697,
+      "max_z_cm": 548.2300454567887
+    },
+    "left_ankle": {
+      "sample_count": 82,
+      "mean_z_cm": 311.64752995635735,
+      "std_z_cm": 15.509484725497613,
+      "cv_percent": 4.976610829442331,
+      "min_z_cm": 288.80063289896714,
+      "max_z_cm": 351.3329018790167
+    },
+    "right_ankle": {
+      "sample_count": 82,
+      "mean_z_cm": 286.99238183110884,
+      "std_z_cm": 9.221911819231867,
+      "cv_percent": 3.2132949872721146,
+      "min_z_cm": 273.0606896270828,
+      "max_z_cm": 304.101716137445
+    }
+  },
+  "joint_angle_analysis": {
+    "left_elbow": {
+      "sample_count": 82,
+      "mean_angle_deg": 88.08838099979204,
+      "std_angle_deg": 30.09708125489763,
+      "min_angle_deg": 34.36577907411532,
+      "max_angle_deg": 141.98948937141282,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    },
+    "right_elbow": {
+      "sample_count": 82,
+      "mean_angle_deg": 120.59612042924527,
+      "std_angle_deg": 29.821483343932357,
+      "min_angle_deg": 75.41786453107181,
+      "max_angle_deg": 169.51271689410265,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    },
+    "left_knee": {
+      "sample_count": 82,
+      "mean_angle_deg": 156.31134388015695,
+      "std_angle_deg": 10.65410057151402,
+      "min_angle_deg": 129.29543817178325,
+      "max_angle_deg": 176.51220707983907,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    },
+    "right_knee": {
+      "sample_count": 82,
+      "mean_angle_deg": 159.99502846919228,
+      "std_angle_deg": 10.895304270290703,
+      "min_angle_deg": 137.72165794889028,
+      "max_angle_deg": 178.72445813300104,
+      "abnormal_count": 0,
+      "abnormal_rate": 0.0,
+      "abnormal_details": []
+    }
+  },
+  "bone_orientation_stability": {
+    "左上臂": {
+      "sample_count": 81,
+      "mean_angle_change_deg": 3.217660272336854,
+      "max_angle_change_deg": 39.58086975732818,
+      "std_angle_change_deg": 5.348480322824658
+    },
+    "右上臂": {
+      "sample_count": 81,
+      "mean_angle_change_deg": 3.6512710588641393,
+      "max_angle_change_deg": 14.275161134563618,
+      "std_angle_change_deg": 3.666884061748568
+    },
+    "左大腿": {
+      "sample_count": 81,
+      "mean_angle_change_deg": 1.6548400584692278,
+      "max_angle_change_deg": 5.2808101159710015,
+      "std_angle_change_deg": 1.2705853224600006
+    },
+    "右大腿": {
+      "sample_count": 81,
+      "mean_angle_change_deg": 1.5178401254020577,
+      "max_angle_change_deg": 5.265890296306544,
+      "std_angle_change_deg": 1.164773918197028
+    }
+  },
+  "spike_detection": {
+    "total_spikes": 92,
+    "top_10_spikes": [
+      {
+        "bone": "右整臂",
+        "bone_zh": "右整臂",
+        "frame_prev": 74,
+        "frame_curr": 75,
+        "diff": 35.517032212744624,
+        "L_prev": 132.39512852224516,
+        "L_curr": 96.87809630950053
+      },
+      {
+        "bone": "右整臂",
+        "bone_zh": "右整臂",
+        "frame_prev": 73,
+        "frame_curr": 74,
+        "diff": 34.81704718382767,
+        "L_prev": 167.21217570607283,
+        "L_curr": 132.39512852224516
+      },
+      {
+        "bone": "右整臂",
+        "bone_zh": "右整臂",
+        "frame_prev": 66,
+        "frame_curr": 67,
+        "diff": 34.160784522074096,
+        "L_prev": 143.64290809552068,
+        "L_curr": 177.80369261759478
+      },
+      {
+        "bone": "右整臂",
+        "bone_zh": "右整臂",
+        "frame_prev": 65,
+        "frame_curr": 66,
+        "diff": 33.30557886574147,
+        "L_prev": 110.33732922977921,
+        "L_curr": 143.64290809552068
+      },
+      {
+        "bone": "右整臂",
+        "bone_zh": "右整臂",
+        "frame_prev": 72,
+        "frame_curr": 73,
+        "diff": 31.15709629400638,
+        "L_prev": 198.3692720000792,
+        "L_curr": 167.21217570607283
+      },
+      {
+        "bone": "右整臂",
+        "bone_zh": "右整臂",
+        "frame_prev": 67,
+        "frame_curr": 68,
+        "diff": 28.86632794263656,
+        "L_prev": 177.80369261759478,
+        "L_curr": 206.67002056023134
+      },
+      {
+        "bone": "右前臂",
+        "bone_zh": "右前臂",
+        "frame_prev": 65,
+        "frame_curr": 66,
+        "diff": 26.715768110491048,
+        "L_prev": 61.11930334758025,
+        "L_curr": 87.8350714580713
+      },
+      {
+        "bone": "右前臂",
+        "bone_zh": "右前臂",
+        "frame_prev": 73,
+        "frame_curr": 74,
+        "diff": 26.68096406328138,
+        "L_prev": 99.21485243975266,
+        "L_curr": 72.53388837647128
+      },
+      {
+        "bone": "右前臂",
+        "bone_zh": "右前臂",
+        "frame_prev": 66,
+        "frame_curr": 67,
+        "diff": 26.068127191878986,
+        "L_prev": 87.8350714580713,
+        "L_curr": 113.90319864995028
+      },
+      {
+        "bone": "右前臂",
+        "bone_zh": "右前臂",
+        "frame_prev": 74,
+        "frame_curr": 75,
+        "diff": 25.740203630963087,
+        "L_prev": 72.53388837647128,
+        "L_curr": 46.793684745508195
+      }
+    ]
+  },
+  "detailed_angle_anomalies": {}
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>骨架一致性驗證</span></h1>
+        <div class="upload-section">
+            <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Injected by JS -->
+    </div>
+
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+    
+    <!-- Height Warning Alert -->
+    <div id="heightWarning" style="display:none; margin-bottom: 24px; padding: 16px; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; color: #fbbf24; align-items: center; gap: 12px;">
+        <span style="font-size: 1.5rem;">⚠️</span>
+        <div>
+            <div style="font-weight: 700; font-size: 1.1rem;">身高比例異常警告</div>
+            <div id="heightWarningText" style="opacity: 0.9;"></div>
+        </div>
+    </div>
+
+    <!-- Tooltip Container (Moved to body level for better positioning) -->
+    <div id="mapTooltip" style="position: absolute; display: none; background: rgba(0,0,0,0.9); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; pointer-events: none; border: 1px solid rgba(255,255,255,0.2); z-index: 9999; white-space: nowrap;"></div>
+
+    <div class="grid" id="dashboardGrid">
+        <!-- Cards will be injected here by JS -->
+    </div>
+
+    <h2 class="section-title">📋 詳細數據分析</h2>
+    
+    <div class="two-col-grid">
+        <div>
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">各部位骨架長度統計 (Bone Statistics)</h3>
+            <div class="data-table-container">
+                <table id="boneTable">
+                    <thead>
+                        <tr>
+                            <th>部位</th>
+                            <th>平均長度 (cm)</th>
+                            <th>標準差長度 (Std)</th>
+                            <th>變異係數 (CV%)</th>
+                            <th>品質</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div>
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">左右對稱性分析 (Symmetry Analysis)</h3>
+            <div class="data-table-container">
+                <table id="symmetryTable">
+                    <thead>
+                        <tr>
+                            <th>部位對</th>
+                            <th>左側均值 (cm)</th>
+                            <th>右側均值 (cm)</th>
+                            <th>差異 %</th>
+                            <th>評估</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-bottom: 16px; color: var(--text-sub);">檢測到的突波 (Top Spikes)</h3>
+            <div class="data-table-container">
+                <table id="spikesTable">
+                    <thead>
+                        <tr>
+                            <th>Frame</th>
+                            <th>Bone/Joint</th>
+                            <th>Value (cm)</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Chart.js Global Defaults for Premium Dark Theme
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    // Tooltip styling
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Pre-process JSON string to handle NaN/Infinity which are valid in Python but not in standard JSON
+                let jsonString = e.target.result;
+                jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('解析 JSON 失敗，請確認檔案格式正確。\n錯誤: ' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter or Offline Data
+    if (window.OFFLINE_DATA) {
+        renderDashboard(window.OFFLINE_DATA);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text(); // Get text first to handle NaN
+                })
+                .then(text => {
+                    // Pre-process JSON string to handle NaN/Infinity
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    alert('無法從 URL 載入 JSON 檔案: ' + src);
+                });
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params) {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusBadge(value, type) {
+        let status = 'neutral';
+        let text = value;
+        
+        if (type === 'cv') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        } else if (type === 'quality') {
+            if (value === '優秀' || value === 'Excellent' || value === '良好' || value === 'Good') { status = 'success'; }
+            else if (value === '可接受' || value === 'Acceptable') { status = 'warning'; }
+            else { status = 'danger'; }
+        } else if (type === 'diff') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        }
+        
+        return `<span class="status-badge status-${status}">${text}</span>`;
+    }
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">所有骨長/對稱檢查皆通過</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep2(data) {
+        if (!data || !data.overall_summary) return null;
+
+        // 如果後端已經計算了詳細的分數結構，直接使用後端的結果
+        if (data.overall_summary.quality_score && data.overall_summary.quality_score.deductions) {
+            const qs = data.overall_summary.quality_score;
+            const breakdown = qs.deductions.map(d => ({
+                label: d.reason.split('(')[0].trim(),
+                value: d.reason.match(/\((.*?)\)/) ? d.reason.match(/\((.*?)\)/)[1] : '',
+                detail: d.reason,
+                impact: d.points
+            }));
+            
+            return {
+                score: qs.score,
+                level: qs.level,
+                summary: breakdown.length > 0 
+                    ? `主要扣分項目: ${breakdown[0].detail}` 
+                    : '檢測結果優良，骨架一致性高。',
+                breakdown: breakdown
+            };
+        }
+
+        let workingScore = 100;
+        const breakdown = [];
+        const summary = data.overall_summary;
+        const bones = data.bone_statistics || {};
+        const symmetry = Array.isArray(data.symmetry_analysis) ? data.symmetry_analysis : [];
+        const spikesTotal = (data.spike_detection && data.spike_detection.total_spikes) || summary.total_spikes_detected || 0;
+        const heightWarning = data.body_height_analysis && data.body_height_analysis.scale_warning;
+
+        const register = (label, value, detail, penalty) => {
+            const safePenalty = penalty > 0 && Number.isFinite(penalty) ? penalty : 0;
+            if (safePenalty > 0) workingScore -= safePenalty;
+            breakdown.push({ label, value, detail, impact: safePenalty });
+        };
+
+        const avgCv = summary.average_cv || summary.average_cv_percent || 0;
+        const avgCvPenalty = avgCv > 4 ? clamp((avgCv - 4) * 2.2, 0, 22) : 0;
+        register('平均骨長 CV', `${avgCv.toFixed(2)}%`, '整體穩定度，建議小於 4%', avgCvPenalty);
+
+        let worstBone = null;
+        Object.keys(bones).forEach(key => {
+            const stat = bones[key];
+            if (!worstBone || stat.cv > worstBone.cv) {
+                worstBone = { name: key, cv: stat.cv };
+            }
+        });
+        if (worstBone) {
+            const worstPenalty = worstBone.cv > 8 ? clamp((worstBone.cv - 8) * 1.8, 0, 20) : 0;
+            register(`最高 CV 骨段 (${worstBone.name})`, `${worstBone.cv.toFixed(2)}%`, '單一骨段的離散程度 (建議 < 8%)', worstPenalty);
+        } else {
+            register('最高 CV 骨段', 'N/A', '缺少骨段統計資料', 0);
+        }
+
+        let worstSym = null;
+        symmetry.forEach(pair => {
+            if (!worstSym || pair.difference_percent > worstSym.difference_percent) {
+                worstSym = pair;
+            }
+        });
+        if (worstSym) {
+            const symPenalty = worstSym.difference_percent > 5 ? clamp((worstSym.difference_percent - 5) * 1.8, 0, 20) : 0;
+            register(`最差對稱組 (${worstSym.pair_name})`, `${worstSym.difference_percent.toFixed(2)}%`, '左右差異 (建議 ≦ 5%)', symPenalty);
+        } else {
+            register('對稱性', 'N/A', '未提供對稱分析', 0);
+        }
+
+        const spikePenalty = spikesTotal > 0 ? clamp(spikesTotal * 0.7, 0, 15) : 0;
+        register('突波檢測', `${spikesTotal} 次`, '突然拉長/縮短的次數 (0 次為佳)', spikePenalty);
+
+        if (heightWarning) {
+            register('身高尺規偏移', '警示', heightWarning, 5);
+        } else {
+            register('身高尺規偏移', '正常', '比例合理，未扣分', 0);
+        }
+
+        workingScore = clamp(workingScore, 0, 100);
+        const totalPenalty = breakdown.reduce((sum, item) => sum + item.impact, 0);
+        const leading = breakdown.reduce((max, item) => item.impact > max.impact ? item : max, breakdown[0] || { impact: 0 });
+        const summaryText = totalPenalty > 0 && leading
+            ? `主要扣分來自「${leading.label}」：${leading.value} 導致 -${leading.impact.toFixed(1)} 分`
+            : '骨長、對稱、身高校準皆維持在建議範圍。';
+
+        return {
+            score: workingScore,
+            level: describeScoreLevel(workingScore),
+            summary: summaryText,
+            breakdown
+        };
+    }
+
+    let charts = {}; // Store chart instances
+
+    function renderDashboard(data) {
+        // Clear existing charts to prevent memory leaks
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
+        dashboardGrid.innerHTML = ''; // Clear previous charts
+        
+        // --- 1. Populate Summary Stats ---
+        const statsContainer = document.getElementById('summaryStats');
+        const summary = data.overall_summary;
+        
+        // Height Warning Logic
+        if (data.body_height_analysis && data.body_height_analysis.scale_warning) {
+            const warningDiv = document.getElementById('heightWarning');
+            const warningText = document.getElementById('heightWarningText');
+            warningDiv.style.display = 'flex';
+            warningText.textContent = data.body_height_analysis.scale_warning;
+        }
+
+        // --- Body Map Coloring & Tooltip Logic ---
+        // Logic moved to the end of function to ensure DOM elements exist
+
+        
+        const summaryItems = [
+            { label: '平均變異係數 (CV)', value: `${summary.average_cv.toFixed(2)}%`, sub: '越低越穩定' },
+            { label: '整體品質', value: summary.quality_level, sub: `Analyzed ${summary.total_bones_analyzed} bones` },
+            { label: '檢測到的突波', value: summary.total_spikes_detected, sub: 'Sudden changes' },
+            { label: '身高估計', value: data.body_height_analysis ? `${data.body_height_analysis.mean_cm.toFixed(1)} cm` : 'N/A', sub: data.body_height_analysis ? `±${data.body_height_analysis.std_cm.toFixed(1)} cm` : '' }
+        ];
+
+        statsContainer.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+
+        renderCompositeScoreCard(calculateCompositeScoreStep2(data));
+
+
+        // --- 2. Populate Bone Statistics Table ---
+        const boneTableBody = document.querySelector('#boneTable tbody');
+        const boneStats = data.bone_statistics;
+        const boneNames = Object.keys(boneStats).sort((a, b) => boneStats[b].cv - boneStats[a].cv);
+        
+        boneTableBody.innerHTML = boneNames.map(name => {
+            const stat = boneStats[name];
+            return `
+                <tr>
+                    <td>${name}</td>
+                    <td>${stat.mean.toFixed(1)}</td>
+                    <td>${stat.std.toFixed(2)}</td>
+                    <td>${getStatusBadge(stat.cv, 'cv')}</td>
+                    <td>${getStatusBadge(stat.quality_level, 'quality')}</td>
+                </tr>
+            `;
+        }).join('');
+
+
+        // --- 3. Populate Symmetry Table ---
+        const symTableBody = document.querySelector('#symmetryTable tbody');
+        if (data.symmetry_analysis) {
+            const sortedSymmetry = [...data.symmetry_analysis].sort((a, b) => b.difference_percent - a.difference_percent);
+            symTableBody.innerHTML = sortedSymmetry.map(sym => `
+                <tr>
+                    <td>${sym.pair_name}</td>
+                    <td>${sym.left_mean_cm.toFixed(1)}</td>
+                    <td>${sym.right_mean_cm.toFixed(1)}</td>
+                    <td>${getStatusBadge(sym.difference_percent, 'diff')}</td>
+                    <td>${sym.assessment}</td>
+                </tr>
+            `).join('');
+        } else {
+            symTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub)">無對稱性分析數據</td></tr>';
+        }
+
+        // --- 4. Populate Spikes Table ---
+        const spikesTableBody = document.querySelector('#spikesTable tbody');
+        if (data.spike_detection && data.spike_detection.top_10_spikes) {
+            spikesTableBody.innerHTML = data.spike_detection.top_10_spikes.map(spike => `
+                <tr>
+                    <td>${spike.frame_prev} → ${spike.frame_curr}</td>
+                    <td>${spike.bone_zh || spike.bone || 'Unknown'}</td>
+                    <td>${spike.diff ? spike.diff.toFixed(2) : 'N/A'} cm</td>
+                    <td>突波 (Spike)</td>
+                </tr>
+            `).join('');
+        } else {
+            spikesTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-sub)">無突波數據</td></tr>';
+        }
+
+
+        // --- 5. Render Charts ---
+        const blocks = [
+            { 
+                id: 'chart_angles', 
+                title: '關節角度異常統計 (Joint Angles)', 
+                desc: '統計各關節角度超出合理範圍（如膝蓋過度反折）的比例。', 
+                criteria: '異常率應 < 1%，若過高表示骨架結構崩壞',
+                params: 'X軸: 關節名稱 | Y軸: 異常率 (%)' 
+            },
+            { 
+                id: 'chart1', 
+                title: '骨架長度變異係數 (CV%)', 
+                desc: '顯示各部位骨架長度的穩定性，CV 值越低代表該部位長度在時間軸上越穩定。', 
+                criteria: 'CV < 5% 優秀 | 5-10% 可接受 | > 10% 不穩定',
+                params: 'X軸: 部位名稱 | Y軸: CV (%)' 
+            },
+            { 
+                id: 'chart2', 
+                title: '骨架長度統計 (Mean & Std)', 
+                desc: '顯示各部位的平均長度(Bar)與標準差(Error Bar)。白色工字線代表標準差範圍 (Mean ± Std)。', 
+                criteria: '1. 標準差(Std) 建議 < 2.0 cm (穩定)；若 > 5.0 cm 則視為不穩定。\n2. 長度比例參考: 上臂≈前臂, 大腿>小腿, 脊柱≈30-40%身高。',
+                params: 'X軸: 部位名稱 | Y軸: 長度 (cm)' 
+            },
+            { 
+                id: 'chart3', 
+                title: '左右對稱性比較 (Symmetry)', 
+                desc: '比較左右對稱部位（如手臂、腿部）的平均長度差異。', 
+                criteria: '差異應 < 5%，若差異過大可能表示重建有偏差',
+                params: 'X軸: 部位對 | Y軸: 長度 (cm)' 
+            },
+            {
+                id: 'chart_series',
+                title: '骨架長度時序變化 (Length Time Series)',
+                desc: '顯示特定部位在每一幀的長度變化，可觀察是否有異常跳動。',
+                criteria: '曲線應平滑，無劇烈突波',
+                params: 'X軸: Frame | Y軸: 長度 (cm)'
+            },
+            {
+                id: 'chart_cv_series',
+                title: '骨架穩定度時序分析 (Rolling CV Analysis)',
+                desc: '顯示特定部位在時間軸上的穩定度變化 (Rolling Window CV, Window=30)。',
+                criteria: 'CV 突升表示該時間段檢測不穩定',
+                params: 'X軸: Frame | Y軸: Rolling CV (%)'
+            }
+        ];
+
+        // Inject Body Map Card First (Custom HTML)
+        // 3D-style Perspective Coordinates (Approximate)
+        const bodyMapHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">人體部位健康度地圖 (Body Health Map - 3D View)</h3>
+                </div>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; align-items: center; height: 100%;">
+                    <div style="position: relative; width: 300px; height: 500px;">
+                        <!-- 3D-style SVG Stick Figure -->
+                        <svg viewBox="0 0 300 500" style="width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                            <defs>
+                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="2" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                                <linearGradient id="boneGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:rgba(255,255,255,0.1)" />
+                                    <stop offset="50%" style="stop-color:rgba(255,255,255,0.5)" />
+                                    <stop offset="100%" style="stop-color:rgba(255,255,255,0.1)" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Grid Floor for 3D effect -->
+                            <path d="M50,450 L250,450 L290,480 L10,480 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" />
+                            
+                            <!-- Bones (Lines) - Using Chinese data-name -->
+                            <g stroke-width="6" stroke-linecap="round" opacity="0.9">
+                                <!-- Head & Torso -->
+                                <line id="bone_head" x1="160" y1="35" x2="140" y2="35" stroke="#555" data-name="頭部" />
+                                <line id="visual_neck" x1="150" y1="60" x2="150" y2="90" stroke="#555" />
+                                <line id="bone_spine" x1="150" y1="90" x2="150" y2="220" stroke="#555" data-name="脊柱" />
+                                <line id="bone_torso" x1="110" y1="90" x2="190" y2="90" stroke="#555" data-name="肩寬" />
+                                <line id="bone_pelvis" x1="120" y1="220" x2="180" y2="220" stroke="#555" data-name="骨盆" />
+                                
+                                <!-- Right Arm (Back) -->
+                                <line id="bone_right_upper_arm" x1="110" y1="90" x2="80" y2="160" stroke="#444" data-name="右上臂" />
+                                <line id="bone_right_forearm" x1="80" y1="160" x2="60" y2="230" stroke="#444" data-name="右前臂" />
+                                
+                                <!-- Left Arm (Front) -->
+                                <line id="bone_left_upper_arm" x1="190" y1="90" x2="220" y2="160" stroke="#666" data-name="左上臂" />
+                                <line id="bone_left_forearm" x1="220" y1="160" x2="240" y2="230" stroke="#666" data-name="左前臂" />
+                                
+                                <!-- Right Leg (Back) -->
+                                <line id="bone_right_thigh" x1="120" y1="220" x2="100" y2="340" stroke="#444" data-name="右大腿" />
+                                <line id="bone_right_calf" x1="100" y1="340" x2="90" y2="450" stroke="#444" data-name="右小腿" />
+                                
+                                <!-- Left Leg (Front) -->
+                                <line id="bone_left_thigh" x1="180" y1="220" x2="200" y2="340" stroke="#666" data-name="左大腿" />
+                                <line id="bone_left_calf" x1="200" y1="340" x2="210" y2="450" stroke="#666" data-name="左小腿" />
+                            </g>
+
+                            <!-- Joints (Circles) -->
+                            <g stroke="#fff" stroke-width="2" fill="#222">
+                                <!-- Head Group -->
+                                <circle id="joint_head" cx="150" cy="40" r="25" class="joint-point" data-name="頭部(Head)" fill-opacity="0.3" stroke-dasharray="2,2" />
+                                <circle id="joint_nose" cx="150" cy="45" r="4" class="joint-point" data-name="鼻子(Nose)" />
+                                <circle id="joint_left_eye" cx="160" cy="35" r="3" class="joint-point" data-name="左眼(L.Eye)" />
+                                <circle id="joint_right_eye" cx="140" cy="35" r="3" class="joint-point" data-name="右眼(R.Eye)" />
+                                <circle id="joint_left_ear" cx="170" cy="40" r="3" class="joint-point" data-name="左耳(L.Ear)" />
+                                <circle id="joint_right_ear" cx="130" cy="40" r="3" class="joint-point" data-name="右耳(R.Ear)" />
+
+                                <!-- Upper Body -->
+                                <circle id="joint_left_shoulder" cx="190" cy="90" r="6" class="joint-point" data-name="左肩(L.Shoulder)" />
+                                <circle id="joint_right_shoulder" cx="110" cy="90" r="6" class="joint-point" data-name="右肩(R.Shoulder)" />
+                                <circle id="joint_left_elbow" cx="220" cy="160" r="6" class="joint-point" data-name="左肘(L.Elbow)" />
+                                <circle id="joint_right_elbow" cx="80" cy="160" r="6" class="joint-point" data-name="右肘(R.Elbow)" />
+                                <circle id="joint_left_wrist" cx="240" cy="230" r="5" class="joint-point" data-name="左腕(L.Wrist)" />
+                                <circle id="joint_right_wrist" cx="60" cy="230" r="5" class="joint-point" data-name="右腕(R.Wrist)" />
+
+                                <!-- Lower Body -->
+                                <circle id="joint_left_hip" cx="180" cy="220" r="7" class="joint-point" data-name="左髖(L.Hip)" />
+                                <circle id="joint_right_hip" cx="120" cy="220" r="7" class="joint-point" data-name="右髖(R.Hip)" />
+                                <circle id="joint_left_knee" cx="200" cy="340" r="7" class="joint-point" data-name="左膝(L.Knee)" />
+                                <circle id="joint_right_knee" cx="100" cy="340" r="7" class="joint-point" data-name="右膝(R.Knee)" />
+                                <circle id="joint_left_ankle" cx="210" cy="450" r="6" class="joint-point" data-name="左踝(L.Ankle)" />
+                                <circle id="joint_right_ankle" cx="90" cy="450" r="6" class="joint-point" data-name="右踝(R.Ankle)" />
+                            </g>
+                        </svg>
+                        
+                        <div style="position: absolute; bottom: 0; right: 0; font-size: 0.7rem; color: var(--text-sub); text-align: right;">
+                            <div>🟢 < 5%</div>
+                            <div>🟡 5-10%</div>
+                            <div>🔴 > 10%</div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div class="info-section" style="margin-top: 0; padding: 16px;">
+                            <div class="info-item" style="grid-template-columns: 1fr;">
+                                <div class="info-badge badge-desc" style="width: fit-content;">說明</div>
+                                <p class="info-text" style="font-size: 0.85rem;">
+                                    <strong>骨骼 (線):</strong> 長度 CV% (顏色代表穩定度)<br>
+                                    <strong>關節 (點):</strong> 深度 CV% (顏色代表深度穩定度)<br>
+                                    <span style="color: #fbbf24;">滑鼠懸停查看詳細數據</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        dashboardGrid.innerHTML += bodyMapHtml;
+
+        blocks.forEach(block => {
+            if (block.id === 'chart_angles') {
+                // Custom HTML for Joint Angles (Text based)
+                const angleStats = data.joint_angle_analysis || {};
+                const angleLabels = Object.keys(angleStats);
+                const getLabel = (k) => {
+                    const map = {'left_elbow': '左肘', 'right_elbow': '右肘', 'left_knee': '左膝', 'right_knee': '右膝'};
+                    return map[k] || k;
+                };
+
+                let angleHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 300px; padding-right: 8px;">
+                `;
+
+                if (angleLabels.length > 0) {
+                    angleLabels.forEach(key => {
+                        const stat = angleStats[key];
+                        const rate = stat.abnormal_rate;
+                        let color = '#4ade80';
+                        if (rate >= 1) color = '#fbbf24';
+                        if (rate >= 5) color = '#f87171';
+
+                        angleHtml += `
+                            <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border-left: 4px solid ${color};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 600; font-size: 1rem;">${getLabel(key)}</span>
+                                    <span style="font-family: 'JetBrains Mono'; color: ${color}; font-weight: 700;">${rate.toFixed(2)}% 異常</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; color: var(--text-sub);">
+                                    <div>Mean: <span style="color: var(--text-main);">${stat.mean_angle_deg.toFixed(1)}°</span></div>
+                                    <div>Range: <span style="color: var(--text-main);">${stat.min_angle_deg.toFixed(0)}° - ${stat.max_angle_deg.toFixed(0)}°</span></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    angleHtml += `<div style="text-align: center; color: var(--text-sub); padding: 20px;">無關節角度數據</div>`;
+                }
+
+                angleHtml += `
+                        </div>
+                        <div class="info-section" style="margin-top: 24px;">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-badge badge-criteria">判斷標準</div>
+                                <p class="info-text text-criteria">${block.criteria}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += angleHtml;
+
+            } else if (block.id === 'chart_series') {
+                // Custom HTML for Time Series Chart with Dropdown
+                const seriesHtml = `
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                            <select id="seriesBoneSelect" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 12px; border-radius: 8px; outline: none;">
+                                <!-- Options injected later -->
+                            </select>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="${block.id}"></canvas>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += seriesHtml;
+            } else if (block.id === 'chart_cv_series') {
+                // Custom HTML for Rolling CV Chart with Dropdown
+                const cvSeriesHtml = `
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3 class="card-title">${block.title}</h3>
+                            <select id="cvSeriesBoneSelect" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 12px; border-radius: 8px; outline: none;">
+                                <!-- Options injected later -->
+                            </select>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="${block.id}"></canvas>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <div class="info-item">
+                                <div class="info-badge badge-desc">說明</div>
+                                <p class="info-text">${block.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboardGrid.innerHTML += cvSeriesHtml;
+            } else if (block.id === 'chart3') {
+                dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+                
+                // Add Body Height Text Block (No Chart) - Moved here
+                if (data.body_height_analysis) {
+                    const bha = data.body_height_analysis;
+                    const meanCm = bha.mean_cm.toFixed(1);
+                    const stdCm = bha.std_cm.toFixed(1);
+                    const minCm = bha.min_cm.toFixed(1);
+                    const maxCm = bha.max_cm.toFixed(1);
+                    
+                    const heightHtml = `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">身高估計分佈 (Body Height)</h3>
+                            </div>
+                            <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                                <div style="display: flex; align-items: baseline; gap: 12px;">
+                                    <span style="font-size: 2.5rem; font-weight: 700; color: var(--text-main);">${meanCm}</span>
+                                    <span style="font-size: 1rem; color: var(--text-sub);">cm</span>
+                                    <span style="font-size: 1.5rem; font-weight: 600; color: var(--accent-primary); margin-left: 12px;">${(bha.mean_cm * 10).toFixed(0)} mm</span>
+                                    <span style="font-size: 1rem; color: ${bha.cv_percent < 5 ? '#4ade80' : '#fbbf24'}; font-weight: 600;">(±${stdCm} cm)</span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-sub); background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px;">
+                                    💡 合理範圍參考: 成人身高通常介於 <strong>140 - 210 cm</strong> 之間。
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px;">
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">Min / Max</div>
+                                        <div style="font-family: 'JetBrains Mono';">${minCm} / ${maxCm} cm</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">CV Stability</div>
+                                        <div style="font-family: 'JetBrains Mono'; color: ${bha.cv_percent < 5 ? '#4ade80' : '#f87171'};">${bha.cv_percent.toFixed(2)}%</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-sub);">Assessment</div>
+                                        <div style="font-size: 0.9rem;">${bha.assessment.split('|')[0]}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    dashboardGrid.innerHTML += heightHtml;
+                }
+            } else {
+                dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params);
+            }
+        });
+        
+
+
+        // --- Chart 0: Joint Angles (Updated) ---
+        // Replaced by custom HTML block above
+
+        // --- Chart Series: Time Series Chart Logic ---
+        if (data.bone_statistics) {
+            const boneStats = data.bone_statistics;
+            const boneNames = Object.keys(boneStats);
+            const select = document.getElementById('seriesBoneSelect');
+            
+            if (select) {
+                // Initial render with all datasets
+                const ctx = document.getElementById('chart_series').getContext('2d');
+                const datasets = boneNames.map((boneName, index) => {
+                    const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return null;
+                    return {
+                        label: boneName,
+                        data: stat.series_data.map((val, i) => ({ x: i, y: val })),
+                        borderColor: Chart.defaults.color, // Default color, will be changed
+                        hidden: true, // Initially hide all but the first few
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    };
+                }).filter(Boolean);
+                
+                // Assign unique colors and show first few
+                const colors = ['#6366f1', '#a855f7', '#34d399', '#fbbf24', '#f87171', '#4ade80', '#c084fc', '#818cf8', '#f472b6', '#22d3ee'];
+                datasets.forEach((ds, i) => {
+                    ds.borderColor = colors[i % colors.length];
+                    if (i < 5) ds.hidden = false; // Show first 5 by default
+                });
+
+
+                const seriesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Frame' },
+                                ticks: { precision: 0 }
+                            },
+                            y: { title: { display: true, text: 'Length (cm)' } }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+                charts['chart_series'] = seriesChart; // Store chart instance
+                
+                // Populate dropdown
+                select.innerHTML = '<option value="all">顯示前5 (Show Top 5)</option>' + boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+
+                // Event listener
+                select.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    seriesChart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== val);
+                        if (val === 'all') {
+                            // Re-apply default visibility
+                            const index = seriesChart.data.datasets.indexOf(ds);
+                            ds.hidden = index >= 5;
+                        }
+                    });
+                    seriesChart.update();
+                });
+            }
+        }
+
+        // --- Chart CV Series: Rolling CV Logic ---
+        if (data.bone_statistics) {
+            const boneStats = data.bone_statistics;
+            const boneNames = Object.keys(boneStats);
+            const selectCV = document.getElementById('cvSeriesBoneSelect');
+            
+            if (selectCV) {
+                const calculateRollingCV = (data, windowSize) => {
+                    let result = [];
+                    for (let i = 0; i < data.length; i++) {
+                        let start = Math.max(0, i - Math.floor(windowSize / 2));
+                        let end = Math.min(data.length, i + Math.floor(windowSize / 2) + 1);
+                        let windowData = data.slice(start, end);
+                        
+                        if (windowData.length < 2) {
+                            result.push(0); continue;
+                        }
+
+                        let mean = windowData.reduce((a, b) => a + b, 0) / windowData.length;
+                        let variance = windowData.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / windowData.length;
+                        let std = Math.sqrt(variance);
+                        let cv = mean !== 0 ? (std / mean) * 100 : 0;
+                        result.push(cv);
+                    }
+                    return result;
+                };
+
+                const ctx = document.getElementById('chart_cv_series').getContext('2d');
+                const datasets = boneNames.map((boneName, index) => {
+                     const stat = boneStats[boneName];
+                    if (!stat || !stat.series_data) return null;
+                     const rollingCV = calculateRollingCV(stat.series_data, 30);
+                     return {
+                        label: `${boneName} Rolling CV`,
+                        data: rollingCV.map((val, i) => ({ x: i, y: val })),
+                        borderColor: Chart.defaults.color,
+                        hidden: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    };
+                }).filter(Boolean);
+
+                const colors = ['#6366f1', '#a855f7', '#34d399', '#fbbf24', '#f87171', '#4ade80', '#c084fc', '#818cf8', '#f472b6', '#22d3ee'];
+                datasets.forEach((ds, i) => {
+                    ds.borderColor = colors[i % colors.length];
+                    if (i < 5) ds.hidden = false;
+                });
+                
+                const cvChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Frame' },
+                                ticks: { precision: 0 }
+                            },
+                            y: { title: { display: true, text: 'CV (%)' }, beginAtZero: true }
+                        },
+                         plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+                charts['chart_cv_series'] = cvChart;
+
+                selectCV.innerHTML = '<option value="all">顯示前5 (Show Top 5)</option>' + boneNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                selectCV.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    cvChart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== `${val} Rolling CV`);
+                        if (val === 'all') {
+                            const index = cvChart.data.datasets.indexOf(ds);
+                            ds.hidden = index >= 5;
+                        }
+                    });
+                    cvChart.update();
+                });
+            }
+        }
+
+        // --- Chart 1: CV% ---
+        // Sort bones by CV desc
+        const sortedBones = boneNames.sort((a, b) => boneStats[b].cv - boneStats[a].cv);
+        
+        new Chart(document.getElementById('chart1'), {
+            type: 'bar',
+            data: {
+                labels: sortedBones,
+                datasets: [{
+                    label: '變異係數 (CV%)',
+                    data: sortedBones.map(b => boneStats[b].cv),
+                    backgroundColor: sortedBones.map(b => {
+                        const cv = boneStats[b].cv;
+                        if (cv < 5) return '#4ade80';
+                        if (cv < 10) return '#fbbf24';
+                        return '#f87171';
+                    }),
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'CV (%)' } } }
+            }
+        });
+
+        // --- Chart 2: Mean & Std ---
+        // Sort by Mean length desc
+        const sortedByLen = boneNames.sort((a, b) => boneStats[b].mean - boneStats[a].mean);
+        
+        // Custom Plugin for Error Bars
+        const errorBarPlugin = {
+            id: 'errorBar',
+            afterDatasetsDraw: (chart) => {
+                const { ctx, data, scales: { y } } = chart;
+                
+                chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                    const value = data.datasets[0].data[index];
+                    const std = data.datasets[0].error[index];
+                    
+                    if (std === undefined || std === null) return;
+
+                    const x = bar.x;
+                    const yMean = y.getPixelForValue(value);
+                    const yHigh = y.getPixelForValue(value + std);
+                    const yLow = y.getPixelForValue(value - std);
+                    
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // White-ish for visibility
+                    
+                    // Vertical line
+                    ctx.moveTo(x, yLow);
+                    ctx.lineTo(x, yHigh);
+                    
+                    // Top cap
+                    ctx.moveTo(x - 6, yHigh);
+                    ctx.lineTo(x + 6, yHigh);
+                    
+                    // Bottom cap
+                    ctx.moveTo(x - 6, yLow);
+                    ctx.lineTo(x + 6, yLow);
+                    
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        new Chart(document.getElementById('chart2'), {
+            type: 'bar',
+            data: {
+                labels: sortedByLen,
+                datasets: [{
+                    label: '平均長度 (cm)',
+                    data: sortedByLen.map(b => boneStats[b].mean), // Already in cm
+                    error: sortedByLen.map(b => boneStats[b].std), // Pass std here
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Length (cm)' } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const std = context.dataset.error[idx];
+                                return `Std: ±${std.toFixed(2)} cm`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [errorBarPlugin]
+        });
+
+        // --- Chart 3: Symmetry ---
+        if (data.symmetry_analysis) {
+            const symLabels = data.symmetry_analysis.map(s => s.pair_name);
+            const leftData = data.symmetry_analysis.map(s => s.left_mean_cm); // Already in cm
+            const rightData = data.symmetry_analysis.map(s => s.right_mean_cm); // Already in cm
+            
+            new Chart(document.getElementById('chart3'), {
+                type: 'bar',
+                data: {
+                    labels: symLabels,
+                    datasets: [
+                        {
+                            label: '左側 (Left)',
+                            data: leftData,
+                            backgroundColor: data.symmetry_analysis.map(s => (s.left_cv && s.left_cv > 10) ? '#f87171' : '#6366f1'), // Red if unstable
+                            borderRadius: 4
+                        },
+                        {
+                            label: '右側 (Right)',
+                            data: rightData,
+                            backgroundColor: data.symmetry_analysis.map(s => (s.right_cv && s.right_cv > 10) ? '#f87171' : '#a855f7'), // Red if unstable
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Length (cm)' } } },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const idx = context.dataIndex;
+                                    const item = data.symmetry_analysis[idx];
+                                    if (context.dataset.label.includes('Left')) {
+                                        return item.left_cv ? `CV: ${item.left_cv.toFixed(1)}%` : '';
+                                    } else {
+                                        return item.right_cv ? `CV: ${item.right_cv.toFixed(1)}%` : '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize Body Map Coloring
+        initBodyMapColoring(data);
+    }
+
+    // --- Body Map Coloring Logic ---
+    function initBodyMapColoring(data) {
+        if (data.bone_statistics) {
+            const bs = data.bone_statistics;
+            const ds = data.joint_depth_analysis || {}; // Joint depth stats
+            
+            // Helper to get color based on CV
+            const getCvColor = (cv) => {
+                if (cv < 5) return '#4ade80'; // Green
+                if (cv < 10) return '#fbbf24'; // Yellow
+                return '#f87171'; // Red
+            };
+
+            // 1. Color Bones (Lines)
+            const setBoneColor = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                const boneName = el.getAttribute('data-name'); // e.g. "脊柱"
+                const stat = bs[boneName];
+
+                if (stat) {
+                    const color = getCvColor(stat.cv);
+                    el.setAttribute('stroke', color);
+                    el.dataset.cv = stat.cv.toFixed(2);
+                    el.dataset.mean = stat.mean.toFixed(1); // Already in cm
+                }
+            };
+
+            // Apply to all lines starting with bone_
+            document.querySelectorAll('svg line[id^="bone_"]').forEach(el => {
+                setBoneColor(el.id);
+            });
+
+            // 2. Color Joints (Circles)
+            const setJointColor = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                // id is like "joint_left_shoulder"
+                // JSON keys are like "left_shoulder"
+                let jointKey = id.replace('joint_', '');
+                
+                // Map special keys if needed
+                if (jointKey === 'head') jointKey = 'nose'; // Use nose for head if available
+                
+                let stat = ds[jointKey];
+                
+                if (stat) {
+                    const color = getCvColor(stat.cv_percent);
+                    el.setAttribute('fill', color);
+                    el.setAttribute('stroke', color); // Make border same color
+                    el.dataset.cv = stat.cv_percent.toFixed(2);
+                    el.dataset.z_mean = stat.mean_z_cm.toFixed(1); // Already in cm
+                } else {
+                    // If no depth data, maybe use bone color or default
+                    el.setAttribute('fill', '#555');
+                    el.setAttribute('stroke', '#777');
+                }
+            };
+
+            // Apply to all circles starting with joint_
+            document.querySelectorAll('svg circle[id^="joint_"]').forEach(el => {
+                setJointColor(el.id);
+            });
+
+            // 3. Tooltip Event Listeners
+            const tooltip = document.getElementById('mapTooltip');
+
+            const showTooltip = (e) => {
+                const target = e.target;
+                let content = '';
+                
+                if (target.tagName === 'line' && target.id.startsWith('bone_')) {
+                    // Bone Tooltip
+                    const name = target.getAttribute('data-name') || target.id;
+                    const cv = target.dataset.cv;
+                    const mean = target.dataset.mean;
+                    if (cv) {
+                        content = `<strong>${name}</strong><br>Length: ${mean} cm<br>CV: ${cv}%`;
+                    }
+                } else if (target.tagName === 'circle' && target.classList.contains('joint-point')) {
+                    // Joint Tooltip
+                    const name = target.getAttribute('data-name') || target.id;
+                    const cv = target.dataset.cv;
+                    const z = target.dataset.z_mean;
+                    if (cv) {
+                        content = `<strong>${name}</strong><br>Depth (Z): ${z} cm<br>Stability (CV): ${cv}%`;
+                    } else {
+                        content = `<strong>${name}</strong><br>No depth data`;
+                    }
+                }
+
+                if (content) {
+                    tooltip.innerHTML = content;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.pageX + 15) + 'px';
+                    tooltip.style.top = (e.pageY + 15) + 'px';
+                }
+            };
+
+            const hideTooltip = () => {
+                tooltip.style.display = 'none';
+            };
+
+            // Attach events to all SVG elements
+            document.querySelectorAll('svg line, svg circle').forEach(el => {
+                el.addEventListener('mousemove', showTooltip);
+                el.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

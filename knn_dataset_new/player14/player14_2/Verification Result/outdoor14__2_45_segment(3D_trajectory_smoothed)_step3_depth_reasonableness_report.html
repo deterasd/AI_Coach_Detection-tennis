@@ -1,0 +1,2755 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step3. 深度合理性驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+             border-bottom: none;
+             padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .section-header-row h3 {
+            margin: 0;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
+  "Global": {
+    "metadata": {
+      "analysis_time": "2026-01-27T12:14:41.157181",
+      "source_file": "data/player14/player14_2/outdoor14__2_45_segment(3D_trajectory_smoothed).json",
+      "total_frames": 200,
+      "analysis_type": "Depth Reasonableness Analysis",
+      "view": "Global"
+    },
+    "overall_summary": {
+      "average_cv": 8.334673201647714,
+      "quality_level": "可接受",
+      "total_keypoints_analyzed": 18,
+      "total_logic_violations": 123,
+      "mean_depth_mm": 2860.2107948289795,
+      "quality_score": {
+        "score": 78.33065359670456,
+        "deductions": [
+          {
+            "reason": "深度略有雜訊 (CV 8.3%)",
+            "points": 6.669346403295428
+          },
+          {
+            "reason": "手肘反向彎曲 (30.8%)",
+            "points": 15
+          }
+        ],
+        "level": "Acceptable"
+      }
+    },
+    "depth_range_analysis": {
+      "nose": {
+        "sample_count": 200,
+        "mean_z_mm": 2844.1160290891366,
+        "std_z_mm": 143.3256950093981,
+        "cv_percent": 5.039375804063097,
+        "min_z_mm": 2611.6767914961465,
+        "max_z_mm": 3181.090454709114,
+        "depth_range_mm": 569.4136632129675,
+        "mean_gradient_mm": 8.371623015505147,
+        "max_gradient_mm": 27.883520588413376,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_eye": {
+        "sample_count": 200,
+        "mean_z_mm": 2886.6742908333626,
+        "std_z_mm": 135.01481972862135,
+        "cv_percent": 4.677175397216134,
+        "min_z_mm": 2690.634858043335,
+        "max_z_mm": 3241.0212729940727,
+        "depth_range_mm": 550.3864149507376,
+        "mean_gradient_mm": 9.0525370672784,
+        "max_gradient_mm": 37.06591160338576,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_eye": {
+        "sample_count": 200,
+        "mean_z_mm": 2835.3969706248154,
+        "std_z_mm": 154.3665802652114,
+        "cv_percent": 5.444266953251163,
+        "min_z_mm": 2568.755153142248,
+        "max_z_mm": 3205.169068331823,
+        "depth_range_mm": 636.4139151895747,
+        "mean_gradient_mm": 9.73271388174813,
+        "max_gradient_mm": 28.746138651173624,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_ear": {
+        "sample_count": 200,
+        "mean_z_mm": 2999.96363790815,
+        "std_z_mm": 127.7507106536219,
+        "cv_percent": 4.25840863666939,
+        "min_z_mm": 2725.1899649095767,
+        "max_z_mm": 3356.592656987808,
+        "depth_range_mm": 631.4026920782312,
+        "mean_gradient_mm": 15.329187778814177,
+        "max_gradient_mm": 63.88189450810023,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_ear": {
+        "sample_count": 200,
+        "mean_z_mm": 2847.6001084582404,
+        "std_z_mm": 152.49043504473462,
+        "cv_percent": 5.355050893269444,
+        "min_z_mm": 2621.636530872465,
+        "max_z_mm": 3249.1667064580206,
+        "depth_range_mm": 627.5301755855558,
+        "mean_gradient_mm": 11.958690974941995,
+        "max_gradient_mm": 57.389068844254325,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_shoulder": {
+        "sample_count": 200,
+        "mean_z_mm": 3039.8176300890254,
+        "std_z_mm": 189.2653451227192,
+        "cv_percent": 6.226207231950829,
+        "min_z_mm": 2667.0616759163336,
+        "max_z_mm": 3372.6663909570125,
+        "depth_range_mm": 705.6047150406789,
+        "mean_gradient_mm": 19.01691160129761,
+        "max_gradient_mm": 69.92970211742977,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_shoulder": {
+        "sample_count": 200,
+        "mean_z_mm": 2862.5555111664908,
+        "std_z_mm": 145.5019317546149,
+        "cv_percent": 5.0829383460697635,
+        "min_z_mm": 2662.794705070129,
+        "max_z_mm": 3329.902399322332,
+        "depth_range_mm": 667.1076942522027,
+        "mean_gradient_mm": 14.20823901122509,
+        "max_gradient_mm": 50.452013467959205,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 4,
+        "outlier_rate": 2.0
+      },
+      "left_elbow": {
+        "sample_count": 200,
+        "mean_z_mm": 3141.06835446359,
+        "std_z_mm": 400.32812557104666,
+        "cv_percent": 12.744967011054174,
+        "min_z_mm": 2315.015269900864,
+        "max_z_mm": 4018.6659752235973,
+        "depth_range_mm": 1703.6507053227333,
+        "mean_gradient_mm": 37.90964671005583,
+        "max_gradient_mm": 134.6015004468063,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_elbow": {
+        "sample_count": 200,
+        "mean_z_mm": 2908.6145391737214,
+        "std_z_mm": 342.89241345498993,
+        "cv_percent": 11.78885716332831,
+        "min_z_mm": 2526.773273093269,
+        "max_z_mm": 4091.152020530344,
+        "depth_range_mm": 1564.3787474370752,
+        "mean_gradient_mm": 33.16991984576564,
+        "max_gradient_mm": 183.0109862328345,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 5,
+        "outlier_rate": 2.5
+      },
+      "left_wrist": {
+        "sample_count": 200,
+        "mean_z_mm": 2911.6705948160197,
+        "std_z_mm": 470.3489027730743,
+        "cv_percent": 16.153918771254215,
+        "min_z_mm": 2118.8856496921653,
+        "max_z_mm": 4020.1229981791485,
+        "depth_range_mm": 1901.2373484869831,
+        "mean_gradient_mm": 36.888420798308125,
+        "max_gradient_mm": 179.76125556092938,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_wrist": {
+        "sample_count": 200,
+        "mean_z_mm": 2895.6565384481114,
+        "std_z_mm": 415.52403130100095,
+        "cv_percent": 14.349907379681692,
+        "min_z_mm": 2213.15191060696,
+        "max_z_mm": 4326.135672161247,
+        "depth_range_mm": 2112.9837615542874,
+        "mean_gradient_mm": 37.88626511425243,
+        "max_gradient_mm": 234.8470381422444,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 4,
+        "outlier_rate": 2.0
+      },
+      "left_hip": {
+        "sample_count": 200,
+        "mean_z_mm": 3035.40943036134,
+        "std_z_mm": 211.15554849256475,
+        "cv_percent": 6.956410768857249,
+        "min_z_mm": 2658.91126628338,
+        "max_z_mm": 3467.2763643716767,
+        "depth_range_mm": 808.3650980882967,
+        "mean_gradient_mm": 15.37532415959049,
+        "max_gradient_mm": 58.766836489664456,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_hip": {
+        "sample_count": 200,
+        "mean_z_mm": 2885.697724746433,
+        "std_z_mm": 187.0944889928894,
+        "cv_percent": 6.483509599375294,
+        "min_z_mm": 2591.039704109428,
+        "max_z_mm": 3254.167410056668,
+        "depth_range_mm": 663.12770594724,
+        "mean_gradient_mm": 13.373442556505864,
+        "max_gradient_mm": 47.10110501621284,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_knee": {
+        "sample_count": 200,
+        "mean_z_mm": 3089.4137708394537,
+        "std_z_mm": 272.55146343275135,
+        "cv_percent": 8.822109424296825,
+        "min_z_mm": 2637.5204737101185,
+        "max_z_mm": 3678.5034971879663,
+        "depth_range_mm": 1040.9830234778478,
+        "mean_gradient_mm": 21.40605551615987,
+        "max_gradient_mm": 77.92468569267976,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_knee": {
+        "sample_count": 200,
+        "mean_z_mm": 2781.7525627727427,
+        "std_z_mm": 172.48332909185012,
+        "cv_percent": 6.200527372568517,
+        "min_z_mm": 2468.560066439378,
+        "max_z_mm": 3158.207086620119,
+        "depth_range_mm": 689.647020180741,
+        "mean_gradient_mm": 15.27176552979434,
+        "max_gradient_mm": 57.3296359451474,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_ankle": {
+        "sample_count": 200,
+        "mean_z_mm": 3241.285386188075,
+        "std_z_mm": 371.4409574739842,
+        "cv_percent": 11.45968075063019,
+        "min_z_mm": 2700.831347494538,
+        "max_z_mm": 3942.5592874542162,
+        "depth_range_mm": 1241.7279399596782,
+        "mean_gradient_mm": 34.525217514538106,
+        "max_gradient_mm": 122.82832459005203,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_ankle": {
+        "sample_count": 200,
+        "mean_z_mm": 2758.2452950931142,
+        "std_z_mm": 186.04031034866674,
+        "cv_percent": 6.744879096852998,
+        "min_z_mm": 2450.2586114640435,
+        "max_z_mm": 3187.817390549322,
+        "depth_range_mm": 737.5587790852787,
+        "mean_gradient_mm": 16.154987154779967,
+        "max_gradient_mm": 56.22509750425661,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "tennis_ball": {
+        "sample_count": 51,
+        "mean_z_mm": 1518.8559318498155,
+        "std_z_mm": 185.84610350087553,
+        "cv_percent": 12.235927029269554,
+        "min_z_mm": 1161.4451118341735,
+        "max_z_mm": 1762.398276888748,
+        "depth_range_mm": 600.9531650545744,
+        "mean_gradient_mm": 12.019063301091487,
+        "max_gradient_mm": 21.427447471877258,
+        "quality_level": "需改進",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      }
+    },
+    "depth_logic_check": {
+      "elbow_hyperextension": {
+        "checks": {
+          "total": 400,
+          "left": 200,
+          "right": 200
+        },
+        "violations": {
+          "total": 123,
+          "left": 77,
+          "right": 46
+        },
+        "rate": 30.75,
+        "anomalies": [
+          {
+            "frame": 0,
+            "side": "left",
+            "val_z": 3623.6,
+            "ref_z": 3204.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 1,
+            "side": "left",
+            "val_z": 3529.5,
+            "ref_z": 3153.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 2,
+            "side": "left",
+            "val_z": 3452.8,
+            "ref_z": 3110.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 3,
+            "side": "left",
+            "val_z": 3391.8,
+            "ref_z": 3072.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 4,
+            "side": "left",
+            "val_z": 3344.6,
+            "ref_z": 3039.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 5,
+            "side": "left",
+            "val_z": 3309.7,
+            "ref_z": 3010.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 6,
+            "side": "left",
+            "val_z": 3285.4,
+            "ref_z": 2982.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 7,
+            "side": "left",
+            "val_z": 3269.8,
+            "ref_z": 2955.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 8,
+            "side": "left",
+            "val_z": 3263.2,
+            "ref_z": 2926.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 9,
+            "side": "left",
+            "val_z": 3264.1,
+            "ref_z": 2893.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 10,
+            "side": "left",
+            "val_z": 3266.7,
+            "ref_z": 2858.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 11,
+            "side": "left",
+            "val_z": 3264.0,
+            "ref_z": 2820.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 12,
+            "side": "left",
+            "val_z": 3253.5,
+            "ref_z": 2783.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 13,
+            "side": "left",
+            "val_z": 3234.5,
+            "ref_z": 2749.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 14,
+            "side": "left",
+            "val_z": 3206.7,
+            "ref_z": 2718.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 15,
+            "side": "left",
+            "val_z": 3168.8,
+            "ref_z": 2696.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 16,
+            "side": "left",
+            "val_z": 3119.6,
+            "ref_z": 2678.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 17,
+            "side": "left",
+            "val_z": 3064.3,
+            "ref_z": 2664.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 18,
+            "side": "left",
+            "val_z": 3007.4,
+            "ref_z": 2654.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 19,
+            "side": "left",
+            "val_z": 2951.0,
+            "ref_z": 2644.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 20,
+            "side": "left",
+            "val_z": 2897.1,
+            "ref_z": 2632.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 21,
+            "side": "left",
+            "val_z": 2844.6,
+            "ref_z": 2620.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 26,
+            "side": "right",
+            "val_z": 2865.0,
+            "ref_z": 2659.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 27,
+            "side": "right",
+            "val_z": 2893.2,
+            "ref_z": 2655.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 28,
+            "side": "right",
+            "val_z": 2916.3,
+            "ref_z": 2650.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 29,
+            "side": "right",
+            "val_z": 2928.9,
+            "ref_z": 2643.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 30,
+            "side": "right",
+            "val_z": 2933.1,
+            "ref_z": 2637.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 31,
+            "side": "right",
+            "val_z": 2930.5,
+            "ref_z": 2633.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 32,
+            "side": "right",
+            "val_z": 2920.2,
+            "ref_z": 2635.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 33,
+            "side": "right",
+            "val_z": 2914.5,
+            "ref_z": 2643.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 34,
+            "side": "right",
+            "val_z": 2908.7,
+            "ref_z": 2657.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 35,
+            "side": "right",
+            "val_z": 2905.2,
+            "ref_z": 2679.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 36,
+            "side": "right",
+            "val_z": 2914.9,
+            "ref_z": 2708.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 38,
+            "side": "right",
+            "val_z": 2990.0,
+            "ref_z": 2783.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 39,
+            "side": "right",
+            "val_z": 3068.6,
+            "ref_z": 2830.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 40,
+            "side": "right",
+            "val_z": 3155.6,
+            "ref_z": 2876.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 41,
+            "side": "left",
+            "val_z": 2790.9,
+            "ref_z": 2590.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 41,
+            "side": "right",
+            "val_z": 3247.5,
+            "ref_z": 2920.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 42,
+            "side": "right",
+            "val_z": 3336.6,
+            "ref_z": 2967.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 43,
+            "side": "right",
+            "val_z": 3405.3,
+            "ref_z": 3012.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 44,
+            "side": "right",
+            "val_z": 3449.1,
+            "ref_z": 3049.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 45,
+            "side": "right",
+            "val_z": 3463.3,
+            "ref_z": 3077.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 46,
+            "side": "right",
+            "val_z": 3450.4,
+            "ref_z": 3096.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 47,
+            "side": "right",
+            "val_z": 3426.7,
+            "ref_z": 3109.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 48,
+            "side": "right",
+            "val_z": 3387.2,
+            "ref_z": 3112.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 49,
+            "side": "right",
+            "val_z": 3350.0,
+            "ref_z": 3110.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 50,
+            "side": "right",
+            "val_z": 3329.7,
+            "ref_z": 3101.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 51,
+            "side": "right",
+            "val_z": 3318.9,
+            "ref_z": 3083.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 52,
+            "side": "right",
+            "val_z": 3326.4,
+            "ref_z": 3060.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 53,
+            "side": "right",
+            "val_z": 3358.0,
+            "ref_z": 3039.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 54,
+            "side": "right",
+            "val_z": 3399.9,
+            "ref_z": 3019.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 55,
+            "side": "right",
+            "val_z": 3456.4,
+            "ref_z": 3009.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 56,
+            "side": "right",
+            "val_z": 3510.4,
+            "ref_z": 3008.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 57,
+            "side": "right",
+            "val_z": 3539.1,
+            "ref_z": 3010.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 58,
+            "side": "right",
+            "val_z": 3538.7,
+            "ref_z": 3009.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 59,
+            "side": "right",
+            "val_z": 3506.7,
+            "ref_z": 3009.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 60,
+            "side": "right",
+            "val_z": 3452.6,
+            "ref_z": 3012.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 61,
+            "side": "right",
+            "val_z": 3390.4,
+            "ref_z": 3018.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 62,
+            "side": "right",
+            "val_z": 3316.4,
+            "ref_z": 3019.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 63,
+            "side": "right",
+            "val_z": 3246.6,
+            "ref_z": 3018.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 79,
+            "side": "left",
+            "val_z": 3289.1,
+            "ref_z": 3066.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 80,
+            "side": "left",
+            "val_z": 3345.5,
+            "ref_z": 3078.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 81,
+            "side": "left",
+            "val_z": 3396.7,
+            "ref_z": 3091.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 81,
+            "side": "right",
+            "val_z": 4072.2,
+            "ref_z": 3818.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 82,
+            "side": "left",
+            "val_z": 3426.0,
+            "ref_z": 3102.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 82,
+            "side": "right",
+            "val_z": 4091.2,
+            "ref_z": 3774.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 83,
+            "side": "left",
+            "val_z": 3427.7,
+            "ref_z": 3105.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 83,
+            "side": "right",
+            "val_z": 4068.7,
+            "ref_z": 3709.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 84,
+            "side": "left",
+            "val_z": 3396.1,
+            "ref_z": 3100.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 84,
+            "side": "right",
+            "val_z": 4004.4,
+            "ref_z": 3628.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 85,
+            "side": "left",
+            "val_z": 3340.3,
+            "ref_z": 3087.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 85,
+            "side": "right",
+            "val_z": 3883.2,
+            "ref_z": 3522.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 86,
+            "side": "right",
+            "val_z": 3727.4,
+            "ref_z": 3418.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 87,
+            "side": "right",
+            "val_z": 3545.6,
+            "ref_z": 3319.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 140,
+            "side": "left",
+            "val_z": 3448.5,
+            "ref_z": 3244.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 141,
+            "side": "left",
+            "val_z": 3498.2,
+            "ref_z": 3274.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 142,
+            "side": "left",
+            "val_z": 3554.0,
+            "ref_z": 3303.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 143,
+            "side": "left",
+            "val_z": 3624.3,
+            "ref_z": 3336.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 144,
+            "side": "left",
+            "val_z": 3712.8,
+            "ref_z": 3373.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 145,
+            "side": "left",
+            "val_z": 3803.4,
+            "ref_z": 3406.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 146,
+            "side": "left",
+            "val_z": 3887.0,
+            "ref_z": 3430.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 147,
+            "side": "left",
+            "val_z": 3951.8,
+            "ref_z": 3441.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 148,
+            "side": "left",
+            "val_z": 3998.1,
+            "ref_z": 3442.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 149,
+            "side": "left",
+            "val_z": 4018.7,
+            "ref_z": 3431.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 150,
+            "side": "left",
+            "val_z": 4016.1,
+            "ref_z": 3413.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 151,
+            "side": "left",
+            "val_z": 3997.1,
+            "ref_z": 3389.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 152,
+            "side": "left",
+            "val_z": 3970.3,
+            "ref_z": 3368.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 153,
+            "side": "left",
+            "val_z": 3937.5,
+            "ref_z": 3352.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 154,
+            "side": "left",
+            "val_z": 3895.2,
+            "ref_z": 3342.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 155,
+            "side": "left",
+            "val_z": 3849.3,
+            "ref_z": 3337.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 156,
+            "side": "left",
+            "val_z": 3802.7,
+            "ref_z": 3338.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 157,
+            "side": "left",
+            "val_z": 3766.5,
+            "ref_z": 3348.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 158,
+            "side": "left",
+            "val_z": 3735.4,
+            "ref_z": 3359.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 159,
+            "side": "left",
+            "val_z": 3700.0,
+            "ref_z": 3363.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 160,
+            "side": "left",
+            "val_z": 3664.5,
+            "ref_z": 3360.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 161,
+            "side": "left",
+            "val_z": 3629.1,
+            "ref_z": 3350.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 162,
+            "side": "left",
+            "val_z": 3600.4,
+            "ref_z": 3331.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 163,
+            "side": "left",
+            "val_z": 3578.4,
+            "ref_z": 3303.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 164,
+            "side": "left",
+            "val_z": 3566.4,
+            "ref_z": 3270.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 165,
+            "side": "left",
+            "val_z": 3563.5,
+            "ref_z": 3233.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 166,
+            "side": "left",
+            "val_z": 3567.6,
+            "ref_z": 3196.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 167,
+            "side": "left",
+            "val_z": 3565.4,
+            "ref_z": 3159.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 168,
+            "side": "left",
+            "val_z": 3554.7,
+            "ref_z": 3126.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 169,
+            "side": "left",
+            "val_z": 3535.8,
+            "ref_z": 3099.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 170,
+            "side": "left",
+            "val_z": 3509.1,
+            "ref_z": 3078.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 171,
+            "side": "left",
+            "val_z": 3472.5,
+            "ref_z": 3059.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 172,
+            "side": "left",
+            "val_z": 3428.1,
+            "ref_z": 3039.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 173,
+            "side": "left",
+            "val_z": 3380.3,
+            "ref_z": 3019.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 174,
+            "side": "left",
+            "val_z": 3335.3,
+            "ref_z": 3000.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 175,
+            "side": "left",
+            "val_z": 3293.4,
+            "ref_z": 2982.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 176,
+            "side": "left",
+            "val_z": 3261.6,
+            "ref_z": 2961.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 177,
+            "side": "left",
+            "val_z": 3239.7,
+            "ref_z": 2938.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 178,
+            "side": "left",
+            "val_z": 3222.4,
+            "ref_z": 2910.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 179,
+            "side": "left",
+            "val_z": 3203.7,
+            "ref_z": 2877.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 180,
+            "side": "left",
+            "val_z": 3180.0,
+            "ref_z": 2840.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 181,
+            "side": "left",
+            "val_z": 3140.8,
+            "ref_z": 2798.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 182,
+            "side": "left",
+            "val_z": 3090.5,
+            "ref_z": 2757.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 183,
+            "side": "left",
+            "val_z": 3028.8,
+            "ref_z": 2718.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 184,
+            "side": "left",
+            "val_z": 2958.1,
+            "ref_z": 2683.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 185,
+            "side": "left",
+            "val_z": 2877.1,
+            "ref_z": 2647.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 195,
+            "side": "right",
+            "val_z": 2768.6,
+            "ref_z": 2560.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 196,
+            "side": "right",
+            "val_z": 2744.0,
+            "ref_z": 2538.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 199,
+            "side": "left",
+            "val_z": 2666.8,
+            "ref_z": 2456.0,
+            "severity": "moderate"
+          }
+        ]
+      },
+      "knee_hyperextension": {
+        "checks": {
+          "total": 400,
+          "left": 200,
+          "right": 200
+        },
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
+        },
+        "rate": 0.0,
+        "anomalies": []
+      }
+    },
+    "overall_statistics": {
+      "overall_mean_depth_mm": 2860.2107948289795,
+      "overall_std_depth_mm": 348.292581839611,
+      "average_cv_percent": 8.334673201647714,
+      "average_range_mm": 969.5818091613714,
+      "max_range_mm": 2112.9837615542874,
+      "min_mean_depth_mm": 1518.8559318498155,
+      "max_mean_depth_mm": 3241.285386188075
+    },
+    "temporal_stability": {
+      "mean_frame_change_mm": 20.40631254282876,
+      "max_frame_change_mm": 43.90864291033091,
+      "unstable_frames": [],
+      "unstable_frame_count": 0,
+      "unstable_rate": 0.0,
+      "threshold_mm": 50.0,
+      "series_data": [
+        26.810708629976677,
+        21.44131060758028,
+        17.94754896267587,
+        15.695940072551526,
+        13.815727327807668,
+        12.492518472604683,
+        12.140967398548609,
+        12.434663428064383,
+        13.242487869186013,
+        14.160633298153565,
+        14.539379562055649,
+        14.741839916054955,
+        13.708035898772751,
+        12.926528307337508,
+        11.823253964451824,
+        12.316353872652144,
+        13.356191179515891,
+        14.15392425623098,
+        15.14676546197683,
+        15.322475768291765,
+        15.661008197636875,
+        15.289849469483055,
+        15.203435529903318,
+        15.7737980241556,
+        16.439423221008035,
+        15.673733566882808,
+        16.78711596029215,
+        17.527342554395812,
+        17.79883066592086,
+        17.782280056111695,
+        17.262879645981215,
+        17.265910971043734,
+        15.647538670073661,
+        15.76909973218782,
+        18.7295738331457,
+        21.54520391192543,
+        24.335514363518516,
+        25.131165397010907,
+        27.02743067727056,
+        24.29070773053493,
+        21.554831879574408,
+        20.387916588547405,
+        20.31536341061692,
+        20.951445588742356,
+        20.446740610384204,
+        19.935075112306727,
+        19.57788465727789,
+        21.64308516577499,
+        22.53634841683029,
+        22.140607242714662,
+        22.338850544253017,
+        22.645577645987412,
+        22.19210512419583,
+        22.405726837305604,
+        22.581412835315405,
+        20.333552134537527,
+        19.68016902285942,
+        16.569998028817636,
+        18.03645607563678,
+        18.697976011613466,
+        20.915405432566256,
+        23.118560116119724,
+        23.679259486434287,
+        22.165157113954795,
+        21.673481555854714,
+        19.425357821218817,
+        17.55134147988214,
+        18.738737243066325,
+        18.927381385020503,
+        18.446280469995045,
+        22.087680100585178,
+        25.39343620851696,
+        29.387028550168704,
+        32.448317602479314,
+        34.17342754720059,
+        37.00619422966876,
+        40.09667019647827,
+        40.08480995030118,
+        37.879576134952316,
+        34.061723434301314,
+        24.95449033087497,
+        22.081398491747382,
+        21.829285703652417,
+        24.311053348447704,
+        30.561783446257966,
+        35.234852250176814,
+        38.38216679356671,
+        39.086283932239226,
+        40.57013175391258,
+        40.95149702363904,
+        40.09780527176393,
+        38.387180555574986,
+        31.654341956631843,
+        28.591206195440062,
+        26.574826719033354,
+        22.87143868988837,
+        22.510802533415806,
+        26.562925938537425,
+        27.48127600363595,
+        25.986023201191045,
+        23.80133363906265,
+        26.53945426805812,
+        31.265224899456665,
+        39.58662872819955,
+        43.90864291033091,
+        42.89554605534562,
+        34.23409244695829,
+        23.897453074060678,
+        19.13855328915291,
+        19.477179231423662,
+        22.876339107151367,
+        30.003628042483207,
+        36.1995835063318,
+        37.987477853105084,
+        35.081309484749724,
+        27.37096515562328,
+        22.15896474951109,
+        23.08517850790836,
+        28.09206548924936,
+        26.95312564927818,
+        24.367437480296545,
+        20.334320647092174,
+        15.048605367363935,
+        13.588334231041111,
+        13.164283711828777,
+        13.234183540028907,
+        16.680102216148793,
+        19.936135401864007,
+        20.525375762666393,
+        18.771375015470554,
+        16.844472416005935,
+        15.660817232289768,
+        15.52504891691235,
+        16.378229024168643,
+        16.962166345004817,
+        16.529128325521523,
+        15.35744451502264,
+        12.992189338233,
+        13.12143507756114,
+        13.779303627547025,
+        14.510325146968277,
+        14.50011415066266,
+        16.227828472645584,
+        18.189117829277485,
+        17.754149358997065,
+        15.665775085886093,
+        13.072635398237574,
+        11.19342401874305,
+        10.181947507370564,
+        8.811505754408165,
+        9.657967980477679,
+        10.019626823673688,
+        10.155483419732745,
+        10.011618973067229,
+        11.027866298298383,
+        12.447154873149671,
+        14.666494586365282,
+        16.535125427301196,
+        17.76383365891498,
+        17.94827669477715,
+        17.381972571963857,
+        18.102586683072627,
+        17.950084429238093,
+        17.20054964063245,
+        17.741851266843856,
+        17.99466892506047,
+        16.990542401400624,
+        16.20306671764512,
+        14.476308748431647,
+        12.92780666646291,
+        11.56330547553933,
+        11.561587572559267,
+        11.510506671531724,
+        11.626902708140438,
+        12.217664989137575,
+        12.848786516815274,
+        13.518296242310203,
+        13.75497718998087,
+        13.365345824778828,
+        13.633810650296523,
+        14.835541242767462,
+        14.994199951162098,
+        15.581276563918784,
+        16.645802127009787,
+        19.01010141210324,
+        19.97487155917738,
+        19.376641087623256,
+        17.660361426785798,
+        17.638886559442895,
+        16.687107200984855,
+        16.313466575554017,
+        17.59654984769743,
+        17.358333627431474,
+        14.634430952562044,
+        12.417826439093995,
+        12.83429899549088,
+        17.648344662656093,
+        25.96790744826031,
+        37.34540514823972
+      ]
+    }
+  }
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>深度合理性驗證</span></h1>
+        <div class="header-controls">
+            <div id="summaryViewContainer" style="display:none;">
+                <label for="summaryViewSelect" style="color:var(--text-sub); margin-right:8px; font-size:0.9rem;">Summary View:</label>
+                <select id="summaryViewSelect" class="styled-select"></select>
+            </div>
+            <div class="upload-section">
+                <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+                <input type="file" id="fileInput" accept=".json">
+            </div>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Injected by JS -->
+    </div>
+    
+    <!-- Score Card -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+
+    <div class="grid" id="dashboardGrid">
+        <!-- Cards will be injected here by JS -->
+    </div>
+
+    <h2 class="section-title">📋 詳細數據分析</h2>
+    
+    <div class="two-col-grid">
+        <div>
+            <div class="section-header-row">
+                <h3 style="color: var(--text-sub);">關鍵點深度統計 (Depth Statistics)</h3>
+                <select id="depthTableViewSelect" class="styled-select" style="display:none; padding: 4px 12px; font-size: 0.8rem;"></select>
+            </div>
+            <div class="data-table-container">
+                <table id="depthTable">
+                    <thead>
+                        <tr>
+                            <th>關鍵點</th>
+                            <th>平均深度 (mm)</th>
+                            <th>範圍 (mm)</th>
+                            <th>CV (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div>
+            <div class="section-header-row" style="margin-top: 0;">
+                <h3 style="color: var(--text-sub);">邏輯異常檢測 (Logic Violations)</h3>
+            </div>
+            <div class="data-table-container">
+                <table id="logicTable">
+                    <thead>
+                        <tr>
+                            <th>檢測項目</th>
+                            <th>說明</th>
+                            <th>左側異常</th>
+                            <th>右側異常</th>
+                            <th>異常率</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Chart.js Global Defaults for Premium Dark Theme
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    // Tooltip styling
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">深度檢查未觸發任何警示</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep3(data) {
+        if (!data) return null;
+
+        // 如果後端已經計算了詳細的分數結構，直接使用後端的結果
+        if (data.overall_summary && data.overall_summary.quality_score && data.overall_summary.quality_score.deductions) {
+            const qs = data.overall_summary.quality_score;
+            const breakdown = qs.deductions.map(d => ({
+                label: d.reason.split('(')[0].trim(), // 簡化標籤
+                value: d.reason.match(/\((.*?)\)/) ? d.reason.match(/\((.*?)\)/)[1] : '', // 提取括號內的數值
+                detail: d.reason,
+                impact: d.points
+            }));
+            
+            return {
+                score: qs.score,
+                level: qs.level,
+                summary: breakdown.length > 0 
+                    ? `主要扣分項目: ${breakdown[0].detail}` 
+                    : '檢測結果優良，無顯著深度異常。',
+                breakdown: breakdown
+            };
+        }
+
+        // Fallback: 前端計算邏輯
+        let score = 100;
+        let deductions = [];
+
+        const summary = data.overall_summary || {};
+        const logic = data.depth_logic_check || {};
+        const temporal = data.temporal_stability || {};
+        const stats = data.overall_statistics || {};
+
+        // Metric 1: Stability (CV)
+        const cv = summary.average_cv || stats.average_cv_percent || 0;
+        if (cv > 10) {
+            const penalty = 20;
+            score -= penalty;
+            deductions.push({
+                label: '深度不穩定',
+                value: `CV ${cv.toFixed(1)}%`,
+                detail: '深度變異係數過高，數據雜訊大',
+                impact: penalty
+            });
+        } else if (cv > 5) {
+            const penalty = 10;
+            score -= penalty;
+            deductions.push({
+                label: '深度略有雜訊',
+                value: `CV ${cv.toFixed(1)}%`,
+                detail: '深度變異係數稍高',
+                impact: penalty
+            });
+        }
+
+        // Metric 2: Logic Violations
+        let logicPenalty = 0;
+        if (logic.elbow_hyperextension && logic.elbow_hyperextension.rate > 0) {
+            const p = 15;
+            logicPenalty += p;
+            deductions.push({
+                label: '手肘反向彎曲',
+                value: `${logic.elbow_hyperextension.rate.toFixed(1)}%`,
+                detail: '檢測到手肘深度異常反折',
+                impact: p
+            });
+        }
+        if (logic.knee_hyperextension && logic.knee_hyperextension.rate > 0) {
+            const p = 15;
+            logicPenalty += p;
+            deductions.push({
+                label: '膝蓋反向彎曲',
+                value: `${logic.knee_hyperextension.rate.toFixed(1)}%`,
+                detail: '檢測到膝蓋深度異常反折',
+                impact: p
+            });
+        }
+        score -= logicPenalty;
+
+        // Metric 3: Temporal Instability
+        if (temporal.unstable_rate > 0) {
+            const penalty = 20;
+            score -= penalty;
+            deductions.push({
+                label: '時間軸跳動',
+                value: `${temporal.unstable_rate.toFixed(1)}%`,
+                detail: '深度在時間軸上出現劇烈跳動',
+                impact: penalty
+            });
+        }
+
+        score = Math.max(0, Math.round(score));
+        
+        let level = 'Excellent';
+        if (score < 60) level = 'Poor';
+        else if (score < 80) level = 'Average';
+        else if (score < 90) level = 'Good';
+
+        return {
+            score: score,
+            level: level,
+            summary: deductions.length > 0 ? `主要扣分項目: ${deductions[0].label}` : '整體深度合理，無顯著異常。',
+            breakdown: deductions
+        };
+    }
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    
+    let fullAnalysisData = null; // Store full data for view switching
+    let charts = {}; // Store chart instances by ID
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let jsonString = e.target.result;
+                // Enhanced NaN/Infinity handling
+                jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                // Handle array cases
+                jsonString = jsonString.replace(/,\s*NaN\b/g, ', null');
+                jsonString = jsonString.replace(/\[\s*NaN\b/g, '[ null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('載入失敗：\n' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter or Offline Data
+    if (window.OFFLINE_DATA) {
+        try {
+            renderDashboard(window.OFFLINE_DATA);
+        } catch (e) {
+            console.error("Offline data load error:", e);
+        }
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(text => {
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    // Don't alert on auto-load fail to avoid annoyance if param is wrong
+                });
+        }
+    }
+
+    function renderDashboard(data) {
+        if (!data) {
+            throw new Error("JSON 數據為空");
+        }
+
+        let viewData = data;
+
+        // 優先使用 Global 視角，若無則檢查是否為舊格式
+        if (data.Global) {
+            viewData = data.Global;
+        } else if (data.global) {
+            viewData = data.global;
+        } else if (!data.overall_summary) {
+             // 嘗試尋找其他視角作為備案
+             const views = Object.keys(data).filter(k => typeof data[k] === 'object' && data[k].overall_summary);
+             if (views.length > 0) {
+                 viewData = data[views[0]];
+             } else {
+                 throw new Error("JSON 格式不符：缺少 overall_summary 欄位，請確認是否為正確的分析結果檔案。");
+             }
+        }
+
+        // 隱藏所有視角選擇器
+        document.getElementById('summaryViewContainer').style.display = 'none';
+        document.querySelectorAll('.view-select, #depthTableViewSelect, #symmetryTableViewSelect, #logicTableViewSelect').forEach(el => el.style.display = 'none');
+
+        // 初始化儀表板結構 (不啟用多視角選擇)
+        fullAnalysisData = null; 
+        initializeDashboardStructure();
+        
+        // 渲染所有區塊
+        updateSummary(viewData);
+        updateDepthTable(viewData);
+        updateLogicTable(viewData);
+        
+        updateChart1(viewData);
+        updateChart2(viewData);
+        updateChartVelocity(viewData);
+        updateChartTemporal(viewData);
+    }
+
+    function initializeDashboardStructure() {
+        // Cleanup existing charts before removing canvas elements
+        Object.keys(charts).forEach(id => {
+            if (charts[id]) {
+                charts[id].destroy();
+            }
+        });
+        charts = {};
+
+        dashboardGrid.innerHTML = '';
+        
+        const blocks = [
+            { 
+                id: 'chart1', 
+                selectId: 'chart1Select',
+                title: '關鍵點深度穩定性 (Depth Stability CV%)', 
+                desc: '顯示各關鍵點在 Z 軸深度的穩定性，CV 值越低代表該點深度在時間軸上越穩定，無劇烈跳動。', 
+                criteria: 'CV < 5% 優秀 | 5-10% 可接受 | > 10% 不穩定',
+                params: 'X軸: 關鍵點 | Y軸: CV (%)' 
+            },
+            { 
+                id: 'chart_velocity',
+                selectId: 'chartVelocitySelect',
+                title: '深度變化速率 (Depth Velocity)',
+                desc: '顯示各關鍵點在 Z 軸上的平均變化速度 (mm/frame)。數值越高代表該點在深度方向移動越劇烈或抖動越嚴重。',
+                criteria: '應與動作幅度成正比。若靜止部位(如軀幹)數值過高，可能為雜訊。',
+                params: 'X軸: 關鍵點 | Y軸: 速度 (mm/frame)'
+            },
+            { 
+                id: 'chart2', 
+                selectId: 'chart2Select',
+                title: '深度範圍分佈 (Depth Range)', 
+                desc: '顯示各關鍵點的平均深度(Bar)與深度變化範圍(Error Bar)。', 
+                criteria: '範圍過大可能表示該點深度估計不穩定或運動幅度極大。',
+                params: 'X軸: 關鍵點 | Y軸: 深度 Z (mm)' 
+            },
+            { 
+                id: 'chart_temporal', 
+                selectId: 'chartTemporalSelect',
+                title: '時間軸深度穩定性 (Temporal Stability)', 
+                desc: '顯示每一幀相對於前一幀的平均深度變化量。突波代表畫面出現整體性的深度跳動。', 
+                criteria: '平穩的曲線為佳。突波 > 50mm 通常代表追蹤丟失或深度估計錯誤。',
+                params: 'X軸: 幀數 (Frame) | Y軸: 平均變化 (mm)' 
+            }
+        ];
+
+        // Generate HTML in one go to prevent DOM thrashing
+        dashboardGrid.innerHTML = blocks.map(block => 
+            createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId)
+        ).join('');
+
+        // Setup Chart Selectors if multi-view
+        if (fullAnalysisData) {
+            const views = Object.keys(fullAnalysisData).filter(k => typeof fullAnalysisData[k] === 'object' && fullAnalysisData[k].overall_summary);
+            const optionsHTML = views.map(key => {
+                const label = key === 'Global' ? 'Global (World)' : 
+                              key === '45' ? 'Camera 45°' : 
+                              key === 'Side' ? 'Camera Side' : key;
+                return `<option value="${key}">${label}</option>`;
+            }).join('');
+
+            const setupChartSelector = (selectId, updateFunc) => {
+                const sel = document.getElementById(selectId);
+                if (sel) {
+                    sel.innerHTML = optionsHTML;
+                    sel.style.display = 'inline-block';
+                    sel.addEventListener('change', (e) => {
+                        const view = e.target.value;
+                        console.log(`Chart ${selectId} switching to ${view}`);
+                        if (fullAnalysisData && fullAnalysisData[view]) {
+                            updateFunc(fullAnalysisData[view]);
+                        }
+                    });
+                }
+            };
+
+            setupChartSelector('chart1Select', updateChart1);
+            setupChartSelector('chartVelocitySelect', updateChartVelocity);
+            setupChartSelector('chart2Select', updateChart2);
+            setupChartSelector('chartTemporalSelect', updateChartTemporal);
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params, selectId) {
+        const selectHTML = selectId ? `<select id="${selectId}" class="styled-select view-select" style="display:none; padding: 4px 12px; font-size: 0.8rem;"></select>` : '';
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusBadge(value, type) {
+        if (value === null || value === undefined || (type !== 'quality' && isNaN(value))) {
+            return '<span class="status-badge status-neutral">N/A</span>';
+        }
+
+        let status = 'neutral';
+        let text = value;
+        
+        if (type === 'cv') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        } else if (type === 'quality') {
+            if (value === '優秀' || value === 'Excellent' || value === 'Good') { status = 'success'; }
+            else if (value === '可接受' || value === 'Acceptable') { status = 'warning'; }
+            else { status = 'danger'; }
+        } else if (type === 'diff') {
+            if (value < 50) { status = 'success'; }
+            else if (value < 100) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(1) + ' mm';
+        } else if (type === 'rate') {
+            if (value < 1) { status = 'success'; }
+            else if (value < 5) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(1) + '%';
+        }
+        
+        return `<span class="status-badge status-${status}">${text}</span>`;
+    }
+
+    // --- Render Functions ---
+
+    function updateSummary(data) {
+        const statsContainer = document.getElementById('summaryStats');
+        const summary = data.overall_summary;
+        
+        renderCompositeScoreCard(calculateCompositeScoreStep3(data));
+
+        const summaryItems = [
+            { label: '平均深度 (Mean Z)', value: `${summary.mean_depth_mm.toFixed(0)} mm`, sub: '整體平均深度' },
+            { label: '平均變異係數 (CV)', value: `${summary.average_cv.toFixed(2)}%`, sub: '越低越穩定' },
+            { label: '整體品質', value: summary.quality_level, sub: `Analyzed ${summary.total_keypoints_analyzed} keypoints` },
+            { label: '邏輯異常數', value: summary.total_logic_violations, sub: 'Wrist/Knee depth violations' }
+        ];
+
+        statsContainer.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+    }
+
+    function updateDepthTable(data) {
+        const depthTableBody = document.querySelector('#depthTable tbody');
+        const depthStats = data.depth_range_analysis;
+        const kpNames = Object.keys(depthStats).sort((a, b) => depthStats[b].cv_percent - depthStats[a].cv_percent);
+        
+        depthTableBody.innerHTML = kpNames.map(name => {
+            const stat = depthStats[name];
+            return `
+                <tr>
+                    <td>${name}</td>
+                    <td>${stat.mean_z_mm.toFixed(1)}</td>
+                    <td>${stat.depth_range_mm.toFixed(1)}</td>
+                    <td>${getStatusBadge(stat.cv_percent, 'cv')}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function updateLogicTable(data) {
+        const logicTableBody = document.querySelector('#logicTable tbody');
+        const logic = data.depth_logic_check;
+        if (logic) {
+            const definitions = {
+                'elbow_hyperextension': { name: '手肘反向彎曲', desc: '檢測手肘是否異常反折 (深度 > 連線 + 200mm)' },
+                'knee_hyperextension': { name: '膝蓋反向彎曲', desc: '檢測膝蓋是否異常反折 (深度 > 連線 + 200mm)' }
+            };
+
+            const rows = Object.keys(logic).map(key => {
+                const item = logic[key];
+                if (!item || !item.violations) return '';
+                
+                const def = definitions[key] || { name: key, desc: 'N/A' };
+                const leftCount = item.violations.left;
+                const rightCount = item.violations.right;
+                const rate = item.rate;
+                
+                return `
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-main);">${def.name}</td>
+                    <td style="font-size: 0.85rem; color: var(--text-sub); max-width: 300px;">${def.desc}</td>
+                    <td>${leftCount}</td>
+                    <td>${rightCount}</td>
+                    <td>${getStatusBadge(rate, 'rate')}</td>
+                    <td>${rate === 0 ? '<span class="status-badge status-success">Pass</span>' : '<span class="status-badge status-warning">Check</span>'}</td>
+                </tr>
+                `;
+            }).join('');
+            
+            logicTableBody.innerHTML = rows;
+        }
+    }
+
+    function updateChart1(data) {
+        const ctx = document.getElementById('chart1');
+        if (charts['chart1']) charts['chart1'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedKeys = Object.keys(depthStats).sort((a, b) => (depthStats[b].cv_percent || 0) - (depthStats[a].cv_percent || 0));
+
+        charts['chart1'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedKeys,
+                datasets: [{
+                    label: '變異係數 (CV%)',
+                    data: sortedKeys.map(k => depthStats[k].cv_percent || 0),
+                    backgroundColor: sortedKeys.map(k => {
+                        const cv = depthStats[k].cv_percent || 0;
+                        if (cv < 5) return '#4ade80';
+                        if (cv < 10) return '#fbbf24';
+                        return '#f87171';
+                    }),
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'CV (%)' } } }
+            }
+        });
+    }
+
+    function updateChartVelocity(data) {
+        const ctx = document.getElementById('chart_velocity');
+        if (charts['chart_velocity']) charts['chart_velocity'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedByGrad = Object.keys(depthStats).sort((a, b) => depthStats[b].mean_gradient_mm - depthStats[a].mean_gradient_mm);
+        
+        charts['chart_velocity'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedByGrad,
+                datasets: [{
+                    label: '平均深度速度 (mm/frame)',
+                    data: sortedByGrad.map(k => depthStats[k].mean_gradient_mm),
+                    backgroundColor: '#818cf8',
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Velocity (mm/frame)' } } }
+            }
+        });
+    }
+
+    function updateChart2(data) {
+        const ctx = document.getElementById('chart2');
+        if (charts['chart2']) charts['chart2'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedByZ = Object.keys(depthStats).sort((a, b) => depthStats[b].mean_z_mm - depthStats[a].mean_z_mm);
+        
+        const errorBarPlugin = {
+            id: 'errorBar',
+            afterDatasetsDraw: (chart) => {
+                const { ctx, data, scales: { y } } = chart;
+                chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                    const minZ = data.datasets[0].min[index];
+                    const maxZ = data.datasets[0].max[index];
+                    if (minZ === undefined || maxZ === undefined) return;
+                    const x = bar.x;
+                    const yMin = y.getPixelForValue(minZ);
+                    const yMax = y.getPixelForValue(maxZ);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; 
+                    ctx.moveTo(x, yMin); ctx.lineTo(x, yMax);
+                    ctx.moveTo(x - 6, yMax); ctx.lineTo(x + 6, yMax);
+                    ctx.moveTo(x - 6, yMin); ctx.lineTo(x + 6, yMin);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        charts['chart2'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedByZ,
+                datasets: [{
+                    label: '平均深度 (mm)',
+                    data: sortedByZ.map(k => depthStats[k].mean_z_mm),
+                    min: sortedByZ.map(k => depthStats[k].min_z_mm),
+                    max: sortedByZ.map(k => depthStats[k].max_z_mm),
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: false, title: { display: true, text: 'Depth Z (mm)' } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const min = context.dataset.min[idx];
+                                const max = context.dataset.max[idx];
+                                return `Range: ${min.toFixed(0)} - ${max.toFixed(0)} mm`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [errorBarPlugin]
+        });
+    }
+
+    function updateChartTemporal(data) {
+        const ctx = document.getElementById('chart_temporal');
+        if (charts['chart_temporal']) charts['chart_temporal'].destroy();
+        
+        const temporalStats = data.temporal_stability;
+        if (!temporalStats || !temporalStats.series_data) return;
+
+        const seriesData = temporalStats.series_data;
+        const labels = seriesData.map((_, i) => i + 1);
+        const threshold = temporalStats.threshold_mm || 50;
+
+        charts['chart_temporal'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '平均深度變化 (mm)',
+                    data: seriesData,
+                    borderColor: '#a855f7',
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: '異常閾值',
+                    data: Array(labels.length).fill(threshold),
+                    borderColor: 'rgba(248, 113, 113, 0.6)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: { 
+                    x: { title: { display: true, text: 'Frame Index' } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Change (mm)' } } 
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

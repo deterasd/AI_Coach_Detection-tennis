@@ -22,6 +22,7 @@ import time
 import numpy as np
 from ultralytics import YOLO
 import concurrent.futures  # 新增多執行緒支援
+import torch
 
 # 匯入各模組 (請確認路徑正確)
 from trajectory_2D_output import analyze_trajectory
@@ -35,9 +36,10 @@ from trajectory_3D_output import process_trajectories
 from trajector_3D_smoothing import smooth_3D_trajectory
 from trajector_3D_capture_swing_range import extract_frames
 from trajectory_knn import analyze_trajectory as analyze_trajectory_knn
+from trajectory_integrated_analysis import analyze_integrated_trajectory
 from trajectory_gpt_single_feedback import generate_feedback
 
-def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video_side, video_45, knn_dataset):
+def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, paddle_model, video_side, video_45, knn_dataset):
     # 用於紀錄各步驟執行時間
     timing_results = {}
     start_total = time.perf_counter()  # 總執行時間計時
@@ -45,8 +47,10 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video
     # ------------------------------
     # print("\n步驟1：分析2D軌跡中...")
     start = time.perf_counter()
-    trajectory_side = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model, video_side, 28)
-    trajectory_45  = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model, video_45, 28)
+    trajectory_side = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model, paddle_model, video_side, 28)
+    trajectory_45  = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model, paddle_model, video_45, 28)
+    #trajectory_side = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_side, 28)#0920新增球拍
+    #trajectory_45  = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_45, 28)#0920新增球拍
     timing_results['2D軌跡分析'] = time.perf_counter() - start
     # print(f"-- 分析2D軌跡完成，耗時：{timing_results['2D軌跡分析']:.4f} 秒")
 
@@ -137,7 +141,22 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video
     # ------------------------------
     # print("\n步驟10：KNN 分析中...")
     start = time.perf_counter()
-    trajectory_knn_suggestion = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing)
+    knn_results, nearest_expert_filename = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing)
+    # analyze_trajectory_knn 返回 (results列表, nearest_expert_filename字串)
+    trajectory_knn_suggestion = knn_results[0] if knn_results else "unknown"
+    
+    # 寫入 KNN feedback 檔案
+    import os
+    knn_feedback_path = trajectory_3d_smoothing.replace('(3D_trajectory_smoothed).json', '_knn_feedback.txt')
+    try:
+        with open(knn_feedback_path, 'w', encoding='utf-8') as f:
+            f.write(trajectory_knn_suggestion)
+        # print(f"KNN feedback 已寫入: {knn_feedback_path}")
+    except Exception as e:
+        print(f"寫入 KNN feedback 失敗: {e}")
+    
+    # 整合分析所有分析點
+    integrated_analysis_path = analyze_integrated_trajectory(trajectory_3d_smoothing, knn_dataset, nearest_expert_filename, trajectory_knn_suggestion)
     timing_results['KNN 分析'] = time.perf_counter() - start
     # print(f"-- KNN 分析完成，耗時：{timing_results['KNN 分析']:.4f} 秒")
 
@@ -146,7 +165,7 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video
     # ------------------------------
     # print("\n步驟11：生成 GPT 反饋中...")
     start = time.perf_counter()
-    trajectory_gpt_suggestion = generate_feedback(trajectory_3d_swing_range, trajectory_knn_suggestion)
+    generate_feedback(trajectory_3d_swing_range, trajectory_knn_suggestion, integrated_analysis_path)
     timing_results['GPT 反饋生成'] = time.perf_counter() - start
     # print(f"-- GPT 反饋生成完成，耗時：{timing_results['GPT 反饋生成']:.4f} 秒")
 
@@ -168,18 +187,42 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video
 
 if __name__ == "__main__":
 
-    # 碩士實驗室投影矩陣
     P1 = np.array([
-        [  877.037008,     0.000000,   956.954783,     0.000000],
-        [    0.000000,   879.565925,   564.021385,     0.000000],
+    [  613.902729,     0.000000,   638.203915,     0.000000],
+    [    0.000000,   617.251817,   364.556522,     0.000000],
+    [    0.000000,     0.000000,     1.000000,     0.000000],
+    ])
+    P2 = np.array([
+    [  616.071259,     7.588060,   617.077541, 154727.853092],
+    [   -0.773895,   591.674918,   358.669757, -16209.393573],
+    [    0.038272,    -0.010667,     0.999210,   -68.044380],
+])
+    #0909test
+    """
+    P1 = np.array([
+        [  682.525930,     0.000000,   637.087464,     0.000000],
+        [    0.000000,   684.519186,   360.040032,     0.000000],
         [    0.000000,     0.000000,     1.000000,     0.000000],
     ])
 
     P2 = np.array([
-        [  408.666240,    -7.066100,  1265.246736, -264697.889698],
-        [ -232.265915,   870.289013,   512.645370, 42861.701021],
-        [   -0.400331,    -0.014736,     0.916252,    76.895470],
+        [  572.714085,    27.508121,   700.861208, -159410.297486],
+        [  -27.187871,   663.411218,   332.613656, 51347.982959],
+        [   -0.102197,     0.053920,     0.993302,    73.630082],
     ])
+    """
+    # 碩士實驗室投影矩陣
+    #P1 = np.array([
+    #    [  877.037008,     0.000000,   956.954783,     0.000000],
+    #    [    0.000000,   879.565925,   564.021385,     0.000000],
+    #    [    0.000000,     0.000000,     1.000000,     0.000000],
+    #])
+
+    #P2 = np.array([
+    #    [  408.666240,    -7.066100,  1265.246736, -264697.889698],
+    #    [ -232.265915,   870.289013,   512.645370, 42861.701021],
+    #    [   -0.400331,    -0.014736,     0.916252,    76.895470],
+    #])
 
     # outdoor_11_26投影矩陣
     # P1 = np.array([
@@ -194,17 +237,40 @@ if __name__ == "__main__":
     #     [   -0.934159,    -0.007813,     0.356772,  2984.789713],
     # ])
 
-    knn_dataset = 'knn_dataset.json'
+    knn_dataset = 'knn_dataset_new.json'
 
     yolo_pose_model = YOLO('model/yolov8n-pose.pt')
     yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
+    paddle_model=YOLO('model/tennispaddle.pt')#0920新增球拍
 
-    yolo_pose_model.model.to('cuda')
-    yolo_tennis_ball_model.model.to('cuda')
+    # 檢查可用的設備：優先使用 MPS (Apple GPU)，其次 CUDA，最後 CPU
+    if torch.backends.mps.is_available():
+        device = 'mps'
+        pose_device = 'cpu'  # Apple MPS 對姿態模型有已知問題，使用 CPU
+        # print("使用設備: MPS (Apple GPU 加速) - 姿態模型使用 CPU")
+        
+        # 強制禁用 MPS 對姿態模型的警告
+        import warnings
+        warnings.filterwarnings("ignore", message="Apple MPS known Pose bug")
+        
+    elif torch.cuda.is_available():
+        device = 'cuda'
+        pose_device = 'cuda'
+        print("使用設備: CUDA (NVIDIA GPU 加速)")
+    else:
+        device = 'cpu'
+        pose_device = 'cpu'
+        print("使用設備: CPU")
+    
+    # 姿態模型使用 CPU（避免 Apple MPS 問題）
+    yolo_pose_model.model.to(pose_device)
+    # 網球檢測模型可以使用 GPU 加速
+    yolo_tennis_ball_model.model.to(device)
+    # 球拍模型跟隨主設備（MPS/CUDA/CPU）
+    paddle_model.model.to(device)  # 0920新增球拍
 
-
-
-    video_side = f'trajectory/testing_123/testing__side.mp4'
-    video_45 = f'trajectory/testing_123/testing__45.mp4'
-    process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video_side, video_45, knn_dataset)
+    video_side = f'trajectory/newtest_123/outdoor10__1_side_segment.mp4'
+    video_45 = f'trajectory/newtest_123/outdoor10__1_45_segment.mp4'
+    process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle_model, video_side, video_45, knn_dataset)
+    #process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_side, video_45, knn_dataset)
     print(process_status)

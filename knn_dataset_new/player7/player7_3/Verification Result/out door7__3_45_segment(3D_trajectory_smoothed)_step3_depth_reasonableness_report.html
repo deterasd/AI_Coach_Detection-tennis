@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step3. 深度合理性驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+             border-bottom: none;
+             padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .data-table-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: var(--text-sub);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+        .status-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-danger { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+        .status-neutral { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .section-header-row h3 {
+            margin: 0;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+            .score-detail-value { align-items: flex-start; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
+  "Global": {
+    "metadata": {
+      "analysis_time": "2026-01-27T12:11:19.104762",
+      "source_file": "data/player7/player7_3/out door7__3_45_segment(3D_trajectory_smoothed).json",
+      "total_frames": 224,
+      "analysis_type": "Depth Reasonableness Analysis",
+      "view": "Global"
+    },
+    "overall_summary": {
+      "average_cv": 6.4178414514687585,
+      "quality_level": "可接受",
+      "total_keypoints_analyzed": 18,
+      "total_logic_violations": 42,
+      "mean_depth_mm": 2070.0657098420215,
+      "quality_score": {
+        "score": 87.78931709706248,
+        "deductions": [
+          {
+            "reason": "深度略有雜訊 (CV 6.4%)",
+            "points": 2.835682902937517
+          },
+          {
+            "reason": "手肘反向彎曲 (9.4%)",
+            "points": 9.375
+          }
+        ],
+        "level": "Good"
+      }
+    },
+    "depth_range_analysis": {
+      "nose": {
+        "sample_count": 224,
+        "mean_z_mm": 2051.3872351405835,
+        "std_z_mm": 100.73403283869378,
+        "cv_percent": 4.910532302877979,
+        "min_z_mm": 1905.8592348144907,
+        "max_z_mm": 2339.674535688932,
+        "depth_range_mm": 433.81530087444116,
+        "mean_gradient_mm": 4.608492557737523,
+        "max_gradient_mm": 16.70357137573228,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_eye": {
+        "sample_count": 224,
+        "mean_z_mm": 2083.399324703747,
+        "std_z_mm": 111.04760596603289,
+        "cv_percent": 5.330116250365183,
+        "min_z_mm": 1892.494576911902,
+        "max_z_mm": 2382.582599106462,
+        "depth_range_mm": 490.08802219456015,
+        "mean_gradient_mm": 4.854954725814731,
+        "max_gradient_mm": 21.30317951220968,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_eye": {
+        "sample_count": 224,
+        "mean_z_mm": 2034.5449464907178,
+        "std_z_mm": 110.94446014965449,
+        "cv_percent": 5.453035596044063,
+        "min_z_mm": 1883.780243964817,
+        "max_z_mm": 2318.370857597256,
+        "depth_range_mm": 434.59061363243904,
+        "mean_gradient_mm": 5.004406340660467,
+        "max_gradient_mm": 16.71012822254488,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_ear": {
+        "sample_count": 224,
+        "mean_z_mm": 2179.301811740283,
+        "std_z_mm": 132.07355392857426,
+        "cv_percent": 6.060360855805778,
+        "min_z_mm": 1906.8610140931091,
+        "max_z_mm": 2542.061613906301,
+        "depth_range_mm": 635.2005998131917,
+        "mean_gradient_mm": 9.05377357291609,
+        "max_gradient_mm": 31.575496368121094,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_ear": {
+        "sample_count": 224,
+        "mean_z_mm": 2016.947848345915,
+        "std_z_mm": 140.10949802054552,
+        "cv_percent": 6.946609855849687,
+        "min_z_mm": 1778.9842802996016,
+        "max_z_mm": 2379.953262373984,
+        "depth_range_mm": 600.9689820743827,
+        "mean_gradient_mm": 5.674845966618295,
+        "max_gradient_mm": 29.29152861083503,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_shoulder": {
+        "sample_count": 224,
+        "mean_z_mm": 2241.301959873565,
+        "std_z_mm": 118.40771666231105,
+        "cv_percent": 5.282988137349891,
+        "min_z_mm": 2023.8640661117956,
+        "max_z_mm": 2583.2347153393284,
+        "depth_range_mm": 559.3706492275328,
+        "mean_gradient_mm": 10.861019086619644,
+        "max_gradient_mm": 32.93859397862252,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_shoulder": {
+        "sample_count": 224,
+        "mean_z_mm": 1988.6276385978215,
+        "std_z_mm": 164.54545668077026,
+        "cv_percent": 8.274322124819255,
+        "min_z_mm": 1698.637611249715,
+        "max_z_mm": 2392.4845035203402,
+        "depth_range_mm": 693.8468922706252,
+        "mean_gradient_mm": 8.175325806025874,
+        "max_gradient_mm": 30.75034367476337,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_elbow": {
+        "sample_count": 224,
+        "mean_z_mm": 2344.2639803973702,
+        "std_z_mm": 150.63652470304658,
+        "cv_percent": 6.425749231428815,
+        "min_z_mm": 1895.4409835936399,
+        "max_z_mm": 2671.847748296348,
+        "depth_range_mm": 776.4067647027082,
+        "mean_gradient_mm": 17.12723812394459,
+        "max_gradient_mm": 62.043513891510884,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_elbow": {
+        "sample_count": 224,
+        "mean_z_mm": 1988.1216791119748,
+        "std_z_mm": 149.79681177667894,
+        "cv_percent": 7.534589726097046,
+        "min_z_mm": 1676.4776546316348,
+        "max_z_mm": 2243.7111346334977,
+        "depth_range_mm": 567.233480001863,
+        "mean_gradient_mm": 12.765107789704752,
+        "max_gradient_mm": 63.97734134653888,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_wrist": {
+        "sample_count": 224,
+        "mean_z_mm": 2246.9896036363675,
+        "std_z_mm": 174.18840120024888,
+        "cv_percent": 7.752078644171509,
+        "min_z_mm": 1760.7740344753925,
+        "max_z_mm": 2548.5996015426067,
+        "depth_range_mm": 787.8255670672143,
+        "mean_gradient_mm": 22.575919743744613,
+        "max_gradient_mm": 87.62091312445818,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_wrist": {
+        "sample_count": 224,
+        "mean_z_mm": 2045.8273204684197,
+        "std_z_mm": 184.8612152397678,
+        "cv_percent": 9.036012638517377,
+        "min_z_mm": 1527.565541398893,
+        "max_z_mm": 2494.328729314419,
+        "depth_range_mm": 966.763187915526,
+        "mean_gradient_mm": 22.317886344938955,
+        "max_gradient_mm": 88.75951406935292,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_hip": {
+        "sample_count": 224,
+        "mean_z_mm": 2236.9358311780375,
+        "std_z_mm": 111.74716635270137,
+        "cv_percent": 4.995546353864428,
+        "min_z_mm": 2029.4324790036828,
+        "max_z_mm": 2635.4290369235932,
+        "depth_range_mm": 605.9965579199104,
+        "mean_gradient_mm": 11.714203527088985,
+        "max_gradient_mm": 38.85558258681749,
+        "quality_level": "良好",
+        "valid_range_rate": 100.0,
+        "outlier_count": 4,
+        "outlier_rate": 1.7857142857142856
+      },
+      "right_hip": {
+        "sample_count": 224,
+        "mean_z_mm": 2052.564840255667,
+        "std_z_mm": 143.94679744774257,
+        "cv_percent": 7.013020715575181,
+        "min_z_mm": 1774.7781542507996,
+        "max_z_mm": 2443.2843767975437,
+        "depth_range_mm": 668.5062225467441,
+        "mean_gradient_mm": 9.547334571979942,
+        "max_gradient_mm": 27.579194668329592,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_knee": {
+        "sample_count": 224,
+        "mean_z_mm": 2214.659306744062,
+        "std_z_mm": 116.84078177378011,
+        "cv_percent": 5.2757903402106825,
+        "min_z_mm": 1922.4522324964591,
+        "max_z_mm": 2498.243781499121,
+        "depth_range_mm": 575.7915490026617,
+        "mean_gradient_mm": 13.050307844424097,
+        "max_gradient_mm": 53.37976333663755,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_knee": {
+        "sample_count": 224,
+        "mean_z_mm": 2005.0969309598515,
+        "std_z_mm": 151.13495226726405,
+        "cv_percent": 7.537538456802428,
+        "min_z_mm": 1768.4659412757578,
+        "max_z_mm": 2420.5946579658857,
+        "depth_range_mm": 652.1287166901279,
+        "mean_gradient_mm": 8.831974520004792,
+        "max_gradient_mm": 42.93782159707462,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "left_ankle": {
+        "sample_count": 224,
+        "mean_z_mm": 2272.997214602933,
+        "std_z_mm": 132.57748214553754,
+        "cv_percent": 5.832716436860981,
+        "min_z_mm": 1994.3078341913638,
+        "max_z_mm": 2614.477516889383,
+        "depth_range_mm": 620.1696826980192,
+        "mean_gradient_mm": 18.425427908339064,
+        "max_gradient_mm": 54.789038855520175,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "right_ankle": {
+        "sample_count": 224,
+        "mean_z_mm": 2035.355094775851,
+        "std_z_mm": 122.16573559820255,
+        "cv_percent": 6.002182907138195,
+        "min_z_mm": 1836.4260271965863,
+        "max_z_mm": 2283.3020497158573,
+        "depth_range_mm": 446.8760225192709,
+        "mean_gradient_mm": 9.733787017290762,
+        "max_gradient_mm": 30.512596686293364,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 0,
+        "outlier_rate": 0.0
+      },
+      "tennis_ball": {
+        "sample_count": 42,
+        "mean_z_mm": 1222.8602101332292,
+        "std_z_mm": 71.63460758075922,
+        "cv_percent": 5.85795555265918,
+        "min_z_mm": 1113.5949773285022,
+        "max_z_mm": 1490.6818933584939,
+        "depth_range_mm": 377.0869160299917,
+        "mean_gradient_mm": 9.867360113210847,
+        "max_gradient_mm": 82.74035873458024,
+        "quality_level": "可接受",
+        "valid_range_rate": 100.0,
+        "outlier_count": 1,
+        "outlier_rate": 2.380952380952381
+      }
+    },
+    "depth_logic_check": {
+      "elbow_hyperextension": {
+        "checks": {
+          "total": 448,
+          "left": 224,
+          "right": 224
+        },
+        "violations": {
+          "total": 42,
+          "left": 33,
+          "right": 9
+        },
+        "rate": 9.375,
+        "anomalies": [
+          {
+            "frame": 34,
+            "side": "left",
+            "val_z": 2386.8,
+            "ref_z": 2173.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 35,
+            "side": "left",
+            "val_z": 2401.1,
+            "ref_z": 2169.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 36,
+            "side": "left",
+            "val_z": 2418.8,
+            "ref_z": 2168.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 37,
+            "side": "left",
+            "val_z": 2437.6,
+            "ref_z": 2169.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 38,
+            "side": "left",
+            "val_z": 2455.9,
+            "ref_z": 2172.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 39,
+            "side": "left",
+            "val_z": 2470.9,
+            "ref_z": 2177.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 40,
+            "side": "left",
+            "val_z": 2480.8,
+            "ref_z": 2183.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 41,
+            "side": "left",
+            "val_z": 2482.7,
+            "ref_z": 2189.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 42,
+            "side": "left",
+            "val_z": 2475.1,
+            "ref_z": 2191.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 43,
+            "side": "left",
+            "val_z": 2455.0,
+            "ref_z": 2190.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 44,
+            "side": "left",
+            "val_z": 2428.1,
+            "ref_z": 2185.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 45,
+            "side": "left",
+            "val_z": 2399.0,
+            "ref_z": 2180.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 51,
+            "side": "left",
+            "val_z": 2403.6,
+            "ref_z": 2182.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 52,
+            "side": "left",
+            "val_z": 2456.6,
+            "ref_z": 2199.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 53,
+            "side": "left",
+            "val_z": 2511.7,
+            "ref_z": 2214.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 54,
+            "side": "left",
+            "val_z": 2567.8,
+            "ref_z": 2230.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 55,
+            "side": "left",
+            "val_z": 2616.6,
+            "ref_z": 2245.4,
+            "severity": "moderate"
+          },
+          {
+            "frame": 56,
+            "side": "left",
+            "val_z": 2652.9,
+            "ref_z": 2259.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 57,
+            "side": "left",
+            "val_z": 2671.4,
+            "ref_z": 2269.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 58,
+            "side": "left",
+            "val_z": 2671.8,
+            "ref_z": 2276.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 59,
+            "side": "left",
+            "val_z": 2656.7,
+            "ref_z": 2282.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 60,
+            "side": "left",
+            "val_z": 2633.2,
+            "ref_z": 2288.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 61,
+            "side": "left",
+            "val_z": 2603.3,
+            "ref_z": 2297.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 62,
+            "side": "left",
+            "val_z": 2569.3,
+            "ref_z": 2310.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 63,
+            "side": "left",
+            "val_z": 2534.7,
+            "ref_z": 2325.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 88,
+            "side": "right",
+            "val_z": 1999.0,
+            "ref_z": 1790.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 89,
+            "side": "right",
+            "val_z": 2030.5,
+            "ref_z": 1791.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 90,
+            "side": "left",
+            "val_z": 2259.1,
+            "ref_z": 2055.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 90,
+            "side": "right",
+            "val_z": 2066.0,
+            "ref_z": 1796.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 91,
+            "side": "left",
+            "val_z": 2307.3,
+            "ref_z": 2078.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 91,
+            "side": "right",
+            "val_z": 2096.1,
+            "ref_z": 1801.7,
+            "severity": "moderate"
+          },
+          {
+            "frame": 92,
+            "side": "left",
+            "val_z": 2338.9,
+            "ref_z": 2095.0,
+            "severity": "moderate"
+          },
+          {
+            "frame": 92,
+            "side": "right",
+            "val_z": 2125.1,
+            "ref_z": 1810.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 93,
+            "side": "left",
+            "val_z": 2352.6,
+            "ref_z": 2104.5,
+            "severity": "moderate"
+          },
+          {
+            "frame": 93,
+            "side": "right",
+            "val_z": 2150.5,
+            "ref_z": 1824.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 94,
+            "side": "left",
+            "val_z": 2357.8,
+            "ref_z": 2116.2,
+            "severity": "moderate"
+          },
+          {
+            "frame": 94,
+            "side": "right",
+            "val_z": 2166.0,
+            "ref_z": 1846.1,
+            "severity": "moderate"
+          },
+          {
+            "frame": 95,
+            "side": "left",
+            "val_z": 2358.7,
+            "ref_z": 2134.6,
+            "severity": "moderate"
+          },
+          {
+            "frame": 95,
+            "side": "right",
+            "val_z": 2166.3,
+            "ref_z": 1873.9,
+            "severity": "moderate"
+          },
+          {
+            "frame": 96,
+            "side": "right",
+            "val_z": 2150.6,
+            "ref_z": 1907.8,
+            "severity": "moderate"
+          },
+          {
+            "frame": 222,
+            "side": "left",
+            "val_z": 2341.7,
+            "ref_z": 2133.3,
+            "severity": "moderate"
+          },
+          {
+            "frame": 223,
+            "side": "left",
+            "val_z": 2313.8,
+            "ref_z": 2088.8,
+            "severity": "moderate"
+          }
+        ]
+      },
+      "knee_hyperextension": {
+        "checks": {
+          "total": 448,
+          "left": 224,
+          "right": 224
+        },
+        "violations": {
+          "total": 0,
+          "left": 0,
+          "right": 0
+        },
+        "rate": 0.0,
+        "anomalies": []
+      }
+    },
+    "overall_statistics": {
+      "overall_mean_depth_mm": 2070.0657098420215,
+      "overall_std_depth_mm": 233.2986724518023,
+      "average_cv_percent": 6.4178414514687585,
+      "average_range_mm": 605.1480959545116,
+      "max_range_mm": 966.763187915526,
+      "min_mean_depth_mm": 1222.8602101332292,
+      "max_mean_depth_mm": 2344.2639803973702
+    },
+    "temporal_stability": {
+      "mean_frame_change_mm": 11.396615425385626,
+      "max_frame_change_mm": 22.315540113628096,
+      "unstable_frames": [],
+      "unstable_frame_count": 0,
+      "unstable_rate": 0.0,
+      "threshold_mm": 50.0,
+      "series_data": [
+        15.950487410932404,
+        12.664146192413014,
+        11.506144719275813,
+        10.890908681363271,
+        10.092691541468252,
+        10.441813318701701,
+        10.755521403672233,
+        11.308488792694227,
+        11.436875420488056,
+        12.002171819562992,
+        12.909237463290992,
+        14.155923894275421,
+        14.932842962037418,
+        13.47375543039473,
+        14.155113276974134,
+        14.7967480062926,
+        15.336823738697577,
+        14.88066692058839,
+        13.726172587851792,
+        11.739879536713675,
+        10.078959533936862,
+        8.52150651248656,
+        7.579835186337919,
+        9.503674266673844,
+        11.391708973865715,
+        12.789924157580732,
+        14.531996414829871,
+        16.33860262645168,
+        18.02061216590292,
+        16.877608731266758,
+        15.61487733821193,
+        13.702695568596319,
+        13.499122054026985,
+        12.618624124967344,
+        11.889765787348653,
+        12.63750137856342,
+        13.492729976844076,
+        13.3904314015711,
+        12.542553701481577,
+        12.402564737138214,
+        10.746037091085011,
+        11.021525026063664,
+        10.869686723357278,
+        10.720473058919033,
+        10.281947151211638,
+        10.142297671005812,
+        10.332040285530196,
+        10.11618043328206,
+        10.866196040495034,
+        12.475741805652623,
+        13.41342888472045,
+        12.979168775071823,
+        13.061841012225273,
+        14.591518477560966,
+        15.299676983723316,
+        16.27058669603159,
+        16.04797076939062,
+        14.563713097018926,
+        13.802374457838445,
+        11.549832621961311,
+        9.588446976686239,
+        8.372742996674244,
+        8.638910433749906,
+        8.532760601388027,
+        10.294607246005853,
+        14.344409957695575,
+        16.891084664356512,
+        18.1956610145712,
+        19.988059361386515,
+        21.132506761317146,
+        18.726984412098812,
+        19.24754390848894,
+        19.635010676315233,
+        20.47985574927602,
+        19.37783234617811,
+        18.258886126409408,
+        15.50814095911096,
+        13.79015513563481,
+        13.205262446871663,
+        12.342806049998645,
+        11.02336693302146,
+        9.889696245462948,
+        9.889505723813768,
+        9.857800790506511,
+        11.709555921176616,
+        14.175099347012251,
+        14.750106951265934,
+        16.116102757866535,
+        16.458444141322925,
+        15.797837091385619,
+        15.53662113816195,
+        14.257626242752796,
+        13.357536501152268,
+        14.013747747246578,
+        14.071925356369855,
+        16.203572141623468,
+        18.135407796885747,
+        20.24219436914327,
+        21.95824747510369,
+        22.315540113628096,
+        19.883937723504058,
+        16.093365821061845,
+        13.08301396444227,
+        14.509164195304479,
+        15.193789067750512,
+        15.413406451497782,
+        14.931970821216536,
+        15.127350461629623,
+        17.39791540638283,
+        18.003357072227573,
+        18.221303848557536,
+        17.62657457106383,
+        16.42916532013257,
+        14.296440640183405,
+        12.376584353536707,
+        11.526589966800282,
+        11.325908131683143,
+        12.370362350322493,
+        12.708013304388874,
+        12.495558404446442,
+        12.044568344791768,
+        12.292624399817575,
+        11.884524203237975,
+        11.541725513825,
+        11.742985858277185,
+        12.475475887285965,
+        11.625107067468688,
+        11.136888991028146,
+        10.546107724181558,
+        10.052390403163413,
+        10.286172516418178,
+        10.225337507715308,
+        10.563280271446688,
+        10.536326214711487,
+        9.761902571106797,
+        9.508537728697588,
+        10.389459886683706,
+        11.402351077597707,
+        11.870408136430717,
+        12.312619484030058,
+        13.766070381851463,
+        13.07629870305998,
+        12.687278267471182,
+        11.541396210568163,
+        10.05106996775465,
+        9.195153891444708,
+        7.764134959512322,
+        6.114370457150418,
+        5.672489557328176,
+        5.956606014890266,
+        6.040610140951966,
+        6.1334179628904355,
+        5.875613204638044,
+        5.453711932825185,
+        5.259671433569512,
+        6.737334280984576,
+        8.200788408385854,
+        9.163525144892768,
+        9.388718516714148,
+        8.401794658422418,
+        7.178087167447222,
+        5.921594267682501,
+        4.522144587949229,
+        3.8809003859711377,
+        4.000990402470158,
+        4.026951180299206,
+        4.717628910194301,
+        6.146114047569506,
+        8.060209734254226,
+        10.191768558483853,
+        11.442589400780355,
+        12.672177463156444,
+        12.625571614347697,
+        10.760720018969778,
+        8.432149756608155,
+        5.782972173113702,
+        5.0885743128523355,
+        5.681441607579338,
+        6.9938817204391155,
+        8.722388861989389,
+        10.068048911015815,
+        10.81119386465029,
+        10.583812598025588,
+        9.200865855812294,
+        7.622225442246324,
+        5.742268901070006,
+        4.777962488215428,
+        4.911332240527078,
+        5.785128687531382,
+        6.663356976046409,
+        7.7769438833567675,
+        7.894654836584149,
+        7.554078913515455,
+        6.985625798333077,
+        6.430747366594166,
+        5.573540298213576,
+        4.709771313263525,
+        5.135860286321397,
+        5.4111036721754395,
+        5.659116781195882,
+        6.17200258373619,
+        7.009208686812559,
+        7.5663654674699234,
+        7.994731223741958,
+        7.924687846337868,
+        7.680674056378955,
+        7.236281303425505,
+        5.88859493512616,
+        4.818074985699495,
+        7.386343093050139,
+        10.15841146746073,
+        11.32108050987508,
+        11.489093679118737,
+        9.490428899593045,
+        6.985660786322836,
+        5.113212548656694,
+        5.287400768320782,
+        6.4639799504383895,
+        7.918612374433451,
+        9.349842838510286,
+        11.908859908073536,
+        14.636077913452054,
+        17.760951561721853
+      ]
+    }
+  }
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>深度合理性驗證</span></h1>
+        <div class="header-controls">
+            <div id="summaryViewContainer" style="display:none;">
+                <label for="summaryViewSelect" style="color:var(--text-sub); margin-right:8px; font-size:0.9rem;">Summary View:</label>
+                <select id="summaryViewSelect" class="styled-select"></select>
+            </div>
+            <div class="upload-section">
+                <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+                <input type="file" id="fileInput" accept=".json">
+            </div>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Injected by JS -->
+    </div>
+    
+    <!-- Score Card -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">尚未載入資料</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+
+    <div class="grid" id="dashboardGrid">
+        <!-- Cards will be injected here by JS -->
+    </div>
+
+    <h2 class="section-title">📋 詳細數據分析</h2>
+    
+    <div class="two-col-grid">
+        <div>
+            <div class="section-header-row">
+                <h3 style="color: var(--text-sub);">關鍵點深度統計 (Depth Statistics)</h3>
+                <select id="depthTableViewSelect" class="styled-select" style="display:none; padding: 4px 12px; font-size: 0.8rem;"></select>
+            </div>
+            <div class="data-table-container">
+                <table id="depthTable">
+                    <thead>
+                        <tr>
+                            <th>關鍵點</th>
+                            <th>平均深度 (mm)</th>
+                            <th>範圍 (mm)</th>
+                            <th>CV (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div>
+            <div class="section-header-row" style="margin-top: 0;">
+                <h3 style="color: var(--text-sub);">邏輯異常檢測 (Logic Violations)</h3>
+            </div>
+            <div class="data-table-container">
+                <table id="logicTable">
+                    <thead>
+                        <tr>
+                            <th>檢測項目</th>
+                            <th>說明</th>
+                            <th>左側異常</th>
+                            <th>右側異常</th>
+                            <th>異常率</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Chart.js Global Defaults for Premium Dark Theme
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    // Tooltip styling
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function describeScoreLevel(score) {
+        if (score >= 90) return '卓越 (Excellent)';
+        if (score >= 75) return '良好 (Good)';
+        if (score >= 60) return '待觀察 (Watch)';
+        return '需改善 (Poor)';
+    }
+
+    function renderCompositeScoreCard(result) {
+        const card = document.getElementById('compositeScoreCard');
+        if (!card) return;
+
+        if (!result) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const rawScore = Number.isFinite(result.score) ? result.score : 0;
+        const safeScore = clamp(rawScore, 0, 100);
+        card.style.display = 'grid';
+        document.getElementById('compositeScoreValue').textContent = safeScore.toFixed(1);
+        document.getElementById('compositeScoreLevel').textContent = result.level;
+        document.getElementById('compositeScoreProgress').style.width = `${safeScore.toFixed(1)}%`;
+        document.getElementById('compositeScoreSummary').textContent = result.summary;
+
+        const detailContainer = document.getElementById('compositeScoreDetails');
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length === 0) {
+            detailContainer.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">無扣分項目</div>
+                    <div class="score-detail-desc">深度檢查未觸發任何警示</div>
+                </div>
+            `;
+        } else {
+            detailContainer.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function calculateCompositeScoreStep3(data) {
+        if (!data) return null;
+
+        // 如果後端已經計算了詳細的分數結構，直接使用後端的結果
+        if (data.overall_summary && data.overall_summary.quality_score && data.overall_summary.quality_score.deductions) {
+            const qs = data.overall_summary.quality_score;
+            const breakdown = qs.deductions.map(d => ({
+                label: d.reason.split('(')[0].trim(), // 簡化標籤
+                value: d.reason.match(/\((.*?)\)/) ? d.reason.match(/\((.*?)\)/)[1] : '', // 提取括號內的數值
+                detail: d.reason,
+                impact: d.points
+            }));
+            
+            return {
+                score: qs.score,
+                level: qs.level,
+                summary: breakdown.length > 0 
+                    ? `主要扣分項目: ${breakdown[0].detail}` 
+                    : '檢測結果優良，無顯著深度異常。',
+                breakdown: breakdown
+            };
+        }
+
+        // Fallback: 前端計算邏輯
+        let score = 100;
+        let deductions = [];
+
+        const summary = data.overall_summary || {};
+        const logic = data.depth_logic_check || {};
+        const temporal = data.temporal_stability || {};
+        const stats = data.overall_statistics || {};
+
+        // Metric 1: Stability (CV)
+        const cv = summary.average_cv || stats.average_cv_percent || 0;
+        if (cv > 10) {
+            const penalty = 20;
+            score -= penalty;
+            deductions.push({
+                label: '深度不穩定',
+                value: `CV ${cv.toFixed(1)}%`,
+                detail: '深度變異係數過高，數據雜訊大',
+                impact: penalty
+            });
+        } else if (cv > 5) {
+            const penalty = 10;
+            score -= penalty;
+            deductions.push({
+                label: '深度略有雜訊',
+                value: `CV ${cv.toFixed(1)}%`,
+                detail: '深度變異係數稍高',
+                impact: penalty
+            });
+        }
+
+        // Metric 2: Logic Violations
+        let logicPenalty = 0;
+        if (logic.elbow_hyperextension && logic.elbow_hyperextension.rate > 0) {
+            const p = 15;
+            logicPenalty += p;
+            deductions.push({
+                label: '手肘反向彎曲',
+                value: `${logic.elbow_hyperextension.rate.toFixed(1)}%`,
+                detail: '檢測到手肘深度異常反折',
+                impact: p
+            });
+        }
+        if (logic.knee_hyperextension && logic.knee_hyperextension.rate > 0) {
+            const p = 15;
+            logicPenalty += p;
+            deductions.push({
+                label: '膝蓋反向彎曲',
+                value: `${logic.knee_hyperextension.rate.toFixed(1)}%`,
+                detail: '檢測到膝蓋深度異常反折',
+                impact: p
+            });
+        }
+        score -= logicPenalty;
+
+        // Metric 3: Temporal Instability
+        if (temporal.unstable_rate > 0) {
+            const penalty = 20;
+            score -= penalty;
+            deductions.push({
+                label: '時間軸跳動',
+                value: `${temporal.unstable_rate.toFixed(1)}%`,
+                detail: '深度在時間軸上出現劇烈跳動',
+                impact: penalty
+            });
+        }
+
+        score = Math.max(0, Math.round(score));
+        
+        let level = 'Excellent';
+        if (score < 60) level = 'Poor';
+        else if (score < 80) level = 'Average';
+        else if (score < 90) level = 'Good';
+
+        return {
+            score: score,
+            level: level,
+            summary: deductions.length > 0 ? `主要扣分項目: ${deductions[0].label}` : '整體深度合理，無顯著異常。',
+            breakdown: deductions
+        };
+    }
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    
+    let fullAnalysisData = null; // Store full data for view switching
+    let charts = {}; // Store chart instances by ID
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let jsonString = e.target.result;
+                // Enhanced NaN/Infinity handling
+                jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                // Handle array cases
+                jsonString = jsonString.replace(/,\s*NaN\b/g, ', null');
+                jsonString = jsonString.replace(/\[\s*NaN\b/g, '[ null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('載入失敗：\n' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter or Offline Data
+    if (window.OFFLINE_DATA) {
+        try {
+            renderDashboard(window.OFFLINE_DATA);
+        } catch (e) {
+            console.error("Offline data load error:", e);
+        }
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(text => {
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    // Don't alert on auto-load fail to avoid annoyance if param is wrong
+                });
+        }
+    }
+
+    function renderDashboard(data) {
+        if (!data) {
+            throw new Error("JSON 數據為空");
+        }
+
+        let viewData = data;
+
+        // 優先使用 Global 視角，若無則檢查是否為舊格式
+        if (data.Global) {
+            viewData = data.Global;
+        } else if (data.global) {
+            viewData = data.global;
+        } else if (!data.overall_summary) {
+             // 嘗試尋找其他視角作為備案
+             const views = Object.keys(data).filter(k => typeof data[k] === 'object' && data[k].overall_summary);
+             if (views.length > 0) {
+                 viewData = data[views[0]];
+             } else {
+                 throw new Error("JSON 格式不符：缺少 overall_summary 欄位，請確認是否為正確的分析結果檔案。");
+             }
+        }
+
+        // 隱藏所有視角選擇器
+        document.getElementById('summaryViewContainer').style.display = 'none';
+        document.querySelectorAll('.view-select, #depthTableViewSelect, #symmetryTableViewSelect, #logicTableViewSelect').forEach(el => el.style.display = 'none');
+
+        // 初始化儀表板結構 (不啟用多視角選擇)
+        fullAnalysisData = null; 
+        initializeDashboardStructure();
+        
+        // 渲染所有區塊
+        updateSummary(viewData);
+        updateDepthTable(viewData);
+        updateLogicTable(viewData);
+        
+        updateChart1(viewData);
+        updateChart2(viewData);
+        updateChartVelocity(viewData);
+        updateChartTemporal(viewData);
+    }
+
+    function initializeDashboardStructure() {
+        // Cleanup existing charts before removing canvas elements
+        Object.keys(charts).forEach(id => {
+            if (charts[id]) {
+                charts[id].destroy();
+            }
+        });
+        charts = {};
+
+        dashboardGrid.innerHTML = '';
+        
+        const blocks = [
+            { 
+                id: 'chart1', 
+                selectId: 'chart1Select',
+                title: '關鍵點深度穩定性 (Depth Stability CV%)', 
+                desc: '顯示各關鍵點在 Z 軸深度的穩定性，CV 值越低代表該點深度在時間軸上越穩定，無劇烈跳動。', 
+                criteria: 'CV < 5% 優秀 | 5-10% 可接受 | > 10% 不穩定',
+                params: 'X軸: 關鍵點 | Y軸: CV (%)' 
+            },
+            { 
+                id: 'chart_velocity',
+                selectId: 'chartVelocitySelect',
+                title: '深度變化速率 (Depth Velocity)',
+                desc: '顯示各關鍵點在 Z 軸上的平均變化速度 (mm/frame)。數值越高代表該點在深度方向移動越劇烈或抖動越嚴重。',
+                criteria: '應與動作幅度成正比。若靜止部位(如軀幹)數值過高，可能為雜訊。',
+                params: 'X軸: 關鍵點 | Y軸: 速度 (mm/frame)'
+            },
+            { 
+                id: 'chart2', 
+                selectId: 'chart2Select',
+                title: '深度範圍分佈 (Depth Range)', 
+                desc: '顯示各關鍵點的平均深度(Bar)與深度變化範圍(Error Bar)。', 
+                criteria: '範圍過大可能表示該點深度估計不穩定或運動幅度極大。',
+                params: 'X軸: 關鍵點 | Y軸: 深度 Z (mm)' 
+            },
+            { 
+                id: 'chart_temporal', 
+                selectId: 'chartTemporalSelect',
+                title: '時間軸深度穩定性 (Temporal Stability)', 
+                desc: '顯示每一幀相對於前一幀的平均深度變化量。突波代表畫面出現整體性的深度跳動。', 
+                criteria: '平穩的曲線為佳。突波 > 50mm 通常代表追蹤丟失或深度估計錯誤。',
+                params: 'X軸: 幀數 (Frame) | Y軸: 平均變化 (mm)' 
+            }
+        ];
+
+        // Generate HTML in one go to prevent DOM thrashing
+        dashboardGrid.innerHTML = blocks.map(block => 
+            createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId)
+        ).join('');
+
+        // Setup Chart Selectors if multi-view
+        if (fullAnalysisData) {
+            const views = Object.keys(fullAnalysisData).filter(k => typeof fullAnalysisData[k] === 'object' && fullAnalysisData[k].overall_summary);
+            const optionsHTML = views.map(key => {
+                const label = key === 'Global' ? 'Global (World)' : 
+                              key === '45' ? 'Camera 45°' : 
+                              key === 'Side' ? 'Camera Side' : key;
+                return `<option value="${key}">${label}</option>`;
+            }).join('');
+
+            const setupChartSelector = (selectId, updateFunc) => {
+                const sel = document.getElementById(selectId);
+                if (sel) {
+                    sel.innerHTML = optionsHTML;
+                    sel.style.display = 'inline-block';
+                    sel.addEventListener('change', (e) => {
+                        const view = e.target.value;
+                        console.log(`Chart ${selectId} switching to ${view}`);
+                        if (fullAnalysisData && fullAnalysisData[view]) {
+                            updateFunc(fullAnalysisData[view]);
+                        }
+                    });
+                }
+            };
+
+            setupChartSelector('chart1Select', updateChart1);
+            setupChartSelector('chartVelocitySelect', updateChartVelocity);
+            setupChartSelector('chart2Select', updateChart2);
+            setupChartSelector('chartTemporalSelect', updateChartTemporal);
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params, selectId) {
+        const selectHTML = selectId ? `<select id="${selectId}" class="styled-select view-select" style="display:none; padding: 4px 12px; font-size: 0.8rem;"></select>` : '';
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusBadge(value, type) {
+        if (value === null || value === undefined || (type !== 'quality' && isNaN(value))) {
+            return '<span class="status-badge status-neutral">N/A</span>';
+        }
+
+        let status = 'neutral';
+        let text = value;
+        
+        if (type === 'cv') {
+            if (value < 5) { status = 'success'; }
+            else if (value < 10) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(2) + '%';
+        } else if (type === 'quality') {
+            if (value === '優秀' || value === 'Excellent' || value === 'Good') { status = 'success'; }
+            else if (value === '可接受' || value === 'Acceptable') { status = 'warning'; }
+            else { status = 'danger'; }
+        } else if (type === 'diff') {
+            if (value < 50) { status = 'success'; }
+            else if (value < 100) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(1) + ' mm';
+        } else if (type === 'rate') {
+            if (value < 1) { status = 'success'; }
+            else if (value < 5) { status = 'warning'; }
+            else { status = 'danger'; }
+            text = value.toFixed(1) + '%';
+        }
+        
+        return `<span class="status-badge status-${status}">${text}</span>`;
+    }
+
+    // --- Render Functions ---
+
+    function updateSummary(data) {
+        const statsContainer = document.getElementById('summaryStats');
+        const summary = data.overall_summary;
+        
+        renderCompositeScoreCard(calculateCompositeScoreStep3(data));
+
+        const summaryItems = [
+            { label: '平均深度 (Mean Z)', value: `${summary.mean_depth_mm.toFixed(0)} mm`, sub: '整體平均深度' },
+            { label: '平均變異係數 (CV)', value: `${summary.average_cv.toFixed(2)}%`, sub: '越低越穩定' },
+            { label: '整體品質', value: summary.quality_level, sub: `Analyzed ${summary.total_keypoints_analyzed} keypoints` },
+            { label: '邏輯異常數', value: summary.total_logic_violations, sub: 'Wrist/Knee depth violations' }
+        ];
+
+        statsContainer.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+    }
+
+    function updateDepthTable(data) {
+        const depthTableBody = document.querySelector('#depthTable tbody');
+        const depthStats = data.depth_range_analysis;
+        const kpNames = Object.keys(depthStats).sort((a, b) => depthStats[b].cv_percent - depthStats[a].cv_percent);
+        
+        depthTableBody.innerHTML = kpNames.map(name => {
+            const stat = depthStats[name];
+            return `
+                <tr>
+                    <td>${name}</td>
+                    <td>${stat.mean_z_mm.toFixed(1)}</td>
+                    <td>${stat.depth_range_mm.toFixed(1)}</td>
+                    <td>${getStatusBadge(stat.cv_percent, 'cv')}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function updateLogicTable(data) {
+        const logicTableBody = document.querySelector('#logicTable tbody');
+        const logic = data.depth_logic_check;
+        if (logic) {
+            const definitions = {
+                'elbow_hyperextension': { name: '手肘反向彎曲', desc: '檢測手肘是否異常反折 (深度 > 連線 + 200mm)' },
+                'knee_hyperextension': { name: '膝蓋反向彎曲', desc: '檢測膝蓋是否異常反折 (深度 > 連線 + 200mm)' }
+            };
+
+            const rows = Object.keys(logic).map(key => {
+                const item = logic[key];
+                if (!item || !item.violations) return '';
+                
+                const def = definitions[key] || { name: key, desc: 'N/A' };
+                const leftCount = item.violations.left;
+                const rightCount = item.violations.right;
+                const rate = item.rate;
+                
+                return `
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-main);">${def.name}</td>
+                    <td style="font-size: 0.85rem; color: var(--text-sub); max-width: 300px;">${def.desc}</td>
+                    <td>${leftCount}</td>
+                    <td>${rightCount}</td>
+                    <td>${getStatusBadge(rate, 'rate')}</td>
+                    <td>${rate === 0 ? '<span class="status-badge status-success">Pass</span>' : '<span class="status-badge status-warning">Check</span>'}</td>
+                </tr>
+                `;
+            }).join('');
+            
+            logicTableBody.innerHTML = rows;
+        }
+    }
+
+    function updateChart1(data) {
+        const ctx = document.getElementById('chart1');
+        if (charts['chart1']) charts['chart1'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedKeys = Object.keys(depthStats).sort((a, b) => (depthStats[b].cv_percent || 0) - (depthStats[a].cv_percent || 0));
+
+        charts['chart1'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedKeys,
+                datasets: [{
+                    label: '變異係數 (CV%)',
+                    data: sortedKeys.map(k => depthStats[k].cv_percent || 0),
+                    backgroundColor: sortedKeys.map(k => {
+                        const cv = depthStats[k].cv_percent || 0;
+                        if (cv < 5) return '#4ade80';
+                        if (cv < 10) return '#fbbf24';
+                        return '#f87171';
+                    }),
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'CV (%)' } } }
+            }
+        });
+    }
+
+    function updateChartVelocity(data) {
+        const ctx = document.getElementById('chart_velocity');
+        if (charts['chart_velocity']) charts['chart_velocity'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedByGrad = Object.keys(depthStats).sort((a, b) => depthStats[b].mean_gradient_mm - depthStats[a].mean_gradient_mm);
+        
+        charts['chart_velocity'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedByGrad,
+                datasets: [{
+                    label: '平均深度速度 (mm/frame)',
+                    data: sortedByGrad.map(k => depthStats[k].mean_gradient_mm),
+                    backgroundColor: '#818cf8',
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Velocity (mm/frame)' } } }
+            }
+        });
+    }
+
+    function updateChart2(data) {
+        const ctx = document.getElementById('chart2');
+        if (charts['chart2']) charts['chart2'].destroy();
+        
+        const depthStats = data.depth_range_analysis;
+        const sortedByZ = Object.keys(depthStats).sort((a, b) => depthStats[b].mean_z_mm - depthStats[a].mean_z_mm);
+        
+        const errorBarPlugin = {
+            id: 'errorBar',
+            afterDatasetsDraw: (chart) => {
+                const { ctx, data, scales: { y } } = chart;
+                chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                    const minZ = data.datasets[0].min[index];
+                    const maxZ = data.datasets[0].max[index];
+                    if (minZ === undefined || maxZ === undefined) return;
+                    const x = bar.x;
+                    const yMin = y.getPixelForValue(minZ);
+                    const yMax = y.getPixelForValue(maxZ);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; 
+                    ctx.moveTo(x, yMin); ctx.lineTo(x, yMax);
+                    ctx.moveTo(x - 6, yMax); ctx.lineTo(x + 6, yMax);
+                    ctx.moveTo(x - 6, yMin); ctx.lineTo(x + 6, yMin);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        charts['chart2'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedByZ,
+                datasets: [{
+                    label: '平均深度 (mm)',
+                    data: sortedByZ.map(k => depthStats[k].mean_z_mm),
+                    min: sortedByZ.map(k => depthStats[k].min_z_mm),
+                    max: sortedByZ.map(k => depthStats[k].max_z_mm),
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: false, title: { display: true, text: 'Depth Z (mm)' } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const min = context.dataset.min[idx];
+                                const max = context.dataset.max[idx];
+                                return `Range: ${min.toFixed(0)} - ${max.toFixed(0)} mm`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [errorBarPlugin]
+        });
+    }
+
+    function updateChartTemporal(data) {
+        const ctx = document.getElementById('chart_temporal');
+        if (charts['chart_temporal']) charts['chart_temporal'].destroy();
+        
+        const temporalStats = data.temporal_stability;
+        if (!temporalStats || !temporalStats.series_data) return;
+
+        const seriesData = temporalStats.series_data;
+        const labels = seriesData.map((_, i) => i + 1);
+        const threshold = temporalStats.threshold_mm || 50;
+
+        charts['chart_temporal'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '平均深度變化 (mm)',
+                    data: seriesData,
+                    borderColor: '#a855f7',
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: '異常閾值',
+                    data: Array(labels.length).fill(threshold),
+                    borderColor: 'rgba(248, 113, 113, 0.6)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: { 
+                    x: { title: { display: true, text: 'Frame Index' } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Change (mm)' } } 
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

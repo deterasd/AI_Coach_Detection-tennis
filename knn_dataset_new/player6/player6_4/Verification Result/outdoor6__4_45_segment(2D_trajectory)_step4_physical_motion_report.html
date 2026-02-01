@@ -1,0 +1,1163 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>step4. 物理運動邏輯驗證儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 35%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            position: relative;
+        }
+        
+        h1 span::after {
+            content: 'BETA';
+            position: absolute;
+            top: -8px;
+            right: -30px;
+            font-size: 0.6rem;
+            background: var(--accent-gradient);
+            -webkit-text-fill-color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* New Styles for Comprehensive View */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent-gradient);
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .score-card {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.35fr) minmax(320px, 1fr);
+            gap: 28px;
+            align-items: stretch;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+            box-shadow: var(--glass-shadow);
+        }
+
+        .score-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .score-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-level {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .score-summary {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .score-details {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .score-detail-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .score-detail-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .score-detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-item.score-empty {
+            flex-direction: column;
+            gap: 4px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .score-detail-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .score-detail-desc {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .score-detail-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        .impact-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .impact-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 60px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 24px;
+            background: var(--accent-secondary);
+            border-radius: 2px;
+        }
+
+        .file-upload-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-title::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .chart-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .info-section {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .info-item {
+            display: grid;
+            grid-template-columns: 85px 1fr;
+            gap: 16px;
+            align-items: baseline;
+        }
+
+        .info-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 0;
+            text-align: center;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-desc { background: rgba(255, 255, 255, 0.08); color: var(--text-sub); }
+        .badge-criteria { background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .badge-params { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .text-criteria { color: #e5e7eb; font-weight: 500; }
+        .text-params { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94a3b8; }
+        
+        .styled-select {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 20px; text-align: center; padding: 20px; }
+            .grid { grid-template-columns: 1fr; }
+            .info-item { grid-template-columns: 1fr; gap: 6px; }
+            .info-badge { width: fit-content; padding: 4px 10px; }
+            .score-card { grid-template-columns: 1fr; }
+        }
+    </style>
+
+    <script>
+        window.OFFLINE_DATA = {
+  "metadata": {
+    "analysis_time": "2026-01-27T12:10:31.697367",
+    "source_file": "data/player6/player6_4/outdoor6__4_45_segment(2D_trajectory).json",
+    "total_frames": 231,
+    "analysis_type": "Physical Motion Logic Analysis"
+  },
+  "overall_summary": {
+    "total_unreasonable_speed": 0,
+    "total_abnormal_angles": 0,
+    "total_continuity_jumps": 0,
+    "gravity_compliant": false,
+    "contact_detected": null
+  },
+  "motion_kinematics": {},
+  "joint_angles": {},
+  "torso_stability": {},
+  "ball_racket_contact": {},
+  "gravity_compliance": {
+    "assessment": "數據不足"
+  },
+  "motion_continuity": {
+    "total_jumps": 0,
+    "details": {}
+  }
+};
+        console.log("Offline data loaded successfully");
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Coach <span>物理運動邏輯驗證</span></h1>
+        <div class="upload-section">
+            <label for="fileInput" class="file-upload-btn">📂 選擇 JSON 分析檔案</label>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="summary-grid">
+        <!-- Populated by JS -->
+    </div>
+
+    <!-- Composite Score -->
+    <div id="compositeScoreCard" class="score-card" style="display:none;">
+        <div class="score-main">
+            <div class="score-label">綜合評分</div>
+            <div id="compositeScoreValue" class="score-value">--</div>
+            <div id="compositeScoreLevel" class="score-level">--</div>
+            <div class="score-progress">
+                <div id="compositeScoreProgress" class="score-progress-fill" style="width:0%;"></div>
+            </div>
+            <p id="compositeScoreSummary" class="score-summary">載入資料後將自動計算動作評分。</p>
+        </div>
+        <div class="score-details">
+            <div class="score-detail-header">
+                <h3>評分說明</h3>
+                <span class="score-detail-subtitle">顯示每個指標如何影響分數</span>
+            </div>
+            <div id="compositeScoreDetails" class="score-detail-list">
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">尚未載入資料</div>
+                    <div class="score-detail-desc">扣分明細會顯示在此區塊</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <h2 class="section-title">📊 視覺化圖表分析</h2>
+
+    <!-- Charts Grid -->
+    <div class="grid" id="dashboardGrid">
+        <!-- Populated by JS -->
+    </div>
+</div>
+
+<script>
+    // Chart.js Global Defaults
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', 'Microsoft JhengHei', sans-serif";
+    Chart.defaults.font.size = 11;
+    
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20, 20, 20, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#f3f4f6';
+    Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+
+    const KEYPOINT_NAMES_ZH = {
+        'nose': '鼻子', 'left_eye': '左眼', 'right_eye': '右眼', 'left_ear': '左耳', 'right_ear': '右耳',
+        'left_shoulder': '左肩', 'right_shoulder': '右肩', 'left_elbow': '左肘', 'right_elbow': '右肘',
+        'left_wrist': '左腕', 'right_wrist': '右腕', 'left_hip': '左髖', 'right_hip': '右髖',
+        'left_knee': '左膝', 'right_knee': '右膝', 'left_ankle': '左踝', 'right_ankle': '右踝',
+        'neck': '頸部', 'left_hand': '左手', 'right_hand': '右手', 'tennis_ball': '網球',
+        'tennis_racket': '球拍'
+    };
+    const get_keypoint_name_zh = (name) => KEYPOINT_NAMES_ZH[name] || name;
+
+    const CHART_COLORS = [
+        '#34d399', '#f87171', '#60a5fa', '#fbbf24', '#a78bfa',
+        '#c084fc', '#818cf8', '#f472b6', '#4ade80', '#22d3ee'
+    ];
+
+    const fileInput = document.getElementById('fileInput');
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    const summaryStats = document.getElementById('summaryStats');
+    const compositeScoreCard = document.getElementById('compositeScoreCard');
+    const compositeScoreValueEl = document.getElementById('compositeScoreValue');
+    const compositeScoreLevelEl = document.getElementById('compositeScoreLevel');
+    const compositeScoreProgressEl = document.getElementById('compositeScoreProgress');
+    const compositeScoreSummaryEl = document.getElementById('compositeScoreSummary');
+    const compositeScoreDetailsEl = document.getElementById('compositeScoreDetails');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let jsonString = e.target.result;
+                jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                
+                const data = JSON.parse(jsonString);
+                renderDashboard(data);
+            } catch (error) {
+                alert('解析 JSON 失敗，請確認檔案格式正確。\n錯誤: ' + error.message);
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Auto-load from URL parameter
+    if (window.OFFLINE_DATA) {
+        renderDashboard(window.OFFLINE_DATA);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const src = urlParams.get('src');
+        if (src) {
+            fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(text => {
+                    let jsonString = text;
+                    jsonString = jsonString.replace(/:\s*NaN\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*Infinity\b/g, ': null');
+                    jsonString = jsonString.replace(/:\s*-Infinity\b/g, ': null');
+                    
+                    const data = JSON.parse(jsonString);
+                    renderDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Error loading JSON from URL:', err);
+                    alert('無法從 URL 載入 JSON 檔案: ' + src);
+                });
+        }
+    }
+
+    function createCardHTML(id, title, description, criteria, params, selectId = null, options = []) {
+        const selectHTML = selectId ? `
+            <select id="${selectId}" class="styled-select">
+                ${options.map(op => `<option value="${op.value}">${op.text}</option>`).join('')}
+            </select>
+        ` : '';
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
+                    ${selectHTML}
+                </div>
+                <div class="chart-wrapper">
+                    <div class="chart-container">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-item">
+                        <div class="info-badge badge-desc">說明</div>
+                        <p class="info-text">${description}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-criteria">判斷標準</div>
+                        <p class="info-text text-criteria">${criteria}</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-badge badge-params">參數</div>
+                        <p class="info-text text-params">${params}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    let charts = {};
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function calculateCompositeScoreStep4(data) {
+        if (!data) return null;
+
+        // 如果後端已經計算了詳細的分數結構，直接使用後端的結果
+        if (data.overall_summary && data.overall_summary.quality_score && data.overall_summary.quality_score.deductions) {
+            const qs = data.overall_summary.quality_score;
+            const breakdown = qs.deductions.map(d => ({
+                label: d.reason.split('(')[0].trim(),
+                value: d.reason.match(/\((.*?)\)/) ? d.reason.match(/\((.*?)\)/)[1] : '',
+                detail: d.reason,
+                impact: d.points
+            }));
+            
+            return {
+                score: qs.score,
+                level: qs.level,
+                summary: breakdown.length > 0 
+                    ? `主要扣分項目: ${breakdown[0].detail}` 
+                    : '整體動作穩定流暢，符合物理運動邏輯。',
+                breakdown: breakdown
+            };
+        }
+
+        // Fallback: 前端計算邏輯
+        let score = 100;
+        let deductions = [];
+
+        // Extract metrics
+        const kinematics = data.motion_kinematics || {};
+        const angles = data.joint_angles || {};
+        const continuity = data.motion_continuity || {};
+        const gravity = data.gravity_compliance || {};
+        const torso = data.torso_stability || {};
+
+        // Metric 1: Unreasonable Speed
+        let speedIssues = 0;
+        Object.values(kinematics).forEach(k => speedIssues += (k.unreasonable_speed_count || 0));
+        if (speedIssues > 0) {
+            const penalty = Math.min(30, speedIssues * 2);
+            score -= penalty;
+            deductions.push({
+                label: '速度異常',
+                value: `${speedIssues} 次`,
+                detail: `檢測到 ${speedIssues} 次速度超出合理範圍`,
+                impact: penalty
+            });
+        }
+
+        // Metric 2: Abnormal Angles
+        let angleIssues = 0;
+        Object.values(angles).forEach(a => angleIssues += (a.abnormal_count || 0));
+        if (angleIssues > 0) {
+            const penalty = Math.min(30, angleIssues * 2);
+            score -= penalty;
+            deductions.push({
+                label: '角度異常',
+                value: `${angleIssues} 次`,
+                detail: `檢測到 ${angleIssues} 次關節角度超出人體極限`,
+                impact: penalty
+            });
+        }
+
+        // Metric 3: Continuity Jumps
+        const jumps = continuity.total_jumps || 0;
+        if (jumps > 0) {
+            const penalty = Math.min(40, jumps * 5);
+            score -= penalty;
+            deductions.push({
+                label: '軌跡跳躍',
+                value: `${jumps} 次`,
+                detail: `檢測到 ${jumps} 次軌跡不連續跳躍`,
+                impact: penalty
+            });
+        }
+
+        // Metric 4: Gravity Compliance
+        if (gravity.assessment && !gravity.assessment.includes('[OK]')) {
+            const penalty = 10;
+            score -= penalty;
+            deductions.push({
+                label: '重力異常',
+                value: '偏差過大',
+                detail: '球體飛行軌跡不符合重力加速度',
+                impact: penalty
+            });
+        }
+        
+        // Metric 5: Torso Stability
+        if (torso.assessment && !torso.assessment.includes('[OK]')) {
+             const penalty = 5;
+             score -= penalty;
+             deductions.push({
+                 label: '軀幹晃動',
+                 value: '不穩定',
+                 detail: '軀幹中心點位移過大',
+                 impact: penalty
+             });
+        }
+
+        score = Math.max(0, Math.round(score));
+        
+        let level = 'Excellent';
+        if (score < 60) level = 'Poor';
+        else if (score < 80) level = 'Average';
+        else if (score < 90) level = 'Good';
+
+        return {
+            score: score,
+            level: level,
+            summary: deductions.length > 0 ? `主要扣分項目: ${deductions[0].label}` : '整體動作符合物理邏輯，表現優異。',
+            breakdown: deductions
+        };
+    }
+
+    function renderCompositeScoreCard(result) {
+        if (!result) {
+            compositeScoreCard.style.display = 'none';
+            return;
+        }
+
+        compositeScoreCard.style.display = 'grid';
+        compositeScoreValueEl.textContent = result.score.toFixed(1);
+        compositeScoreLevelEl.textContent = result.level;
+        compositeScoreProgressEl.style.width = `${result.score}%`;
+        compositeScoreSummaryEl.textContent = result.summary;
+        
+        const deductions = (result.breakdown || []).filter(item => item.impact > 0);
+        if (deductions.length > 0) {
+            compositeScoreDetailsEl.innerHTML = deductions.map(item => `
+                <div class="score-detail-item">
+                    <div>
+                        <div class="score-detail-label">${item.label}</div>
+                        <div class="score-detail-desc">${item.detail}</div>
+                    </div>
+                    <div class="score-detail-value">
+                        <span>${item.value}</span>
+                        <span class="impact-negative">-${item.impact.toFixed(1)}</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            compositeScoreDetailsEl.innerHTML = `
+                <div class="score-detail-item score-empty">
+                    <div class="score-detail-label">完美表現</div>
+                    <div class="score-detail-desc">未偵測到明顯異常，持續維持！</div>
+                </div>
+            `;
+        }
+    }
+
+    function renderDashboard(data) {
+        summaryStats.innerHTML = '';
+        dashboardGrid.innerHTML = '';
+        
+        // Cleanup existing charts
+        Object.keys(charts).forEach(id => {
+            if (charts[id]) {
+                charts[id].destroy();
+            }
+        });
+        charts = {};
+        
+        // --- 1. Summary Stats ---
+        const kinematics = data.motion_kinematics || {};
+        const angles = data.joint_angles || {};
+        const gravity = data.gravity_compliance || {};
+        const contact = data.ball_racket_contact || {};
+        const continuity = data.motion_continuity || {};
+
+        let maxSpeed = 0;
+        Object.values(kinematics).forEach(k => maxSpeed = Math.max(maxSpeed, k.max_speed_m_s || 0));
+
+        let abnormalAngles = 0;
+        Object.values(angles).forEach(a => abnormalAngles += (a.abnormal_count || 0));
+        
+        const continuityJumps = continuity.total_jumps || 0;
+
+        // Find min distance frame
+        let minDistFrame = '-';
+        let minDistVal = contact.min_distance_mm || 0;
+        
+        if (contact.series && contact.series.min_distance && contact.series.frames) {
+            const dists = contact.series.min_distance;
+            let minIdx = 0;
+            for(let i=1; i<dists.length; i++) {
+                if(dists[i] < dists[minIdx]) minIdx = i;
+            }
+            if (dists.length > 0) {
+                minDistFrame = contact.series.frames[minIdx];
+                minDistVal = dists[minIdx];
+            }
+        }
+
+        const summaryItems = [
+            { label: '最大速度 (Max Speed)', value: `${maxSpeed.toFixed(2)} m/s`, sub: 'Across all joints' },
+            { label: '異常角度 (Abnormal Angles)', value: abnormalAngles, sub: 'Total frames out of range' },
+            { label: '連續性跳躍 (Continuity Jumps)', value: continuityJumps, sub: 'Frames with tracking jumps', danger: continuityJumps > 0 },
+            { label: '重力偏差 (Gravity Dev)', value: `${((gravity.deviation_ratio || 0) * 100).toFixed(1)}%`, sub: gravity.assessment || 'N/A' },
+            { label: '擊球檢測 (Contacts)', value: `Frame ${minDistFrame}`, sub: `Min Dist: ${minDistVal.toFixed(0)} mm` }
+        ];
+
+        summaryStats.innerHTML = summaryItems.map(item => `
+            <div class="summary-card">
+                <div class="summary-label">${item.label}</div>
+                <div class="summary-value" style="${item.danger ? 'color: var(--danger);' : ''}">${item.value}</div>
+                <div class="summary-label" style="opacity: 0.7; font-size: 0.8rem;">${item.sub}</div>
+            </div>
+        `).join('');
+        
+        renderCompositeScoreCard(calculateCompositeScoreStep4(data));
+
+        // --- 2. Define Charts ---
+        const createOptions = (keys, labelFn = k => k) => [
+            { value: 'all', text: '顯示全部 (Show All)' },
+            ...keys.map(k => ({ value: labelFn(k), text: labelFn(k) }))
+        ];
+
+        const kinematicsKeys = Object.keys(kinematics);
+        const kinematicsOptions = createOptions(kinematicsKeys, get_keypoint_name_zh);
+        
+        const angleKeys = Object.keys(angles);
+        const angleOptions = createOptions(angleKeys);
+
+        const torsoOptions = [
+            { value: 'all', text: '顯示全部 (Show All)' },
+            { value: 'X軸位移', text: 'X軸位移' },
+            { value: 'Y軸位移', text: 'Y軸位移' },
+            { value: 'Z軸位移', text: 'Z軸位移' }
+        ];
+
+        const continuityKeys = Object.keys((continuity || {}).details || {});
+        const continuityOptions = createOptions(continuityKeys, get_keypoint_name_zh);
+
+        const blocks = [
+            { id: 'chart1', title: '速度分析 (Velocity Profile)', desc: '顯示關鍵部位（手腕、球）的移動速度變化。', criteria: '手腕一般 < 15m/s，球速 < 60m/s。突波可能代表噪聲。', params: 'X軸: Frame | Y軸: Speed (m/s)', selectId: 'chart1Select', options: kinematicsOptions },
+            { id: 'chart2', title: '加速度分析 (Acceleration Profile)', desc: '顯示加速度變化，過大的加速度通常意味著軌跡抖動。', criteria: '人體動作加速度應平滑，無極端尖峰。', params: 'X軸: Frame | Y軸: Acc (mm/s²)', selectId: 'chart2Select', options: kinematicsOptions },
+            { id: 'chart3', title: '關節角度 (Joint Angles)', desc: '檢視各關節角度隨時間的變化，檢查是否超出人體極限。', criteria: '肘/膝: 0-180°。超出範圍標示為異常。', params: 'X軸: Frame | Y軸: Angle (deg)', selectId: 'chart3Select', options: angleOptions },
+            { id: 'chart4', title: '軀幹穩定性 (Torso Stability)', desc: '分析軀幹中心點的位移量，評估身體晃動程度。', criteria: '位移應平滑且符合動作邏輯。', params: 'X軸: Frame | Y軸: Displacement (mm)', selectId: 'chart4Select', options: torsoOptions },
+            { id: 'chart5', title: '重力加速度檢查 (Gravity Check)', desc: '分析球在飛行階段的垂直加速度。', criteria: '應接近 9810 mm/s² (偏差 < 20%)。', params: 'X軸: Frame | Y軸: Vertical Acc (mm/s²)' },
+            { id: 'chart6', title: '手腕與網球接觸距離 (Ball-Racket Dist)', desc: '球與手腕的距離變化，用於檢測擊球點。', criteria: '距離 < 500mm 視為潛在接觸。', params: 'X軸: Frame | Y軸: Distance (mm)' },
+            { id: 'chart7', title: '運動連續性分析 (Motion Continuity)', desc: '檢測連續幀之間的位移，找出因追蹤錯誤引起的“跳躍”。', criteria: '單幀位移應小於閾值（預設 150mm）。', params: 'X軸: Frame | Y軸: Displacement (mm)', selectId: 'chart7Select', options: continuityOptions },
+        ];
+
+        blocks.forEach(block => {
+            dashboardGrid.innerHTML += createCardHTML(block.id, block.title, block.desc, block.criteria, block.params, block.selectId, block.options);
+        });
+        
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
+        // --- Chart 1: Velocity ---
+        if (Object.keys(kinematics).length > 0) {
+            const datasets = Object.entries(kinematics).map(([kp, kData], index) => {
+                if (!kData || !kData.series || !kData.series.speed_mm_s) return null;
+                return {
+                    label: get_keypoint_name_zh(kp),
+                    data: kData.series.speed_mm_s.map((v, i) => ({ x: kData.series.frames[i], y: v / 1000 })), // Convert to m/s
+                    borderColor: CHART_COLORS[index % CHART_COLORS.length],
+                    tension: 0.4,
+                    pointRadius: 0,
+                    fill: false
+                };
+            }).filter(d => d);
+
+            if (datasets.length > 0) {
+                charts['chart1'] = new Chart(document.getElementById('chart1').getContext('2d'), {
+                    type: 'line',
+                    data: { datasets },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', ticks: { maxTicksLimit: 20 } } } }
+                });
+            }
+        }
+
+        // --- Chart 2: Acceleration ---
+        if (Object.keys(kinematics).length > 0) {
+            const datasets = Object.entries(kinematics).map(([kp, kData], index) => {
+                if (!kData || !kData.series || !kData.series.acc_mm_s2) return null;
+                const frames = kData.series.frames.slice(1);
+                return {
+                    label: get_keypoint_name_zh(kp),
+                    data: kData.series.acc_mm_s2.map((v, i) => ({ x: frames[i+1] || frames[i], y: v })),
+                    borderColor: CHART_COLORS[index % CHART_COLORS.length],
+                    tension: 0.4,
+                    pointRadius: 0,
+                    fill: false
+                };
+            }).filter(d => d);
+            
+            charts['chart2'] = new Chart(document.getElementById('chart2').getContext('2d'), {
+                type: 'line',
+                data: { datasets },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', ticks: { maxTicksLimit: 20 } } } }
+            });
+        }
+
+        // --- Chart 3: Joint Angles ---
+        if (Object.keys(angles).length > 0) {
+            const datasets = Object.entries(angles).map(([joint, aData], index) => {
+                if (!aData || !aData.series || !aData.series.angles) return null;
+                return {
+                    label: joint, // Already in Chinese
+                    data: aData.series.angles.map((v, i) => ({ x: aData.series.frames[i], y: v })),
+                    borderColor: CHART_COLORS[index % CHART_COLORS.length],
+                    tension: 0.1,
+                    pointRadius: 1,
+                    fill: false
+                };
+            }).filter(d => d);
+
+            if (datasets.length > 0) {
+                charts['chart3'] = new Chart(document.getElementById('chart3').getContext('2d'), {
+                    type: 'line',
+                    data: { datasets },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 180 }, x: { type: 'linear', ticks: { maxTicksLimit: 20 } } } }
+                });
+            }
+        }
+
+        // --- Chart 4: Torso Stability (Detailed) ---
+        if (data.torso_stability && data.torso_stability.series && data.torso_stability.series.displacement_x) {
+            const series = data.torso_stability.series;
+            const datasets = ['x', 'y', 'z'].map((axis, i) => {
+                const axisData = series[`displacement_${axis}`];
+                if (!axisData) return null;
+                return {
+                    label: `${axis.toUpperCase()}軸位移`,
+                    data: axisData.map((v, i) => ({ x: series.frames[i], y: v })),
+                    borderColor: CHART_COLORS[i],
+                    fill: false, pointRadius: 0,
+                };
+            }).filter(d => d);
+
+            if (datasets.length > 0) {
+                charts['chart4'] = new Chart(document.getElementById('chart4').getContext('2d'), {
+                    type: 'line',
+                    data: { datasets },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', ticks: { maxTicksLimit: 20 } } } }
+                });
+            }
+        }
+
+        // --- Chart 5: Gravity Check ---
+        if (data.gravity_compliance && data.gravity_compliance.series && data.gravity_compliance.series.acceleration) {
+            const gSeries = data.gravity_compliance.series;
+            const expected = Math.abs(data.gravity_compliance.expected_gravity_mm_s2);
+            
+            charts['chart5'] = new Chart(document.getElementById('chart5').getContext('2d'), {
+                type: 'line',
+                data: {
+                    datasets: [{
+                            label: '垂直加速度',
+                            data: gSeries.acceleration.map((v,i) => ({x: gSeries.frames[i], y: Math.abs(v)})),
+                            borderColor: '#f87171', pointRadius: 2,
+                        }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { type: 'linear', ticks: { maxTicksLimit: 20 } } },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                line1: { type: 'line', yMin: expected, yMax: expected, borderColor: '#9ca3af', borderWidth: 2, borderDash: [6, 6], label: { content: '預期重力', enabled: true, position: 'end' } }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Chart 6: Ball-Racket Distance ---
+        if (data.ball_racket_contact && data.ball_racket_contact.series && data.ball_racket_contact.series.min_distance) {
+            const cSeries = data.ball_racket_contact.series;
+            
+            // Find min distance frame for annotation
+            let minFrame = null;
+            let minVal = Infinity;
+            cSeries.min_distance.forEach((v, i) => {
+                if (v < minVal) {
+                    minVal = v;
+                    minFrame = cSeries.frames[i];
+                }
+            });
+
+            const annotations = {};
+            if (minFrame !== null) {
+                annotations.minDistLine = {
+                    type: 'line',
+                    xMin: minFrame,
+                    xMax: minFrame,
+                    borderColor: 'rgba(251, 191, 36, 0.8)',
+                    borderWidth: 2,
+                    label: {
+                        content: `擊球點 (Frame ${minFrame})`,
+                        enabled: true,
+                        position: 'start',
+                        backgroundColor: 'rgba(251, 191, 36, 0.6)',
+                        color: '#050505',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                };
+            }
+
+            charts['chart6'] = new Chart(document.getElementById('chart6').getContext('2d'), {
+                type: 'line',
+                data: {
+                    datasets: [{ label: '最小距離 (mm)', data: cSeries.min_distance.map((v, i) => ({x: cSeries.frames[i], y: v})), borderColor: '#60a5fa', pointRadius: 0, fill: false }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', ticks: { maxTicksLimit: 20 } } }, plugins: { annotation: { annotations } } }
+            });
+        }
+        
+        // --- Chart 7: Motion Continuity ---
+        if (continuity.details) {
+            const datasets = Object.entries(continuity.details).map(([kp, kpData], index) => {
+                if (!kpData || !kpData.series || !kpData.series.displacements) return null;
+                return {
+                    label: get_keypoint_name_zh(kp),
+                    data: kpData.series.displacements.map((v, i) => ({ x: kpData.series.frames[i], y: v })),
+                    borderColor: CHART_COLORS[index % CHART_COLORS.length],
+                    tension: 0.1,
+                    pointRadius: 1,
+                    fill: false
+                };
+            }).filter(d => d);
+
+            if (datasets.length > 0) {
+                charts['chart7'] = new Chart(document.getElementById('chart7').getContext('2d'), {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { x: { type: 'linear', ticks: { maxTicksLimit: 20 } }, y: { beginAtZero: true } },
+                        plugins: {
+                            annotation: {
+                                annotations: {
+                                    threshold: { type: 'line', yMin: 150, yMax: 150, borderColor: 'rgba(248, 113, 113, 0.7)', borderWidth: 2, borderDash: [5, 5], label: { content: '跳躍閾值', enabled: true, position: 'end' } }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Helper to attach filter logic
+        function attachFilter(chartId, selectId) {
+            const select = document.getElementById(selectId);
+            const chart = charts[chartId];
+            if (select && chart) {
+                select.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    chart.data.datasets.forEach(ds => {
+                        ds.hidden = (val !== 'all' && ds.label !== val);
+                    });
+                    chart.update();
+                });
+            }
+        }
+
+        // Attach filters to all charts
+        attachFilter('chart1', 'chart1Select');
+        attachFilter('chart2', 'chart2Select');
+        attachFilter('chart3', 'chart3Select');
+        attachFilter('chart4', 'chart4Select');
+        attachFilter('chart7', 'chart7Select');
+    }
+</script>
+
+</body>
+</html>

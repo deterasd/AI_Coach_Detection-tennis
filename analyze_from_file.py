@@ -34,7 +34,7 @@ from trajectory_gpt_single_feedback import generate_feedback
 # -----------------------------------------------------------------------------
 # 在這裡填寫預設路徑，直接執行腳本時會使用（不帶命令列參數時）
 # -----------------------------------------------------------------------------
-DEFAULT_TRAJECTORY_PATH = "trajectory/Cindy__trajectory/player6_1_2/outdoor6__1_45_segment(3D_trajectory_smoothed).json"
+DEFAULT_TRAJECTORY_PATH = "trajectory/newtest_123/outdoor10__1_45_segment(3D_trajectory_smoothed).json"
 DEFAULT_KNN_DATASET = "knn_dataset_new.json"
 # -----------------------------------------------------------------------------
 

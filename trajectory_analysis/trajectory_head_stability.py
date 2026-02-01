@@ -53,64 +53,30 @@ def _find_impact_frame(frames: List[Dict]) -> Optional[int]:
 
 def _check_ball_contact(frames: List[Dict], impact_idx: int) -> Tuple[bool, str]:
     """
-    檢查擊球品質
-    通過分析擊球前後球的軌跡變化來判斷擊球品質
+    檢查擊球品質。
+    「是否擊中球」以 tennis_ball_hit 標記為主：僅在擊球幀無球資料、
+    或擊球後球軌跡完全消失時才判定為未擊中球；不依速度變化推翻為未擊中球。
     返回: (是否成功擊球, 擊球狀態描述)
     """
     if impact_idx >= len(frames) or impact_idx < 0:
         return False, "無法判斷"
-    
+
     impact_frame = frames[impact_idx]
     tennis_ball = _get_point(impact_frame, "tennis_ball")
-    # 「是否擊中球」以 tennis_ball_hit 標記為主
-    # 僅在球資料缺失或擊球後球軌跡完全消失時才判定為未擊中球。
     if tennis_ball is None:
         return False, "未擊中球"
-    
-    # 方法2: 分析擊球前後球的軌跡變化
-    # 檢查擊球前3幀和擊球後3幀的球位置
-    pre_frames = max(0, impact_idx - 3)
-    post_frames = min(len(frames) - 1, impact_idx + 3)
-    
-    pre_ball_positions = []
+
+    post_frames_end = min(len(frames) - 1, impact_idx + 3)
     post_ball_positions = []
-    
-    for i in range(pre_frames, impact_idx):
-        ball = _get_point(frames[i], "tennis_ball")
-        if ball is not None:
-            pre_ball_positions.append(ball)
-    
-    for i in range(impact_idx + 1, post_frames + 1):
+    for i in range(impact_idx + 1, post_frames_end + 1):
         ball = _get_point(frames[i], "tennis_ball")
         if ball is not None:
             post_ball_positions.append(ball)
-    
-    # 如果擊球後沒有球的數據，可能是揮空拍 / 偵測遺失
+
     if len(post_ball_positions) == 0:
         return False, "未擊中球"
-    
-    # 計算擊球前後球的速度變化
-    if len(pre_ball_positions) >= 2 and len(post_ball_positions) >= 2:
-        # 擊球前的平均速度方向（X方向為主）
-        pre_vel_x = np.mean([pre_ball_positions[i+1][0] - pre_ball_positions[i][0] 
-                             for i in range(len(pre_ball_positions)-1)])
-        
-        # 擊球後的平均速度方向
-        post_vel_x = np.mean([post_ball_positions[i+1][0] - post_ball_positions[i][0] 
-                             for i in range(len(post_ball_positions)-1)])
-        
-        # 如果速度方向明顯改變（從負變正或變化幅度大），認為成功擊球
-        if abs(post_vel_x - pre_vel_x) > 20.0:  # 速度變化閾值
-            # 進一步判斷是否打框（速度變化過大可能是打框）
-            if abs(post_vel_x - pre_vel_x) > 100.0:
-                return True, "打到球框"
-            return True, "成功擊球"
-        else:
-            # 速度變化不明顯，可能是揮空拍
-            return False, "未擊中球"
-    
-    # 數據不足以做速度判斷時，只要 impact 幀有球、且 impact 後仍有球軌跡，
-    # 就視為成功擊球（避免固定距離門檻造成誤判）。
+
+    # 擊球幀有球且擊球後有軌跡 → 視為成功擊球
     return True, "成功擊球"
 
 
@@ -319,8 +285,10 @@ def analyze_head_stability(trajectory_data, knn_dataset_path: str = None, expert
         
         impact_frame = frames_data[impact_idx]
         
-        # 1. 檢查擊球品質
+        # 1. 是否擊到球：以 tennis_ball_hit 標記為主；僅在擊球幀無球且擊球後也無軌跡時才判為未擊中
         ball_contact_success, ball_contact_status = _check_ball_contact(frames_data, impact_idx)
+        if impact_frame.get("tennis_ball_hit") is True and _get_point(impact_frame, "tennis_ball") is not None:
+            ball_contact_success = True  # pipeline 已標記擊中且該幀有球，視為有擊到球
         
         # 2. 分析右耳與右腰的平行移動
         parallel_analysis = _analyze_ear_hip_parallel_movement(frames_data, impact_idx)
@@ -328,50 +296,11 @@ def analyze_head_stability(trajectory_data, knn_dataset_path: str = None, expert
         # 3. 分析頭部穩定性（右耳與右眼）
         head_stability = _analyze_head_stability(frames_data, impact_idx)
         
-        # 生成建議
-        advice_parts = []
-        
-        # 擊球品質建議
+        # 依此次揮拍是否有擊到球給出建議
         if ball_contact_success:
-            advice_parts.append("成功擊球，整體擊球品質佳，維持目前的動作節奏即可。")
+            combined_advice = "頭部穩定眼睛有盯球。"
         else:
-            advice_parts.append("本次揮拍未擊中球，建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。")
-        
-        # 頭部穩定度建議
-        if not parallel_analysis.get("is_valid", False) or not head_stability.get("is_valid", False):
-            advice_parts.append("數據不足，無法完整評估頭部穩定度。")
-        else:
-            parallel_score = parallel_analysis.get("parallel_score", 0.0)
-            distance_stability = head_stability.get("distance_stability", 0.0)
-            angle_stability = head_stability.get("angle_stability", 0.0)
-            
-            # 綜合穩定性評分（加權平均）
-            overall_stability = _compute_overall_stability(parallel_score, distance_stability, angle_stability)
-
-            # 依據 knn_dataset_new.json 中 level="pro" 的分佈來給建議
-            baseline = _get_pro_head_stability_baseline(knn_dataset_path)
-            ov = round(overall_stability, 2)
-            if baseline:
-                p10 = baseline.get("p10", 0.0)
-                p90 = baseline.get("p90", 1.0)
-                p50 = baseline.get("p50", (p10 + p90) / 2)
-                # 專家 P10 ~ P90 視為「頭部穩定、接近專家」
-                if p10 <= overall_stability <= p90:
-                    advice_parts.append("頭部穩定眼睛有盯球。")
-                else:
-                    diff_v = round(overall_stability - p50, 2)
-                    advice_parts.append(f"擊球過程中頭部略不穩定（與專家中位數差 {diff_v}，穩定度分數 0~1），建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。")
-            else:
-                # 若無法取得 pro 基準，退回到原本的固定閾值邏輯
-                if overall_stability >= 0.7:
-                    advice_parts.append("頭部穩定眼睛有盯球。")
-                elif overall_stability >= 0.4:
-                    advice_parts.append("擊球過程中頭部不穩定，建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。")
-                else:
-                    advice_parts.append("擊球過程眼睛盯球不足，建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。")
-        
-        # 合併建議
-        combined_advice = "".join(advice_parts)
+            combined_advice = "擊球過程中頭部略不穩定，建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。"
         
         # 計算信心度
         confidence = 1.0

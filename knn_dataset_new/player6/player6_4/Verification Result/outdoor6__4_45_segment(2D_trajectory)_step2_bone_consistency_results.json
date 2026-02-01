@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "analysis_time": "2026-01-27T12:10:28.963972",
+    "source_file": "data/player6/player6_4/outdoor6__4_45_segment(2D_trajectory).json",
+    "total_frames": 231,
+    "analysis_type": "Bone Consistency Analysis"
+  },
+  "overall_summary": {
+    "average_cv": 0.0,
+    "quality_level": "優秀",
+    "total_bones_analyzed": 0,
+    "total_spikes_detected": 0
+  },
+  "overall_quality": {
+    "average_cv": 0.0,
+    "quality_level": "優秀"
+  },
+  "bone_statistics": {
+    "頭部": null,
+    "脊柱": null,
+    "肩寬": null,
+    "骨盆": null,
+    "左上臂": null,
+    "左前臂": null,
+    "左整臂": null,
+    "右上臂": null,
+    "右前臂": null,
+    "右整臂": null,
+    "左大腿": null,
+    "左小腿": null,
+    "左整腿": null,
+    "右大腿": null,
+    "右小腿": null,
+    "右整腿": null
+  },
+  "symmetry_analysis": [],
+  "body_height_analysis": {},
+  "joint_depth_stability": {},
+  "joint_angle_analysis": {},
+  "bone_orientation_stability": {},
+  "spike_detection": {
+    "total_spikes": 0,
+    "top_10_spikes": []
+  },
+  "detailed_angle_anomalies": {}
+}

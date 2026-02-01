@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "analysis_time": "2026-01-27T12:10:31.697367",
+    "source_file": "data/player6/player6_4/outdoor6__4_45_segment(2D_trajectory).json",
+    "total_frames": 231,
+    "analysis_type": "Physical Motion Logic Analysis"
+  },
+  "overall_summary": {
+    "total_unreasonable_speed": 0,
+    "total_abnormal_angles": 0,
+    "total_continuity_jumps": 0,
+    "gravity_compliant": false,
+    "contact_detected": null
+  },
+  "motion_kinematics": {},
+  "joint_angles": {},
+  "torso_stability": {},
+  "ball_racket_contact": {},
+  "gravity_compliance": {
+    "assessment": "數據不足"
+  },
+  "motion_continuity": {
+    "total_jumps": 0,
+    "details": {}
+  }
+}

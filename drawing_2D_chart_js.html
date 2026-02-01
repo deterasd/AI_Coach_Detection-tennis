@@ -1,67 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Video and Trajectory Comparison</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
 
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <link rel="stylesheet" href="drawing_2D_chart_js.css">
-</head>
+    <link rel="stylesheet" href="drawing_2D_chart_js.css" />
+  </head>
 
-<body>
-    <div class=body-container>
-        <!-- Left Panel: Video Player & AI Coach Feedback -->
-        <div class="left-panel">
-            <div class="videoplayer">
-                <h2>🎥 Video Player 🎥</h2>
+  <body>
+    <div class="body-container">
+      <!-- Left Panel: Video Player & AI Coach Feedback -->
+      <div class="left-panel">
+        <div class="videoplayer">
+          <h2>🎥 Video Player 🎥</h2>
 
-                <!-- Video Selection -->
-                <label for="folderSelect">選擇資料夾：</label>
-                <select id="folderSelect" class="file-input"></select>
-                <label for="videoSelect">選擇影片：</label>
-                <select id="videoSelect" class="video-input"></select>
+          <!-- Video Selection：同一行不換行 -->
+          <div class="video-selection-row">
+            <label for="folderSelect">選擇資料夾：</label>
+            <select id="folderSelect" class="file-input"></select>
+            <label for="videoSelect">選擇影片：</label>
+            <select id="videoSelect" class="video-input"></select>
+          </div>
 
-                <!-- Video Player -->
-                <video id="videoPlayer" controls loop></video>
+          <!-- Video Player -->
+          <video id="videoPlayer" controls loop></video>
 
-                <!-- Speed Control -->
-                <div class="speed-control">
-                    <label for="speedControl">Playback Speed:</label>
-                    <input type="range" id="speedControl" min="0.25" max="2" step="0.25" value="1">
-                    <span id="speedValue">1x</span>
-                </div>
-            </div>
+          <!-- Speed Control -->
+          <div class="speed-control">
+            <label for="speedControl">Playback Speed:</label>
+            <input
+              type="range"
+              id="speedControl"
+              min="0.25"
+              max="2"
+              step="0.25"
+              value="1"
+            />
+            <span id="speedValue">1x</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Trajectory Comparison -->
+      <div class="right-panel">
+        <div class="trajectory-controls">
+          <h2>📈 Trajectory Files 📈</h2>
+          <div style="text-align: center; margin: 10px 0">
+            <button
+              id="open3DButton"
+              onclick="open3DVisualization()"
+              style="
+                display: inline-block;
+                padding: 8px 16px;
+                background: #28a745;
+                color: white;
+                text-decoration: none;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: background 0.3s;
+              "
+              onmouseover="this.style.background = '#218838'"
+              onmouseout="this.style.background = '#28a745'"
+            >
+              🎯 開啟 3D 視覺化
+            </button>
+          </div>
         </div>
 
-        <!-- Right Panel: Trajectory Comparison -->
-        <div class="right-panel">
-            <div class="trajectory-controls">
-                <h2>📈 Trajectory Files 📈</h2>
+        <!-- AI Analysis Results Panel -->
+        <div class="analysis-panel" id="analysisPanel" style="display: none">
+          <h2>🤖 AI Analysis Results 🤖</h2>
+          <div class="analysis-content">
+            <div class="analysis-section">
+              <h3>📊 Action Recognition</h3>
+              <div id="actionType" class="analysis-item">
+                <strong>Action Type:</strong>
+                <span id="actionTypeValue">-</span>
+              </div>
+              <div id="similarity" class="analysis-item">
+                <strong>Similarity:</strong> <span id="similarityValue">-</span>
+              </div>
             </div>
 
-            <!-- First Trajectory Chart -->
-            <div class="chart-box">
-                <div class="filename" id="filename1" style="color: rgb(108, 0, 158);">
-                    📂 Wait for File...
-                </div>
-                <canvas id="trajectoryChart1"></canvas>
+            <div class="analysis-section">
+              <h3>💡 Action Analysis</h3>
+              <div id="knnSuggestion" class="analysis-item suggestion-box">
+                <div id="knnSuggestionText">-</div>
+              </div>
             </div>
 
-            <!-- Second Trajectory Chart -->
-            <div class="chart-box">
-                <div class="filename" id="filename2" style="color: rgb(108, 0, 158);">
-                    📂 Wait for File...
-                </div>
-                <canvas id="trajectoryChart2"></canvas>
+            <div class="analysis-section">
+              <h3>🧠 GPT Feedback</h3>
+              <div id="gptFeedback" class="analysis-item suggestion-box">
+                <span id="gptFeedbackText">-</span>
+              </div>
             </div>
+
+            <div class="analysis-section">
+              <h3>⏱️ Processing Stats</h3>
+              <div id="processingStats" class="analysis-item">
+                <div id="statsContent">-</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- JavaScript -->
-        <script src="main.js"></script>
+        <!-- First Trajectory Chart -->
+        <div class="chart-box">
+          <div class="filename" id="filename1" style="color: rgb(108, 0, 158)">
+            📂 Wait for File...
+          </div>
+          <canvas id="trajectoryChart1"></canvas>
+        </div>
+
+        <!-- Second Trajectory Chart -->
+        <div class="chart-box">
+          <div class="filename" id="filename2" style="color: rgb(108, 0, 158)">
+            📂 Wait for File...
+          </div>
+          <canvas id="trajectoryChart2"></canvas>
+        </div>
+      </div>
+
+      <!-- JavaScript -->
+      <script src="main.js"></script>
     </div>
-</body>
-
+  </body>
 </html>
