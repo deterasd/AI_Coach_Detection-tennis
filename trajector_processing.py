@@ -114,6 +114,7 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle
     # print("\n步驟6：同步軌跡中...")
     start = time.perf_counter()
     sync_trajectories(trajectory_side_smoothing, trajectory_45_smoothing)
+    #trajectory_side_synced, trajectory_45_synced = sync_trajectories(trajectory_side_smoothing, trajectory_45_smoothing)
     timing_results['軌跡同步'] = time.perf_counter() - start
     # print(f"-- 軌跡同步完成，耗時：{timing_results['軌跡同步']:.4f} 秒")
 
@@ -122,7 +123,9 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle
     # ------------------------------
     # print("\n步驟7：計算3D軌跡中...")
     start = time.perf_counter()
+    #trajectory_3d = process_trajectories(trajectory_side_smoothing, trajectory_45_smoothing, P1, P2)
     trajectory_3d = process_trajectories(trajectory_side_smoothing, trajectory_45_smoothing, P1, P2)
+    #trajectory_3d = process_trajectories(trajectory_side_synced, trajectory_45_synced, P1, P2)
     timing_results['3D軌跡分析'] = time.perf_counter() - start
     # print(f"-- 3D軌跡計算完成，耗時：{timing_results['3D軌跡分析']:.4f} 秒")
 
@@ -246,17 +249,21 @@ if __name__ == "__main__":
     #yolo_pose_model = YOLO('model/yolov8n-pose.pt')
     #yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
     #paddle_model=YOLO('model/best-paddlekeypoint.pt')#0920新增球拍
-    yolo_pose_model = YOLO('model/yolo11n-pose.pt')
+    yolo_pose_model = YOLO('model/yolo11l-pose.pt')
     yolo_tennis_ball_model = YOLO("C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/tennisball_OD_v1.pt")
+    #paddle_model = YOLO("C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/yolov11x.engine",task="pose")
+    #paddle_model = YOLO("C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/best-paddlekeypoint.pt")
     paddle_model = YOLO("C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/yolov11x.pt")
-    
     yolo_pose_model.model.to('cuda')
     yolo_tennis_ball_model.model.to('cuda')
     paddle_model.model.to('cuda')#0920新增球拍
 
 
-    video_side = f"C:/Users/資管所/Desktop/testvideo-20260125T085050Z-1-001/testvideo/test_video/player14/player14_5/outdoor14__5_side_segment.mp4"
-    video_45 = f"C:/Users/資管所/Desktop/testvideo-20260125T085050Z-1-001/testvideo/test_video/player14/player14_5/outdoor14__5_45_segment.mp4"
+    #video_side = f"C:/Users/資管所/Desktop/testvideo-20260125T085050Z-1-001/testvideo/test_video/player10/player10_5_line/outdoor10__5_side_segment.mp4"
+    #video_45 = f"C:/Users/資管所/Desktop/testvideo-20260125T085050Z-1-001/testvideo/test_video/player10/player10_5_line/outdoor10__5_45_segment.mp4"
+    video_side = f"C:/Users/資管所/Desktop/優化後影片/10/trajectory3_new/測試者10__3_side_segment.mp4"
+    video_45 = f"C:/Users/資管所/Desktop/優化後影片/10/trajectory3_new/測試者10__3_45_segment.mp4"
+    
     process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle_model, video_side, video_45, knn_dataset)
     #process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_side, video_45, knn_dataset)
     print(process_status)

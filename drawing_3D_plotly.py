@@ -55,10 +55,17 @@ def create_3d_plots(data_file):
     all_x, all_y, all_z = [], [], []
     ball_x, ball_y, ball_z = [], [], []
     right_wrist_x, right_wrist_y, right_wrist_z = [], [], []
+    
+    # 既有的球拍中心
     paddle_center_x, paddle_center_y, paddle_center_z = [], [], []
+    
+    # ✅ [新增] 球拍頭 (Top) 軌跡容器
+    paddle_top_x, paddle_top_y, paddle_top_z = [], [], []
+
     frame_labels = []
 
     for frame_idx, frame in enumerate(trajectory_data):
+        # 1. 人體與球
         for joint in joints:
             if (frame[joint]['x'] is not None and
                 frame[joint]['y'] is not None and
@@ -69,7 +76,7 @@ def create_3d_plots(data_file):
 
                 if joint == 'tennis_ball':
                     ball_x.append(frame[joint]['x'])
-                    ball_y.append(frame[joint]['z'])
+                    ball_y.append(frame[joint]['z']) # Y/Z 互換
                     ball_z.append(frame[joint]['y'])
                     frame_labels.append(f'F{frame_idx}')
                 elif joint == 'right_wrist':
@@ -77,11 +84,25 @@ def create_3d_plots(data_file):
                     right_wrist_y.append(frame[joint]['z'])
                     right_wrist_z.append(frame[joint]['y'])
 
-        # 球拍中心點
+        # 2. 球拍中心點 (原本的)
         if 'paddle' in frame and frame['paddle'].get('center', {}).get('x') is not None:
             paddle_center_x.append(frame['paddle']['center']['x'])
-            paddle_center_y.append(frame['paddle']['center']['z'])
+            paddle_center_y.append(frame['paddle']['center']['z']) # Y/Z 互換
             paddle_center_z.append(frame['paddle']['center']['y'])
+        else:
+            paddle_center_x.append(None)
+            paddle_center_y.append(None)
+            paddle_center_z.append(None)
+
+        # ✅ [新增] 3. 球拍頭 (Top) 軌跡 -> 這就是您要的揮拍軌跡線
+        if 'paddle' in frame and frame['paddle'].get('top', {}).get('x') is not None:
+            paddle_top_x.append(frame['paddle']['top']['x'])
+            paddle_top_y.append(frame['paddle']['top']['z']) # Y/Z 互換
+            paddle_top_z.append(frame['paddle']['top']['y'])
+        else:
+            paddle_top_x.append(None)
+            paddle_top_y.append(None)
+            paddle_top_z.append(None)
 
     # ----------------------------
     # 初始化 3D 圖形
@@ -102,7 +123,7 @@ def create_3d_plots(data_file):
         showscale=False
     ))
 
-    # --- 球的軌跡 ---
+    # --- 1. 球的軌跡 (紅線) ---
     fig.add_trace(go.Scatter3d(
         x=ball_x, y=ball_y, z=ball_z,
         mode='lines+markers+text',
@@ -114,12 +135,32 @@ def create_3d_plots(data_file):
         showlegend=True,
     ))
 
-    # --- 球拍中心軌跡 ---
+    # --- 2. 手腕軌跡 (藍線) ---
+    # 原本程式碼沒畫這條，這裡補上，方便對比
+    fig.add_trace(go.Scatter3d(
+        x=right_wrist_x, y=right_wrist_y, z=right_wrist_z,
+        mode='lines',
+        name='Wrist Trajectory',
+        line=dict(color='#008080', width=2),
+        showlegend=True,
+    ))
+
+    # --- 3. 球拍中心軌跡 (橘色虛線 - 輔助用) ---
     fig.add_trace(go.Scatter3d(
         x=paddle_center_x, y=paddle_center_y, z=paddle_center_z,
         mode='lines',
-        name='Paddle Swing Trajectory',
-        line=dict(color=paddle_color, width=4),
+        name='Paddle Center',
+        line=dict(color=paddle_color, width=2, dash='dash'),
+        showlegend=True,
+    ))
+
+    # ✅ [新增] 4. 球拍頭軌跡 (Racket Top - 亮藍色粗線) ---
+    # 這就是主要的揮拍軌跡
+    fig.add_trace(go.Scatter3d(
+        x=paddle_top_x, y=paddle_top_y, z=paddle_top_z,
+        mode='lines',
+        name='Racket Top Trajectory',
+        line=dict(color='#00CCFF', width=5), # 亮藍色，粗一點比較明顯
         showlegend=True,
     ))
 
@@ -130,7 +171,7 @@ def create_3d_plots(data_file):
     for frame_idx, frame in enumerate(trajectory_data):
         frame_data = []
 
-        # 球
+        # (1) 球 (動態點)
         frame_data.append(go.Scatter3d(
             x=ball_x, y=ball_y, z=ball_z,
             mode='lines+markers+text',
@@ -142,11 +183,36 @@ def create_3d_plots(data_file):
             showlegend=(frame_idx == 0)
         ))
 
-        # 球拍五點
+        # (2) 球拍中心軌跡 (靜態背景 - 讓它一直顯示)
+        frame_data.append(go.Scatter3d(
+            x=paddle_center_x, y=paddle_center_y, z=paddle_center_z,
+            mode='lines',
+            line=dict(color=paddle_color, width=2, dash='dash'),
+            showlegend=False
+        ))
+
+        # (3) 手腕軌跡 (靜態背景)
+        frame_data.append(go.Scatter3d(
+            x=right_wrist_x, y=right_wrist_y, z=right_wrist_z,
+            mode='lines',
+            line=dict(color='#008080', width=2),
+            showlegend=False
+        ))
+
+        # ✅ [新增] (4) 球拍頭軌跡 (靜態背景 - 讓揮拍路徑一直顯示)
+        frame_data.append(go.Scatter3d(
+            x=paddle_top_x, y=paddle_top_y, z=paddle_top_z,
+            mode='lines',
+            line=dict(color='#00CCFF', width=5),
+            showlegend=False
+        ))
+
+        # (5) 球拍五點 (目前的點位)
         if 'paddle' in frame:
             for p in paddle_points:
                 pt = frame['paddle'].get(p, None)
                 if pt and pt['x'] is not None:
+                    # 注意 Y/Z 互換
                     frame_data.append(go.Scatter3d(
                         x=[pt['x']], y=[pt['z']], z=[pt['y']],
                         mode='markers',
@@ -155,7 +221,7 @@ def create_3d_plots(data_file):
                         showlegend=False
                     ))
 
-        # joints
+        # (6) 身體關節點
         for joint_name, color in joints.items():
             if (frame[joint_name]['x'] is not None and
                 frame[joint_name]['y'] is not None and
@@ -165,15 +231,11 @@ def create_3d_plots(data_file):
                     y=[frame[joint_name]['z']],
                     z=[frame[joint_name]['y']],
                     mode='markers',
-                    marker=dict(
-                        size=5,
-                        color=color,
-                        opacity=0.8
-                    ),
+                    marker=dict(size=5, color=color, opacity=0.8),
                     showlegend=False
                 ))
 
-        # skeleton lines
+        # (7) 骨架連線
         for start_joint, end_joint in skeleton_connections:
             if (frame[start_joint]['x'] is not None and frame[end_joint]['x'] is not None):
                 frame_data.append(go.Scatter3d(
@@ -210,7 +272,7 @@ def create_3d_plots(data_file):
             'x': 0.1, 'xanchor': 'right', 'y': 0, 'yanchor': 'top'
         }],
         width=1100, height=850,
-        title='3D Pickleball Body + Paddle Trajectory Visualization'
+        title='3D Tennis Analysis - Trajectory Visualization'
     )
 
     output_path = data_file.replace('.json', '_3Dplot.html')

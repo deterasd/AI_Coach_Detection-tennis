@@ -32,13 +32,16 @@ def process_video(
     video_path,
     ball_model_path="C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/tennisball_OD_v1.pt",
     pose_model_path='model/yolo11l-pose.pt',
+    #paddle_model_path=YOLO("C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/yolov11x.engine",task="pose"),
+    #paddle_model_path="C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/best-paddlekeypoint.pt",
     paddle_model_path="C:/Users/資管所/Desktop/pickleball-version1/Pickleball_Project/model/yolov11x.pt",
     OUTPUT_WIDTH=1280,
     OUTPUT_HEIGHT=720,
     skip_frames=1,
     yolo_batch_size=1,
     ball_conf_threshold=0.8,
-    paddle_conf_threshold=0.5
+    paddle_conf_threshold=0.5,
+    trace_length=60,
 ):
     device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"[INFO] Using device: {device_str}")
@@ -91,7 +94,22 @@ def process_video(
         pose_results_batch = pose_model.predict(frames_for_infer, verbose=False, device=device_str, batch=yolo_batch_size)
         ball_results_batch = ball_model.predict(frames_for_infer, verbose=False, device=device_str, batch=yolo_batch_size)
         paddle_results_batch = paddle_model.predict(frames_for_infer, verbose=False, device=device_str, batch=yolo_batch_size)
-
+        """pose_results_batch = [
+            pose_model.predict(f, verbose=False, device=device_str, imgsz=1280)[0] 
+            for f in frames_for_infer
+        ]
+        
+        # 2. Ball 推論
+        ball_results_batch = [
+            ball_model.predict(f, verbose=False, device=device_str, imgsz=1280)[0] 
+            for f in frames_for_infer
+        ]
+        
+        # 3. Paddle 推論 (關鍵優化點)
+        paddle_results_batch = [
+            paddle_model.predict(f, verbose=False, device=device_str, imgsz=1280)[0] 
+            for f in frames_for_infer
+        ]"""
     # === 初始化結果容器 ===
     ball_positions = [None] * total_frames
     ball_confidences = [None] * total_frames
@@ -158,6 +176,38 @@ def process_video(
 
         paddle_pts = paddle_keypoints[i]
         paddle_conf = paddle_confidences[i]
+        
+        # =========================================================================
+        start_idx = max(0, i - trace_length)
+        
+        # --- A. 網球軌跡 (綠 -> 紅) ---
+        ball_trail_points = []
+        for j in range(start_idx, i + 1):
+            if ball_positions[j] is not None:
+                ball_trail_points.append(ball_positions[j])
+        
+        if len(ball_trail_points) > 1:
+            for j in range(1, len(ball_trail_points)):
+                progress = j / len(ball_trail_points)
+                color = (0, int(255 * (1 - progress)), int(255 * progress)) # Green->Red
+                thickness = int(4 * progress) + 1
+                cv2.line(frame, ball_trail_points[j-1], ball_trail_points[j], color, thickness)
+
+        # --- B. 手腕軌跡 (藍 -> 綠) ---
+        wrist_trail_points = []
+        for j in range(start_idx, i + 1):
+            k = keypoints_per_frame[j]
+            if k is not None and len(k) > 10:
+                rw = k[10] # Right Wrist
+                if rw[0] > 0 and rw[1] > 0:
+                    wrist_trail_points.append(rw)
+        
+        if len(wrist_trail_points) > 1:
+            for j in range(1, len(wrist_trail_points)):
+                progress = j / len(wrist_trail_points)
+                color = (int(255 * (1 - progress)), int(255 * progress), 0) # Blue->Green
+                thickness = int(4 * progress) + 1
+                cv2.line(frame, wrist_trail_points[j-1], wrist_trail_points[j], color, thickness)
 
         # --- 畫球與人體 ---
         if ball_pos:
