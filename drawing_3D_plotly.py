@@ -33,7 +33,7 @@ def create_3d_plots(data_file):
         'right_ankle': '#00ff80'
     }
 
-    paddle_points = ['top', 'right', 'bottom', 'left', 'center']
+    paddle_points = ['top', 'bottom', 'left', 'right', 'center', 'grip_top', 'grip_bottom']
     paddle_color = "#ff7f0e"
 
     skeleton_connections = [
@@ -55,7 +55,13 @@ def create_3d_plots(data_file):
     all_x, all_y, all_z = [], [], []
     ball_x, ball_y, ball_z = [], [], []
     right_wrist_x, right_wrist_y, right_wrist_z = [], [], []
+    
+    # 既有的球拍中心
     paddle_center_x, paddle_center_y, paddle_center_z = [], [], []
+    
+    # ✅ [新增] 球拍頭 (Top) 軌跡容器
+    paddle_top_x, paddle_top_y, paddle_top_z = [], [], []
+    
     frame_labels = []
 
     for frame_idx, frame in enumerate(trajectory_data):
@@ -77,11 +83,25 @@ def create_3d_plots(data_file):
                     right_wrist_y.append(frame[joint]['z'])
                     right_wrist_z.append(frame[joint]['y'])
 
-        # 球拍中心點
+        # 2. 球拍中心點 (原本的)
         if 'paddle' in frame and frame['paddle'].get('center', {}).get('x') is not None:
             paddle_center_x.append(frame['paddle']['center']['x'])
-            paddle_center_y.append(frame['paddle']['center']['z'])
+            paddle_center_y.append(frame['paddle']['center']['z']) # Y/Z 互換
             paddle_center_z.append(frame['paddle']['center']['y'])
+        else:
+            paddle_center_x.append(None)
+            paddle_center_y.append(None)
+            paddle_center_z.append(None)
+
+        # ✅ [新增] 3. 球拍頭 (Top) 軌跡 -> 這就是您要的揮拍軌跡線
+        if 'paddle' in frame and frame['paddle'].get('top', {}).get('x') is not None:
+            paddle_top_x.append(frame['paddle']['top']['x'])
+            paddle_top_y.append(frame['paddle']['top']['z']) # Y/Z 互換
+            paddle_top_z.append(frame['paddle']['top']['y'])
+        else:
+            paddle_top_x.append(None)
+            paddle_top_y.append(None)
+            paddle_top_z.append(None)
 
     # ----------------------------
     # 初始化 3D 圖形
@@ -102,7 +122,7 @@ def create_3d_plots(data_file):
         showscale=False
     ))
 
-    # --- 球的軌跡 ---
+    # --- 1. 球的軌跡 (紅線) ---
     fig.add_trace(go.Scatter3d(
         x=ball_x, y=ball_y, z=ball_z,
         mode='lines+markers+text',
@@ -114,12 +134,31 @@ def create_3d_plots(data_file):
         showlegend=True,
     ))
 
-    # --- 球拍中心軌跡 ---
+    # --- 2. 手腕軌跡 (藍線) ---
+    fig.add_trace(go.Scatter3d(
+        x=right_wrist_x, y=right_wrist_y, z=right_wrist_z,
+        mode='lines',
+        name='Wrist Trajectory',
+        line=dict(color='#008080', width=2),
+        showlegend=True,
+    ))
+
+    # --- 3. 球拍中心軌跡 (橘色虛線 - 輔助用) ---
     fig.add_trace(go.Scatter3d(
         x=paddle_center_x, y=paddle_center_y, z=paddle_center_z,
         mode='lines',
-        name='Paddle Swing Trajectory',
-        line=dict(color=paddle_color, width=4),
+        name='Paddle Center',
+        line=dict(color=paddle_color, width=2, dash='dash'),
+        showlegend=True,
+    ))
+
+    # ✅ [新增] 4. 球拍頭軌跡 (Racket Top - 亮藍色粗線) ---
+    # 這就是主要的揮拍軌跡
+    fig.add_trace(go.Scatter3d(
+        x=paddle_top_x, y=paddle_top_y, z=paddle_top_z,
+        mode='lines',
+        name='Racket Top Trajectory',
+        line=dict(color='#00CCFF', width=5),
         showlegend=True,
     ))
 

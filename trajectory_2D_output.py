@@ -65,16 +65,18 @@ def process_single_frame(body_result, ball_result,paddle_result, keypoint_names,
 def process_single_frame(body_result, ball_result, paddle_result, keypoint_names, frame_number):
     """處理單一 frame 的結果，回傳 frame_data 字典 (包含信心值 conf)"""
     
-    # 1. 初始化結構 (您原本改的地方)
+    # 1. 初始化結構 - 7個球拍點
     frame_data = {
         "frame": frame_number,
         "tennis_ball": {"x": None, "y": None, "conf": None},
         "paddle": {
             "top": {"x": None, "y": None, "conf": None},
-            "right": {"x": None, "y": None, "conf": None},
             "bottom": {"x": None, "y": None, "conf": None},
+            "right": {"x": None, "y": None, "conf": None},
             "left": {"x": None, "y": None, "conf": None},
-            "center": {"x": None, "y": None, "conf": None} # 中心點通常是計算值，這裡預設 None
+            "center": {"x": None, "y": None, "conf": None},
+            "grip_top": {"x": None, "y": None, "conf": None},
+            "grip_bottom": {"x": None, "y": None, "conf": None},
         }
     }
     
@@ -116,25 +118,29 @@ def process_single_frame(body_result, ball_result, paddle_result, keypoint_names
             })
             break
 
-    # --- 球拍位置 ---
+    # --- 球拍位置（7點：Top, Bottom, Right, Left, Grip_Top, Grip_Bottom, Center） ---
     if paddle_result.keypoints is not None and len(paddle_result.keypoints.xy) > 0:
         kpts = paddle_result.keypoints.xy[0].cpu().numpy()
         # [新增] 取得球拍信心值
         p_confs = paddle_result.keypoints.conf[0].cpu().numpy() if paddle_result.keypoints.conf is not None else None
 
-        if kpts.shape[0] >= 4:
-            top, right, bottom, left = kpts[:4]
-            
-            # [新增] 讀取四點信心值
+        if kpts.shape[0] >= 6:
+            top, bottom, right, left, grip_top, grip_bottom = kpts[:6]
+
+            # [新增] 讀取六點信心值
             c_top = float(p_confs[0]) if p_confs is not None else 0.0
-            c_right = float(p_confs[1]) if p_confs is not None else 0.0
-            c_bottom = float(p_confs[2]) if p_confs is not None else 0.0
+            c_bottom = float(p_confs[1]) if p_confs is not None else 0.0
+            c_right = float(p_confs[2]) if p_confs is not None else 0.0
             c_left = float(p_confs[3]) if p_confs is not None else 0.0
+            c_grip_top = float(p_confs[4]) if p_confs is not None else 0.0
+            c_grip_bottom = float(p_confs[5]) if p_confs is not None else 0.0
 
             frame_data["paddle"]["top"] = {"x": int(top[0]), "y": int(top[1]), "conf": c_top}
-            frame_data["paddle"]["right"] = {"x": int(right[0]), "y": int(right[1]), "conf": c_right}
             frame_data["paddle"]["bottom"] = {"x": int(bottom[0]), "y": int(bottom[1]), "conf": c_bottom}
+            frame_data["paddle"]["right"] = {"x": int(right[0]), "y": int(right[1]), "conf": c_right}
             frame_data["paddle"]["left"] = {"x": int(left[0]), "y": int(left[1]), "conf": c_left}
+            frame_data["paddle"]["grip_top"] = {"x": int(grip_top[0]), "y": int(grip_top[1]), "conf": c_grip_top}
+            frame_data["paddle"]["grip_bottom"] = {"x": int(grip_bottom[0]), "y": int(grip_bottom[1]), "conf": c_grip_bottom}
             
             # 中心點計算 (不一定要 conf，這裡只算座標)
             cx = int((top[0] + right[0] + bottom[0] + left[0]) / 4)

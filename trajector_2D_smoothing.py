@@ -156,7 +156,7 @@ def smooth_2D_trajectory(input_file, window_length=15, polyorder=3, tennis_windo
                 })
         """
 
-        paddle_points = ["top", "right", "bottom", "left", "center"]
+        paddle_points = ["top", "right", "bottom", "left", "grip_top", "grip_bottom", "center"]
 
         for point in paddle_points:
             x_coords = [frame['paddle'][point]['x'] for frame in data]

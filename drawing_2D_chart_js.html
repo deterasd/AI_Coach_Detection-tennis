@@ -27,6 +27,14 @@
                 <!-- Video Player -->
                 <video id="videoPlayer" controls loop></video>
 
+                <!-- Frame Control -->
+                <div style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                    <div style="font-size: 14px; margin-bottom: 8px; font-weight: bold;">
+                        <span id="frameInfo">frame: 0</span>
+                    </div>
+                    <input type="range" id="frameSlider" class="slider" min="0" value="0" title="Frame Timeline" style="width: 100%; margin-bottom: 8px;">
+                </div>
+
                 <!-- Speed Control -->
                 <div class="speed-control">
                     <label for="speedControl">Playback Speed:</label>

@@ -11,8 +11,8 @@ def create_2d_plots(file_path):
                 for point in data if key in point and point[key]['x'] is not None and point[key]['y'] is not None]
     
     def extract_paddle_points(data):
-        """提取球拍的四個keypoints（top/right/bottom/left）"""
-        paddle_coords = {k: [] for k in ["top", "right", "bottom", "left"]}
+        """提取球拍的六個keypoints（top/right/bottom/left/grip_top/grip_bottom）"""
+        paddle_coords = {k: [] for k in ["top", "right", "bottom", "left", "grip_top", "grip_bottom"]}
         for point in data:
             if "paddle" in point and isinstance(point["paddle"], dict):
                 frame = point.get("frame")
@@ -107,10 +107,10 @@ def create_2d_plots(file_path):
     fig_wrist.update_layout(get_common_layout('Wrist Trajectory'))
     fig_wrist.write_html(fig_wrist_name)
 
-    # --- Paddle 四點 ---
+    # --- Paddle 六點 ---
     fig_paddle_name = file_path.replace('.json','_2d_paddle_trajectory.html')
     fig_paddle = go.Figure()
-    colors = {"top": "green", "right": "orange", "bottom": "purple", "left": "cyan"}
+    colors = {"top": "green", "right": "orange", "bottom": "purple", "left": "cyan", "grip_top": "purple", "grip_bottom": "purple"}
     for k, coords in paddle_data.items():
         if coords:
             fig_paddle.add_trace(go.Scatter(

@@ -1,4 +1,6 @@
 const videoPlayer = document.getElementById('videoPlayer');
+const frameSlider = document.getElementById('frameSlider');
+const frameInfo = document.getElementById('frameInfo');
 // --- Speed ---------------------------------------------
 const speedControl = document.getElementById('speedControl');
 const speedValue = document.getElementById('speedValue');
@@ -17,6 +19,29 @@ function updateSpeed() {
 speedControl.addEventListener('input', updateSpeed);
 updateSpeed();
 
+// --- Frame Control ---
+function updateFrameDisplay() {
+    if (videoPlayer.duration) {
+        const fps = 30; // 假设30fps，可根据需要调整
+        const currentFrame = Math.floor(videoPlayer.currentTime * fps);
+        const totalFrames = Math.floor(videoPlayer.duration * fps);
+        frameInfo.textContent = `frame: ${currentFrame}`;
+        frameSlider.max = totalFrames;
+        frameSlider.value = currentFrame;
+    }
+}
+
+videoPlayer.addEventListener('timeupdate', updateFrameDisplay);
+videoPlayer.addEventListener('loadedmetadata', updateFrameDisplay);
+
+frameSlider.addEventListener('input', (e) => {
+    const fps = 60;
+    const frameNumber = parseInt(e.target.value);
+    const timeInSeconds = frameNumber / fps;
+    videoPlayer.currentTime = timeInSeconds;
+    updateFrameDisplay();
+});
+
 
 // ---Video to Json---------------------------------------------
 const folderSelect = document.getElementById('folderSelect');
@@ -26,33 +51,43 @@ const basePath = "./trajectory/";
 async function fetchFolderList() {
     try {
         const response = await fetch('/getFolders');
-        const folders_full = await response.json();
-        const folders = folders_full.map(folder_full => folder_full.split('__')[0]);
+        const folderInfos = await response.json();
+        console.log("获取到的文件夹信息:", folderInfos);
+        // 按照修改時間遞減排序（最新的在前）
+        folderInfos.sort((a, b) => b.mtime - a.mtime);
+        const folders = folderInfos.map(info => info.name.replace('_trajectory', ''));
+        console.log("清洁后的文件夹列表:", folders);
         folderSelect.innerHTML = '<option value="">Player Name</option>' + folders.map(folder => `<option value="${folder}">${folder}</option>`).join('');
+        console.log("文件夹下拉菜单已更新");
     } catch (error) {
         console.error("Unable to fetch folder list:", error);
     }
 }
 
 async function fetchVideoList(folder, autoSelectFirst = false) {
+    console.log("fetchVideoList called with folder:", folder);
     // 新增預設選項
     videoSelect.innerHTML = `<option value="">select trajectory</option>`;
     for (let i = 1; i <= 100; i++) {
         try {
-            const currentTrajectory = `trajectory_${i}`;
-            const response = await fetch(`/getVideos?folder=${folder}__trajectory/${currentTrajectory}`);
+            const currentTrajectory = `trajectory_${i}`;  // 使用單底線
+            const folderPath = `${folder}_trajectory/${currentTrajectory}`;
+            console.log(`尝试获取: /getVideos?folder=${folderPath}`);
+            const response = await fetch(`/getVideos?folder=${folderPath}`);
             if (!response.ok) continue;
 
             const videos_all = await response.json();
             const videos = videos_all.filter(v => v.includes('full_video'));
+            console.log(`trajectory_${i} 的视频:`, videos);
             
             if (videos.length > 0) {
                 const videoFile = videos[0];
-                const optionValue = `${basePath}${folder}/${currentTrajectory}/${videoFile}`;
+                const optionValue = `${basePath}${folder}_trajectory/${currentTrajectory}/${videoFile}`;
                 const option = document.createElement('option');
                 option.value = optionValue;
                 option.textContent = videoFile;
                 videoSelect.appendChild(option);
+                console.log(`已添加选项:`, videoFile);
 
                 // 如果是自動選擇模式且是第一球
                 if (autoSelectFirst && i === 1) {
@@ -63,9 +98,11 @@ async function fetchVideoList(folder, autoSelectFirst = false) {
                 }
             }
         } catch (error) {
+            console.error(`获取 trajectory_${i} 时出错:`, error);
             continue;
         }
     }
+    console.log("fetchVideoList 完成");
 }
 
 function highlightSelection() {
@@ -78,7 +115,12 @@ function highlightSelection() {
 
 folderSelect.addEventListener('change', e => {
     const selectedFolder = e.target.value;
-    selectedFolder ? fetchVideoList(selectedFolder) : videoSelect.innerHTML = '<option value="">Choose Video</option>';
+    console.log("folderSelect 变化，选择的文件夹:", selectedFolder);
+    if (selectedFolder) {
+        fetchVideoList(selectedFolder);
+    } else {
+        videoSelect.innerHTML = '<option value="">Choose Video</option>';
+    }
 });
 
 // --- Polling for First Ball Ready ---
@@ -89,13 +131,14 @@ async function checkFirstBallReady() {
     try {
         const response = await fetch('/getFolders');
         if (!response.ok) return;
-        const folders = await response.json();
-        if (folders.length === 0) return;
+        const folderInfos = await response.json();
+        if (folderInfos.length === 0) return;
 
-        // 排序取得最新的一個
-        folders.sort();
-        const latestFolderFull = folders[folders.length - 1]; // 例如 "John__trajectory"
-        const cleanName = latestFolderFull.split('__')[0];
+        // 按修改时间排序，取得最新的一個
+        folderInfos.sort((a, b) => b.mtime - a.mtime);
+        const latestFolderInfo = folderInfos[0];
+        const latestFolderFull = latestFolderInfo.name; // 例如 "最8_trajectory"
+        const cleanName = latestFolderFull.split('_trajectory')[0];
 
         // 如果換了新資料夾（新客戶），重設通知狀態
         if (latestFolderFull !== lastCheckedFolder) {
@@ -203,33 +246,31 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 videoSelect.addEventListener('change', e => {
-    const selected_path = e.target.value;
-    let pathParts = selected_path.split('/');
-    pathParts[2] = pathParts[2] + '__trajectory';
-    // pathParts[3] = pathParts[3].replace('trajectory_', 'trajectory__');
-    const selectedVideo = pathParts.join('/');
-    console.log(selectedVideo);
+    const selectedVideo = e.target.value;
+    console.log("Selected video path:", selectedVideo);
 
     if (selectedVideo) {
         videoPlayer.src = selectedVideo;
-        console.log("TARGET DEBUG", selectedVideo)
+        console.log("Loading video:", selectedVideo)
 
         const playPromise = videoPlayer.play();
         if (playPromise !== undefined) {
-            playPromise.catch(error => { error });
+            playPromise.catch(error => { console.error("Play error:", error); });
         }
 
+        // 路径格式: ./trajectory/最8_trajectory/trajectory_1/最8__球1_full_video.mp4
         const pathParts = selectedVideo.split('/');
         if (pathParts.length >= 4) {
-            const folderName = pathParts[2];
-            const fileName = pathParts[3];
-            const trajectory = pathParts[4];
-            const prefix = trajectory.replace('_full_video.mp4', '');
-            console.log("資料夾名稱：", folderName, "檔案名稱：", fileName, "tra：", trajectory, "prefix：", prefix, "basePath：", basePath);
+            const folderName = pathParts[2];        // 最8_trajectory
+            const trajectoryFolder = pathParts[3];  // trajectory_1
+            const videoFile = pathParts[4];         // 最8__球1_full_video.mp4
+            const prefix = videoFile.replace('_full_video.mp4', '');  // 最8__球1
+            console.log("資料夾:", folderName, "軌跡資料夾:", trajectoryFolder, "影片:", videoFile, "前綴:", prefix);
 
-            const Json_45_Path = `${basePath}${folderName}/${fileName}/${prefix}_45(2D_trajectory_smoothed).json`;
-            const Json_side_Path = `${basePath}${folderName}/${fileName}/${prefix}_side(2D_trajectory_smoothed).json`;
+            const Json_45_Path = `${basePath}${folderName}/${trajectoryFolder}/${prefix}_45_segment(2D_trajectory_smoothed).json`;
+            const Json_side_Path = `${basePath}${folderName}/${trajectoryFolder}/${prefix}_side_segment(2D_trajectory_smoothed).json`;
 
+            console.log("Loading JSON files:", Json_45_Path, Json_side_Path);
             handleFileSelection(Json_45_Path, Json_side_Path);
         }
     }

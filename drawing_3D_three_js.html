@@ -706,30 +706,37 @@
       ['paddle_bottom','paddle_left'], ['paddle_left','paddle_top'],
       ['paddle_top','paddle_bottom'], ['paddle_left','paddle_right']
     ];
+
+    // === 球拍顏色常數 ===
+    const PADDLE_COLOR = '#0B3B8C';
+    const PADDLE_HEX = 0x9D4EDD;
+
     const joints = {
       tennis_ball: { color: '#FF6B6B', size: 0.05 },
       nose: { color: '#4ECDC4', size: 0.015 },
-      left_eye: { color: '#45B7D1', size: 0.012 },
-      right_eye: { color: '#45B7D1', size: 0.012 },
-      left_ear: { color: '#96CEB4', size: 0.012 },
-      right_ear: { color: '#96CEB4', size: 0.012 },
-      left_shoulder: { color: '#FF8C42', size: 0.02 },
-      right_shoulder: { color: '#FF8C42', size: 0.02 },
-      left_elbow: { color: '#FF8C42', size: 0.018 },
-      right_elbow: { color: '#FF8C42', size: 0.018 },
-      left_wrist: { color: '#FF8C42', size: 0.015 },
-      right_wrist: { color: '#FF8C42', size: 0.015 },
-      left_hip: { color: '#6C5B7B', size: 0.02 },
-      right_hip: { color: '#6C5B7B', size: 0.02 },
-      left_knee: { color: '#6C5B7B', size: 0.018 },
-      right_knee: { color: '#6C5B7B', size: 0.018 },
-      left_ankle: { color: '#6C5B7B', size: 0.015 },
-      right_ankle: { color: '#6C5B7B', size: 0.015 },
-      paddle_top: { color: '#00FF00', size: 0.02 },
-      paddle_right: { color: '#00FF00', size: 0.02 },
-      paddle_bottom: { color: '#00FF00', size: 0.02 },
-      paddle_left: { color: '#00FF00', size: 0.02 },
-      paddle_center: { color: '#FFFF00', size: 0.025 }
+      left_eye: { color: '#4ECDC4', size: 0.012 },
+      right_eye: { color: '#4ECDC4', size: 0.012 },
+      left_ear: { color: '#4ECDC4', size: 0.012 },
+      right_ear: { color: '#4ECDC4', size: 0.012 },
+      left_shoulder: { color: '#4ECDC4', size: 0.02 },
+      right_shoulder: { color: '#4ECDC4', size: 0.02 },
+      left_elbow: { color: '#4ECDC4', size: 0.018 },
+      right_elbow: { color: '#4ECDC4', size: 0.018 },
+      left_wrist: { color: '#4ECDC4', size: 0.015 },
+      right_wrist: { color: '#4ECDC4', size: 0.015 },
+      left_hip: { color: '#4ECDC4', size: 0.02 },
+      right_hip: { color: '#4ECDC4', size: 0.02 },
+      left_knee: { color: '#4ECDC4', size: 0.018 },
+      right_knee: { color: '#4ECDC4', size: 0.018 },
+      left_ankle: { color: '#4ECDC4', size: 0.015 },
+      right_ankle: { color: '#4ECDC4', size: 0.015 },
+      paddle_top: { color: PADDLE_COLOR, size: 0.02 },
+      paddle_right: { color: PADDLE_COLOR, size: 0.02 },
+      paddle_bottom: { color: PADDLE_COLOR, size: 0.02 },
+      paddle_left: { color: PADDLE_COLOR, size: 0.02 },
+      paddle_center: { color: PADDLE_COLOR, size: 0.025 },
+      paddle_grip_top: { color: PADDLE_COLOR, size: 0.02 },
+      paddle_grip_bottom: { color: PADDLE_COLOR, size: 0.02 }
     };
   let joints3D = {}, lines = [], boneMeshes = [], visibilityState = {};
   const mannequinSegments = [];
@@ -794,6 +801,14 @@
         line: new THREE.Line(
           new THREE.BufferGeometry(),
           new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2, transparent: true, opacity: 0.5 })
+        )
+      },
+      // 球拍中心軌跡
+      paddle_center: {
+        color: PADDLE_COLOR, points: [],
+        line: new THREE.Line(
+          new THREE.BufferGeometry(),
+          new THREE.LineBasicMaterial({ color: PADDLE_HEX, linewidth: 2, transparent: true, opacity: 0.5 })
         )
       }
     };
@@ -1147,6 +1162,46 @@
       grid.material.transparent = true;
       scene.add(grid);
 
+      // === Pickleball Court 44ft × 20ft（球場線條） ===
+      const FT = 0.3048;
+      const courtLength = 44 * FT;
+      const courtWidth = 20 * FT;
+      const NVZ = 7 * FT;
+      
+      const lineColor = 0xffffff;
+      const lineMat = new THREE.LineBasicMaterial({ color: lineColor, linewidth: 2 });
+      const courtGroup = new THREE.Group();
+
+      const HALF_L = courtLength / 2;
+      const HALF_W = courtWidth / 2;
+      const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+      const addLine = (pts) => 
+        courtGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
+
+      // 邊界（Sidelines & Baselines）
+      addLine([
+        V3(-HALF_W, 0, -HALF_L),
+        V3(HALF_W, 0, -HALF_L),
+        V3(HALF_W, 0, HALF_L),
+        V3(-HALF_W, 0, HALF_L),
+        V3(-HALF_W, 0, -HALF_L)
+      ]);
+
+      // 網線（置中 z=0）
+      addLine([V3(-HALF_W, 0, 0), V3(HALF_W, 0, 0)]);
+
+      // 廚房線（距網 ±7ft）
+      addLine([V3(-HALF_W, 0, NVZ), V3(HALF_W, 0, NVZ)]);
+      addLine([V3(-HALF_W, 0, -NVZ), V3(HALF_W, 0, -NVZ)]);
+
+      // Centerlines（各半場：從廚房線到底線，不穿過廚房）
+      addLine([V3(0, 0, NVZ), V3(0, 0, HALF_L)]);
+      addLine([V3(0, 0, -NVZ), V3(0, 0, -HALF_L)]);
+
+      // 整個場地旋轉 90°
+      courtGroup.rotation.y = -Math.PI / 2;
+      scene.add(courtGroup);
+
       // Provide a subtle platform so the avatar feels visually grounded.
       const floor = new THREE.Mesh(
         new THREE.CircleGeometry(11, 64),
@@ -1184,20 +1239,23 @@
         
         const mat = baseSkeletonMaterial.clone();
         
-        // Color coding: Left=Cyan, Right=Orange, Center=White
+        // 统一使用青色
         const start = connection[0];
         const end = connection[1];
-        const isLeft = (start.includes('left') || end.includes('left')) && !(start.includes('right') || end.includes('right'));
-        const isRight = (start.includes('right') || end.includes('right')) && !(start.includes('left') || end.includes('left'));
+        const isPaddle = start.includes('paddle_') || end.includes('paddle_');
         
-        if (isLeft) mat.color.setHex(0x00FFFF);
-        else if (isRight) mat.color.setHex(0xFF4500);
-        else mat.color.setHex(0xFFFFFF);
+        // 球拍连线初始隐藏
+        if (isPaddle) {
+          mat.color.setHex(PADDLE_HEX);
+        } else {
+          mat.color.setHex(0x4ECDC4); // 统一青色
+        }
 
         mat.resolution.set(window.innerWidth, window.innerHeight);
         const line = new Line2(geo, mat);
         line.frustumCulled = false;
         line.computeLineDistances();
+        line.visible = !isPaddle; // 球拍连线默认隐藏
         lines.push(line);
         scene.add(line);
 
@@ -1211,7 +1269,25 @@
       });
 
       createMannequin();
-      
+
+      // === 球拍面/外框初始化 ===
+      let paddleFaceMesh = new THREE.Mesh(
+        new THREE.BufferGeometry(),
+        new THREE.MeshBasicMaterial({ color: PADDLE_HEX, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+      );
+      scene.add(paddleFaceMesh);
+      window.paddleFaceMesh = paddleFaceMesh;
+
+      let paddleOutlineMesh = null;
+      window.paddleOutlineMesh = paddleOutlineMesh;
+
+      let paddleOutline = new THREE.LineLoop(
+        new THREE.BufferGeometry(),
+        new THREE.LineBasicMaterial({ color: PADDLE_HEX, linewidth: 3, transparent: true, opacity: 0.8 })
+      );
+      scene.add(paddleOutline);
+      window.paddleOutline = paddleOutline;
+
       // 將軌跡線加入場景
       Object.values(trajectorySystem).forEach(t => scene.add(t.line));
 
@@ -1864,19 +1940,24 @@
       clearTrajectories();
       if (!showingFullTrajectory) return;
       
-      ['right_wrist', 'tennis_ball'].forEach(name => {
+      ['right_wrist', 'tennis_ball', 'paddle_center'].forEach(name => {
           const sys = trajectorySystem[name], arr = [];
           let hitPointCount = 0; // 计算击球点的数量
           
           trajectoryData.forEach((f, i) => {
-              const p = f[name];
+              let p;
+              if (name === 'paddle_center') {
+                  p = f.paddle && f.paddle.center;
+              } else {
+                  p = f[name];
+              }
               if (validPoint(p)) {
                   const v = new THREE.Vector3((p.x - globalCenter.x) * SCALE_FACTOR, (p.y - globalMinY) * SCALE_FACTOR, -(p.z - globalCenter.z) * SCALE_FACTOR);
                   arr.push(v);
                   
                   let c = sys.color;
-                  // 判断是否是问题范围内的 frame
-                  if (name === 'right_wrist' && window.problemFrameRange) {
+                  // 判断是否是问题范围内的 frame（对 right_wrist 和 paddle_center）
+                  if ((name === 'right_wrist' || name === 'paddle_center') && window.problemFrameRange) {
                       const [st, ed] = window.problemFrameRange;
                       if (i >= st && i <= ed) {
                           c = '#FF0000'; // 使用红色标记问题区域
@@ -1884,8 +1965,8 @@
                       }
                   }
                   
-                  // 判断是否是击球的 frame
-                  if (name === 'right_wrist' && window.hitFrames && window.hitFrames.includes(i)) {
+                  // 判断是否是击球的 frame（对 right_wrist 和 paddle_center）
+                  if ((name === 'right_wrist' || name === 'paddle_center') && window.hitFrames && window.hitFrames.includes(i)) {
                       c = '#00FFFF'; // 使用青色标记击球 frame
                       hitPointCount++;
                   }
@@ -1913,8 +1994,8 @@
           
           if (!arr.length) return;
           
-          if (name === 'right_wrist') {
-              // 为右手腕轨迹建立彩色线段
+          if (name === 'right_wrist' || name === 'paddle_center') {
+              // 为右手腕和球拍中心轨迹建立彩色线段
               const colors = [];
               const positions = [];
               
@@ -1928,12 +2009,21 @@
                       } else if (window.hitFrames && window.hitFrames.includes(i)) {
                           colors.push(0, 1, 1); // 青色 - 击球点
                       } else {
-                          colors.push(1, 1, 0); // 黄色 - 正常轨迹
+                          // 根据轨迹类型设定颜色
+                          if (name === 'right_wrist') {
+                              colors.push(1, 1, 0); // 黄色 - 手腕轨迹
+                          } else {
+                              colors.push(0.6, 0.1, 0.8); // 紫色 - 球拍轨迹
+                          }
                       }
                   } else if (window.hitFrames && window.hitFrames.includes(i)) {
                       colors.push(0, 1, 1); // 青色 - 击球点
                   } else {
-                      colors.push(1, 1, 0); // 黄色 - 正常轨迹
+                      if (name === 'right_wrist') {
+                          colors.push(1, 1, 0); // 黄色 - 手腕轨迹
+                      } else {
+                          colors.push(0.6, 0.1, 0.8); // 紫色 - 球拍轨迹
+                      }
                   }
               });
               
@@ -2009,7 +2099,9 @@
           if (typeof lines[i].computeLineDistances === 'function') {
             lines[i].computeLineDistances();
           }
-          lines[i].visible = true;
+          // 隐藏球拍连线，只显示身体连线
+          const isPaddleLine = s.includes('paddle_') || e.includes('paddle_');
+          lines[i].visible = !isPaddleLine;
 
           const bone = boneMeshes[i];
           if (bone) {
@@ -2026,6 +2118,238 @@
 
       // 移除人體模型更新
       // updateMannequin();
+
+      // === 球拍拍面 / 外框（需要四點） ===
+      // 使用 try-catch 避免該區段錯誤卡死整個updatePose
+      try {
+        const topP = frame.paddle && frame.paddle.top;
+        const rightP = frame.paddle && frame.paddle.right;
+        const bottomP = frame.paddle && frame.paddle.bottom;
+        const leftP = frame.paddle && frame.paddle.left;
+
+        const canDrawFace = validPoint(topP) && validPoint(rightP) && validPoint(bottomP) && validPoint(leftP) && visibilityState['paddle_center'];
+
+        if (canDrawFace) {
+          const t = new THREE.Vector3((topP.x - globalCenter.x) * SCALE_FACTOR, (topP.y - globalMinY) * SCALE_FACTOR, -(topP.z - globalCenter.z) * SCALE_FACTOR);
+          const r = new THREE.Vector3((rightP.x - globalCenter.x) * SCALE_FACTOR, (rightP.y - globalMinY) * SCALE_FACTOR, -(rightP.z - globalCenter.z) * SCALE_FACTOR);
+          const vecB = new THREE.Vector3((bottomP.x - globalCenter.x) * SCALE_FACTOR, (bottomP.y - globalMinY) * SCALE_FACTOR, -(bottomP.z - globalCenter.z) * SCALE_FACTOR);
+          const l = new THREE.Vector3((leftP.x - globalCenter.x) * SCALE_FACTOR, (leftP.y - globalMinY) * SCALE_FACTOR, -(leftP.z - globalCenter.z) * SCALE_FACTOR);
+
+          // 中心：優先用 paddle_center，否則四點平均
+          const pc = frame.paddle && frame.paddle.center;
+          let C;
+          if (validPoint(pc)) {
+            C = new THREE.Vector3(
+              (pc.x - globalCenter.x) * SCALE_FACTOR,
+              (pc.y - globalMinY) * SCALE_FACTOR,
+              -(pc.z - globalCenter.z) * SCALE_FACTOR
+            );
+          } else {
+            C = new THREE.Vector3().add(t).add(r).add(vecB).add(l).multiplyScalar(0.25);
+          }
+
+          // 建立局部座標：x̂ 沿 left→right，ŷ 沿 bottom→top，ẑ 為法向
+          let xAxis = new THREE.Vector3().subVectors(r, l);
+          let yAxis = new THREE.Vector3().subVectors(t, vecB);
+          
+          // 避免 NaN
+          if (xAxis.lengthSq() < 1e-9) xAxis.set(1, 0, 0); 
+          else xAxis.normalize();
+          
+          // 若 yAxis 與 xAxis 平行或長度為0，重新計算
+          const dot = yAxis.dot(xAxis);
+          yAxis.sub(xAxis.clone().multiplyScalar(dot));
+          
+          if (yAxis.lengthSq() < 1e-8) {
+             // 嘗試用 t-C
+             yAxis = new THREE.Vector3().subVectors(t, C).normalize();
+             yAxis.sub(xAxis.clone().multiplyScalar(yAxis.dot(xAxis)));
+          }
+           
+          if (yAxis.lengthSq() < 1e-9) yAxis.set(0, 1, 0);
+          else yAxis.normalize();
+
+          const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+          // 確保正交
+          yAxis.copy(new THREE.Vector3().crossVectors(zAxis, xAxis)).normalize();
+
+          // === 1) 用 CatmullRomCurve3 做「穿過四點」的閉合外框 ===
+          const TENSION = 0.6;
+          const SEG = 128;
+          const curve = new THREE.CatmullRomCurve3([t, r, vecB, l], true, 'catmullrom', TENSION);
+          const outlinePts = curve.getPoints(SEG);
+
+          // === 2) 外框加粗：用 TubeGeometry ===
+          const OUTLINE_RADIUS = 0.012;
+          const tubeGeom = new THREE.TubeGeometry(curve, SEG, OUTLINE_RADIUS, 8, true);
+          if (!window.paddleOutlineMesh) {
+            window.paddleOutlineMesh = new THREE.Mesh(
+              tubeGeom,
+              new THREE.MeshBasicMaterial({ color: PADDLE_HEX, transparent: true, opacity: 1.0, depthWrite: false })
+            );
+            window.paddleOutlineMesh.renderOrder = 1;
+            scene.add(window.paddleOutlineMesh);
+          } else {
+            window.paddleOutlineMesh.geometry.dispose();
+            window.paddleOutlineMesh.geometry = tubeGeom;
+            window.paddleOutlineMesh.visible = true;
+          }
+          // 隱藏舊的 LineLoop
+          if (window.paddleOutline) window.paddleOutline.visible = false;
+
+          // === 3) 生成「貼外框」的拍面：把 3D 邊界投影到 (x̂,ŷ) → 做 Shape → 貼回原平面 ===
+          const to2 = (v) => new THREE.Vector2(
+            v.clone().sub(C).dot(xAxis),
+            v.clone().sub(C).dot(yAxis)
+          );
+          const shape = new THREE.Shape();
+          outlinePts.forEach((p, i) => {
+            const q = to2(p);
+            if (isNaN(q.x) || isNaN(q.y)) return; // 防呆
+            if (i === 0) shape.moveTo(q.x, q.y);
+            else shape.lineTo(q.x, q.y);
+          });
+          shape.closePath();
+
+          const faceGeom = new THREE.ShapeGeometry(shape, SEG);
+          const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+          basis.setPosition(C);
+          faceGeom.applyMatrix4(basis);
+
+          window.paddleFaceMesh.geometry.dispose();
+          window.paddleFaceMesh.geometry = faceGeom;
+          window.paddleFaceMesh.material.transparent = true;
+          window.paddleFaceMesh.material.opacity = 0.4;
+          window.paddleFaceMesh.material.depthWrite = false;
+          window.paddleFaceMesh.renderOrder = 0;
+          window.paddleFaceMesh.visible = true;
+        } else {
+          // Hide Face
+          if (window.paddleFaceMesh) window.paddleFaceMesh.visible = false;
+          // Hide old LineLoop
+          if (window.paddleOutline) window.paddleOutline.visible = false;
+          // Hide new Tube
+          if (window.paddleOutlineMesh) window.paddleOutlineMesh.visible = false;
+        }
+      } catch (err) {
+        console.error("Error drawing paddle face:", err);
+        if (window.paddleFaceMesh) window.paddleFaceMesh.visible = false;
+        if (window.paddleOutlineMesh) window.paddleOutlineMesh.visible = false;
+        if (window.paddleOutline) window.paddleOutline.visible = false;
+      }
+
+      // === 握把繪製：用 grip_top ↔ grip_bottom 畫主幹，再用 bottom ↔ grip_top 畫連接段 ===
+      try {
+        const gripTopP = frame.paddle && frame.paddle.grip_top;
+        const gripBottomP = frame.paddle && frame.paddle.grip_bottom;
+        const bottomP = frame.paddle && frame.paddle.bottom; 
+        
+        // 如果grip点为null，尝试用bottom点和wrist点估算握把位置
+        const canDrawHandle = visibilityState['paddle_center'] && bottomP && validPoint(bottomP);
+
+        if (canDrawHandle) {
+          let gt, gb;
+          
+          if (validPoint(gripTopP) && validPoint(gripBottomP)) {
+            // 有grip数据，直接使用
+            gt = new THREE.Vector3(
+              (gripTopP.x - globalCenter.x) * SCALE_FACTOR,
+              (gripTopP.y - globalMinY) * SCALE_FACTOR,
+              -(gripTopP.z - globalCenter.z) * SCALE_FACTOR
+            );
+            gb = new THREE.Vector3(
+              (gripBottomP.x - globalCenter.x) * SCALE_FACTOR,
+              (gripBottomP.y - globalMinY) * SCALE_FACTOR,
+              -(gripBottomP.z - globalCenter.z) * SCALE_FACTOR
+            );
+          } else {
+            // grip数据缺失，用bottom点和right_wrist估算
+            const wristP = frame.right_wrist;
+            const vecB = new THREE.Vector3(
+              (bottomP.x - globalCenter.x) * SCALE_FACTOR,
+              (bottomP.y - globalMinY) * SCALE_FACTOR,
+              -(bottomP.z - globalCenter.z) * SCALE_FACTOR
+            );
+            
+            if (validPoint(wristP)) {
+              const wrist = new THREE.Vector3(
+                (wristP.x - globalCenter.x) * SCALE_FACTOR,
+                (wristP.y - globalMinY) * SCALE_FACTOR,
+                -(wristP.z - globalCenter.z) * SCALE_FACTOR
+              );
+              // 估算grip_top为bottom和wrist的中点偏向bottom 30%
+              gt = new THREE.Vector3().lerpVectors(vecB, wrist, 0.3);
+              // 估算grip_bottom为wrist点
+              gb = wrist.clone();
+            } else {
+              // 连wrist都没有，只画从bottom延伸的短握把
+              const handleLength = 0.15; // 握把长度
+              gt = vecB.clone();
+              gb = new THREE.Vector3(
+                vecB.x + handleLength * 0.5,
+                vecB.y + handleLength * 0.866, // 向下延伸
+                vecB.z
+              );
+            }
+          }
+
+          // 防呆：如果 gt 和 gb 非常接近，避免 TubeGeometry 錯誤
+          if (gt.distanceToSquared(gb) < 1e-9) {
+             gb.y -= 0.01; 
+          }
+
+          const HANDLE_RADIUS = 0.014; // 握把粗細
+          const PADDLE_HEX = 0x9D4EDD;
+
+          // (1) 主幹：grip_top -> grip_bottom
+          const handleMainCurve = new THREE.CatmullRomCurve3([gt, gb], false);
+          const handleMainGeom = new THREE.TubeGeometry(handleMainCurve, 1, HANDLE_RADIUS, 8, false);
+
+          if (!window.paddleHandleMesh) {
+            window.paddleHandleMesh = new THREE.Mesh(
+              handleMainGeom,
+              new THREE.MeshBasicMaterial({ color: PADDLE_HEX, transparent: true, opacity: 1.0, depthWrite: false })
+            );
+            window.paddleHandleMesh.renderOrder = 1;
+            scene.add(window.paddleHandleMesh);
+          } else {
+            window.paddleHandleMesh.geometry.dispose();
+            window.paddleHandleMesh.geometry = handleMainGeom;
+            window.paddleHandleMesh.visible = true;
+          }
+
+          // (2) 連接段：bottom -> grip_top（讓握把接到拍面）
+          const bottomVec = new THREE.Vector3(
+            (bottomP.x - globalCenter.x) * SCALE_FACTOR,
+            (bottomP.y - globalMinY) * SCALE_FACTOR,
+            -(bottomP.z - globalCenter.z) * SCALE_FACTOR
+          );
+
+          const connectCurve = new THREE.CatmullRomCurve3([bottomVec, gt], false);
+          const connectGeom = new THREE.TubeGeometry(connectCurve, 1, HANDLE_RADIUS * 0.95, 8, false);
+
+          if (!window.paddleNeckMesh) {
+            window.paddleNeckMesh = new THREE.Mesh(
+              connectGeom,
+              new THREE.MeshBasicMaterial({ color: PADDLE_HEX, transparent: true, opacity: 1.0, depthWrite: false })
+            );
+            window.paddleNeckMesh.renderOrder = 1;
+            scene.add(window.paddleNeckMesh);
+          } else {
+            window.paddleNeckMesh.geometry.dispose();
+            window.paddleNeckMesh.geometry = connectGeom;
+            window.paddleNeckMesh.visible = true;
+          }
+
+        } else {
+          if (window.paddleHandleMesh) window.paddleHandleMesh.visible = false;
+          if (window.paddleNeckMesh) window.paddleNeckMesh.visible = false;
+        }
+      } catch (err) {
+        console.error("Error drawing paddle handle:", err);
+        if (window.paddleHandleMesh) window.paddleHandleMesh.visible = false;
+        if (window.paddleNeckMesh) window.paddleNeckMesh.visible = false;
+      }
     }
     
     // 更新目前影格數據與顯示資訊

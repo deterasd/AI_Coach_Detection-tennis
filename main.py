@@ -59,9 +59,9 @@ async def lifespan(app: FastAPI):
     global yolo_pose_model, yolo_tennis_ball_model, paddle_model
     print("正在載入 YOLO 模型...")
     try:
-        yolo_pose_model = YOLO('model/yolov8n-pose.pt')
+        yolo_pose_model = YOLO('model/yolo11l-pose.pt')  # 身體模型
         yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
-        paddle_model = YOLO('model/tennispaddle.pt')
+        paddle_model = YOLO('model/yolov11x.pt')  # 球拍7點模型
         print("YOLO 模型載入完成!")
     except Exception as e:
         print(f"模型載入失敗: {str(e)}")

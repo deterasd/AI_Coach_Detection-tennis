@@ -277,40 +277,59 @@ def load_yolo_models():
     """集中載入 YOLO 模型並設定 GPU/CPU"""
     print("\n🤖 正在載入 AI 模型 (此步驟僅執行一次)...")
     
-    # 載入YOLO模型
-    print("📦 載入 YOLO 模型檔案...")
-    models = {
-        'pose': YOLO('model/yolov8n-pose.pt'),
-        'ball': YOLO('model/tennisball_OD_v1.pt'),
-        'paddle': YOLO('model/tennispaddle.pt')
-    }
-    
-    # GPU加速（安全檢查）
+    # ⚡ 先檢查 GPU（在載入模型之前）
     print("🔍 檢查 GPU 平臺可用性...")
     try:
         import torch
+        
         device = 'cpu'
+        
+        # 檢查 CUDA 可用性（不需要強制初始化）
         if torch.cuda.is_available():
-            total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            print(f"   發現 GPU: {torch.cuda.get_device_name(0)} ({total_memory:.2f} GB)")
+            # 檢查設備數量
+            device_count = torch.cuda.device_count()
+            print(f"   ✅ 發現 {device_count} 個 CUDA 設備")
             
-            if total_memory >= 3.0:  # 降低一點門檻到 3GB
-                device = 'cuda'
-                torch.cuda.empty_cache()
-                print("⚡ 已啟用 CUDA 加速模式")
-            else:
-                print("⚠️ GPU 記憶體低於 3GB，為穩定性切換至 CPU 模式")
+            if device_count > 0:
+                device_name = torch.cuda.get_device_name(0)
+                total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                print(f"   GPU 名稱: {device_name}")
+                print(f"   GPU 記憶體: {total_memory:.2f} GB")
+                
+                if total_memory >= 2.0:  # 門檻設為 2GB
+                    device = 'cuda:0'
+                    # 啟用 cuDNN benchmark 優化
+                    torch.backends.cudnn.benchmark = True
+                    torch.cuda.empty_cache()
+                    print(f"⚡ 已啟用 CUDA 加速模式: {device}")
+                else:
+                    print(f"⚠️ GPU 記憶體不足 ({total_memory:.2f} GB < 2GB)，切換至 CPU 模式")
         else:
-            print("💻 未發現 NVIDIA GPU，使用 CPU 運算模式")
-            
-        # 套用設備設定
-        for m in models.values():
-            m.to(device)
+            print("💻 未發現 NVIDIA GPU 或 CUDA 不可用，使用 CPU 運算模式")
             
     except Exception as e:
-        print(f"⚠️ 設備初始化失敗: {e}，回退至 CPU")
-        for m in models.values():
-            m.to('cpu')
+        print(f"⚠️ GPU 檢測失敗: {e}，使用 CPU 模式")
+        import traceback
+        traceback.print_exc()
+        device = 'cpu'
+    
+    # 載入 YOLO 模型並立即移至正確設備
+    print(f"📦 載入 YOLO 模型檔案到 {device}...")
+    try:
+        models = {
+            'pose': YOLO('model/yolo11l-pose.pt'),      # 升級的身體姿態模型
+            'ball': YOLO('model/tennisball_OD_v1.pt'),
+            'paddle': YOLO('model/yolov11x.pt')         # 7點球拍模型
+        }
+        
+        # 立即將所有模型移至目標設備
+        for model_name, m in models.items():
+            m.to(device)
+            print(f"   ✅ {model_name} 模型已載入到 {device}")
+            
+    except Exception as e:
+        print(f"❌ 模型載入失敗: {e}")
+        raise
             
     return models
 

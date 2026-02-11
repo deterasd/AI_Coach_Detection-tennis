@@ -46,6 +46,182 @@ def fix_trajectory(data):
     return data
 
 
+# ✅ 以下為B版本的球拍幾何校正函數
+def ensure_paddle_structure(data):
+    """補充缺失的球拍結構點"""
+    print("[INFO] 正在檢查並重建缺失的球拍結構...")
+    for frame in data:
+        if "paddle" not in frame: continue
+        p = frame["paddle"]
+        
+        # 如果 grip_bottom 缺失，嘗試從 center 和 grip_top 推算
+        if p.get("grip_bottom", {}).get("x") is None:
+            gt = p.get("grip_top", {})
+            c = p.get("center", {})
+            
+            if gt.get("x") is not None and c.get("x") is not None:
+                vec = np.array([gt["x"]-c["x"], gt["y"]-c["y"], gt["z"]-c["z"]])
+                extension_ratio = 0.8 
+                gb = np.array([gt["x"], gt["y"], gt["z"]]) + vec * extension_ratio
+                p["grip_bottom"] = {"x": float(gb[0]), "y": float(gb[1]), "z": float(gb[2])}
+
+    return data
+
+
+def fix_paddle_relative_to_wrist(data):
+    """使用手腕軌跡帶動球拍軌跡"""
+    paddle_parts = ["top", "bottom", "right", "left", "center", "grip_top", "grip_bottom"]
+    wrist_key = "right_wrist" 
+    
+    # 先確保手腕有值 (對手腕做簡單線性插值)
+    wrist_valid = [i for i, f in enumerate(data) if f.get(wrist_key, {}).get("x") is not None]
+
+    if len(wrist_valid) > 1:
+        for axis in ["x", "y", "z"]:
+            vals = [data[i][wrist_key][axis] for i in wrist_valid]
+            f_interp = interp1d(wrist_valid, vals, kind="linear", fill_value="extrapolate")
+            for i in range(len(data)):
+                if data[i].get(wrist_key, {}).get("x") is None:
+                    if wrist_key not in data[i]: data[i][wrist_key] = {}
+                    data[i][wrist_key][axis] = float(f_interp(i))
+
+    # 開始修補球拍
+    for part in paddle_parts:
+        valid_indices = []
+        offsets = {"x": [], "y": [], "z": []}
+        
+        for i, frame in enumerate(data):
+            p_pt = frame.get("paddle", {}).get(part, {})
+            w_pt = frame.get(wrist_key, {})
+            
+            if p_pt.get("x") is not None and w_pt.get("x") is not None:
+                valid_indices.append(i)
+                offsets["x"].append(p_pt["x"] - w_pt["x"])
+                offsets["y"].append(p_pt["y"] - w_pt["y"])
+                offsets["z"].append(p_pt["z"] - w_pt["z"])
+        
+        if len(valid_indices) < 2:
+            continue
+            
+        interp_funcs = {}
+        for axis in ["x", "y", "z"]:
+            interp_funcs[axis] = interp1d(valid_indices, offsets[axis], kind="cubic", fill_value="extrapolate")
+            
+        start_f = valid_indices[0]
+        end_f = valid_indices[-1]
+        
+        for i in range(start_f, end_f + 1):
+            if data[i]["paddle"][part].get("x") is None:
+                w_pt = data[i].get(wrist_key, {})
+                if w_pt.get("x") is not None:
+                    data[i]["paddle"][part]["x"] = w_pt["x"] + float(interp_funcs["x"](i))
+                    data[i]["paddle"][part]["y"] = w_pt["y"] + float(interp_funcs["y"](i))
+                    data[i]["paddle"][part]["z"] = w_pt["z"] + float(interp_funcs["z"](i))
+    
+    return data
+
+
+def enforce_rigid_paddle_geometry(data):
+    """強制剛體幾何校正 - Snap to Wrist + Rigid Body"""
+    print("[INFO] 正在執行網球拍幾何校正 (Snap to Wrist + Rigid Body)...")
+
+    # 網球拍標準尺寸 (單位: mm)
+    HANDLE_LENGTH = 190.0
+    NECK_LENGTH = 70.0
+    FACE_LENGTH = 340.0
+    FACE_WIDTH_HALF = 135.0
+    
+    DIST_TO_GRIP_TOP = HANDLE_LENGTH
+    DIST_TO_BOTTOM = HANDLE_LENGTH + NECK_LENGTH
+    DIST_TO_CENTER = HANDLE_LENGTH + NECK_LENGTH + (FACE_LENGTH / 2.0)
+    DIST_TO_TOP = HANDLE_LENGTH + NECK_LENGTH + FACE_LENGTH
+
+    wrist_key = "right_wrist"
+    prev_u_right = None
+
+    for frame in data:
+        if "paddle" not in frame: continue
+        p = frame["paddle"]
+        w = frame.get(wrist_key, {})
+        
+        # 1. 決定錨點 -> 強制設為手腕
+        if w.get("x") is not None and not math.isnan(w["x"]):
+            anchor_pos = np.array([w["x"], w["y"], w["z"]])
+        else:
+            if p.get("grip_bottom", {}).get("x") is not None:
+                anchor_pos = np.array([p["grip_bottom"]["x"], p["grip_bottom"]["y"], p["grip_bottom"]["z"]])
+            else:
+                continue
+        
+        # 2. 決定軸向
+        g_top = p.get("grip_top", {})
+        p_top = p.get("top", {})
+        
+        valid_direction = False
+        u_axis = np.array([0.0, 1.0, 0.0])
+        
+        if p_top.get("x") is not None and g_top.get("x") is not None:
+             v1 = np.array([g_top["x"], g_top["y"], g_top["z"]])
+             v2 = np.array([p_top["x"], p_top["y"], p_top["z"]])
+             axis_vec = v2 - v1
+             if np.linalg.norm(axis_vec) > 1.0:
+                 u_axis = axis_vec / np.linalg.norm(axis_vec)
+                 valid_direction = True
+        
+        if not valid_direction and p_top.get("x") is not None:
+             v_top = np.array([p_top["x"], p_top["y"], p_top["z"]])
+             axis_vec = v_top - anchor_pos
+             if np.linalg.norm(axis_vec) > 1.0:
+                 u_axis = axis_vec / np.linalg.norm(axis_vec)
+                 valid_direction = True
+
+        if not valid_direction: continue
+
+        # 3. 決定拍面朝向
+        u_right = None
+        p_right = p.get("right", {})
+        
+        if p_right.get("x") is not None and not math.isnan(p_right["x"]):
+            v_right = np.array([p_right["x"], p_right["y"], p_right["z"]])
+            vec_to_right = v_right - anchor_pos
+            vec_perp = vec_to_right - np.dot(vec_to_right, u_axis) * u_axis
+            
+            if np.linalg.norm(vec_perp) > 20:
+                u_right = vec_perp / np.linalg.norm(vec_perp)
+                prev_u_right = u_right
+        
+        if u_right is None and prev_u_right is not None:
+            u_right = prev_u_right - np.dot(prev_u_right, u_axis) * u_axis
+            if np.linalg.norm(u_right) > 0.1:
+                u_right = u_right / np.linalg.norm(u_right)
+            else:
+                u_right = None
+
+        # 4. 重建所有點
+        p["grip_bottom"] = {"x": float(anchor_pos[0]), "y": float(anchor_pos[1]), "z": float(anchor_pos[2])}
+        
+        new_g_top = anchor_pos + u_axis * DIST_TO_GRIP_TOP
+        p["grip_top"] = {"x": float(new_g_top[0]), "y": float(new_g_top[1]), "z": float(new_g_top[2])}
+        
+        new_bottom = anchor_pos + u_axis * DIST_TO_BOTTOM
+        p["bottom"] = {"x": float(new_bottom[0]), "y": float(new_bottom[1]), "z": float(new_bottom[2])}
+        
+        new_center = anchor_pos + u_axis * DIST_TO_CENTER
+        p["center"] = {"x": float(new_center[0]), "y": float(new_center[1]), "z": float(new_center[2])}
+        
+        new_top = anchor_pos + u_axis * DIST_TO_TOP
+        p["top"] = {"x": float(new_top[0]), "y": float(new_top[1]), "z": float(new_top[2])}
+        
+        if u_right is not None:
+            new_right = new_center + u_right * FACE_WIDTH_HALF
+            new_left  = new_center - u_right * FACE_WIDTH_HALF
+            
+            p["right"] = {"x": float(new_right[0]), "y": float(new_right[1]), "z": float(new_right[2])}
+            p["left"]  = {"x": float(new_left[0]),  "y": float(new_left[1]),  "z": float(new_left[2])}
+        
+    return data
+
+
 def process_trajectories(left_path, leftfront_path, P1, P2):
     """
     使用兩台相機的 2D 軌跡 (left, leftfront) 計算所有 keypoints 的 3D 軌跡。
@@ -57,7 +233,8 @@ def process_trajectories(left_path, leftfront_path, P1, P2):
         "left_wrist", "right_wrist", "left_hip", "right_hip", "left_knee",
         "right_knee", "left_ankle", "right_ankle", "tennis_ball"
     ]
-    paddle_points = ["top", "right", "bottom", "left", "center"]
+    # 更新為7個球拍點（來自B版本）
+    paddle_points = ["top", "bottom", "right", "left", "grip_top", "grip_bottom", "center"]
 
     with open(left_path) as f1, open(leftfront_path) as f2:
         left_data = json.load(f1)
@@ -124,10 +301,20 @@ def process_trajectories(left_path, leftfront_path, P1, P2):
 
         points_3d.append(frame_data)
 
-    # --- (三) 輸出結果 ---
-    # ✅ ④ 改成更安全的 replace 命名法
-    output_path = leftfront_path.replace("(2D_trajectory_smoothed).json", "(3D_trajectory).json")
+    # --- (三) 輸出結果與修正流水線（來自B版本）---
     fixed_data = fix_trajectory(points_3d)
+    
+    # 步驟 1: 補結構 (無中生有 Grip_Bottom)
+    fixed_data = ensure_paddle_structure(fixed_data)
+    
+    # 步驟 2: 補動作 (手腕連動)
+    fixed_data = fix_paddle_relative_to_wrist(fixed_data)
+    
+    # 步驟 3: 強制剛體幾何校正 (鎖定大小、形狀)
+    fixed_data = enforce_rigid_paddle_geometry(fixed_data)
+    
+    # 輸出
+    output_path = leftfront_path.replace("(2D_trajectory_smoothed).json", "(3D_trajectory).json")
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(fixed_data, f, indent=2, ensure_ascii=False, cls=NanToNullEncoder)

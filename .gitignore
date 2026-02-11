@@ -72,6 +72,13 @@ video_segments_output/
 tennis_analysis_sessions/
 
 
+# ============================================
+# 本地備份資料夾（不上傳到 GitHub）
+# ============================================
+_local_backup/
+_backup/
+.backup/
+
 # Force include specific folders requested by user
 # !trajectory/  # Removed - now ignored
 # !trajectory/**  # Removed - now ignored

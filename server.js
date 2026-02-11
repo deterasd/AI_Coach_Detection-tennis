@@ -33,12 +33,21 @@ app.get('/getFolders', (req, res) => {
             // console.error("讀取資料夾失敗：", err);
             return res.status(500).json({ error: '無法讀取資料夾' });
         }
-        // 只保留目錄（資料夾）
-        const folders = files.filter(file => {
-            const filePath = path.join(assetsDir, file);
-            return fs.statSync(filePath).isDirectory();
-        });
-        res.json(folders);
+        // 只保留目錄（資料夾），並取得修改時間
+        const folderInfos = files
+            .filter(file => {
+                const filePath = path.join(assetsDir, file);
+                return fs.statSync(filePath).isDirectory();
+            })
+            .map(file => {
+                const filePath = path.join(assetsDir, file);
+                const stats = fs.statSync(filePath);
+                return {
+                    name: file,
+                    mtime: stats.mtime.getTime() // 毫秒為單位的時間戳
+                };
+            });
+        res.json(folderInfos);
     });
 });
 
