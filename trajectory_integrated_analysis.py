@@ -85,15 +85,21 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
     #     print(f"重心分析失敗: {e}")
     #     result["analyses"]["center_of_mass_advice"] = "重心分析失敗"
     
+    # 優先改善項目候選清單
+    priority_candidates = []
+
     # 2. 拉拍分析
     print("執行拉拍分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
-        backswing_suggestion, backswing_confidence = analyze_backswing(
+        # 修正：接收三個回傳值 (建議, 信心度, 優先改善項目)
+        backswing_suggestion, backswing_confidence, bs_priority = analyze_backswing(
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["backswing_advice"] = backswing_suggestion
         result["statistics"]["backswing_confidence"] = backswing_confidence
+        if bs_priority:
+            priority_candidates.append(bs_priority)
         print(f"拉拍分析完成: 信心度 {backswing_confidence:.2f}")
     except Exception as e:
         print(f"拉拍分析失敗: {e}")
@@ -103,11 +109,13 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
     print("執行前段出拍分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
-        forwardswing_suggestion, forwardswing_confidence = analyze_forwardswing(
+        forwardswing_suggestion, forwardswing_confidence, fs_priority = analyze_forwardswing(
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["forwardswing_advice"] = forwardswing_suggestion
         result["statistics"]["forwardswing_confidence"] = forwardswing_confidence
+        if fs_priority:
+            priority_candidates.append(fs_priority)
         print(f"前段出拍分析完成: 信心度 {forwardswing_confidence:.2f}")
     except Exception as e:
         print(f"前段出拍分析失敗: {e}")
@@ -117,11 +125,13 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
     print("執行擊球出拍轉身分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
-        hitballswing_suggestion, hitballswing_confidence = analyze_hitballswing(
+        hitballswing_suggestion, hitballswing_confidence, hs_priority = analyze_hitballswing(
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["hitballswing_advice"] = hitballswing_suggestion
         result["statistics"]["hitballswing_confidence"] = hitballswing_confidence
+        if hs_priority:
+            priority_candidates.append(hs_priority)
         print(f"擊球出拍轉身分析完成: 信心度 {hitballswing_confidence:.2f}")
     except Exception as e:
         print(f"擊球出拍轉身分析失敗: {e}")
@@ -131,11 +141,13 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
     print("執行收拍分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
-        followthrough_suggestion, followthrough_confidence = analyze_followthrough(
+        followthrough_suggestion, followthrough_confidence, ft_priority = analyze_followthrough(
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["followthrough_advice"] = followthrough_suggestion
         result["statistics"]["followthrough_confidence"] = followthrough_confidence
+        if ft_priority:
+            priority_candidates.append(ft_priority)
         print(f"收拍分析完成: 信心度 {followthrough_confidence:.2f}")
     except Exception as e:
         print(f"收拍分析失敗: {e}")
@@ -163,15 +175,23 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
     print("執行頭部穩定度分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
-        head_stability_suggestion, head_stability_confidence = analyze_head_stability(
+        head_stability_suggestion, head_stability_confidence, hd_priority = analyze_head_stability(
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["head_stability_advice"] = head_stability_suggestion
         result["statistics"]["head_stability_confidence"] = head_stability_confidence
+        if hd_priority:
+            priority_candidates.append(hd_priority)
         print(f"頭部穩定度分析完成: 信心度 {head_stability_confidence:.2f}")
     except Exception as e:
         print(f"頭部穩定度分析失敗: {e}")
         result["analyses"]["head_stability_advice"] = "頭部穩定度分析失敗"
+
+    # 設定優先改善項目 (取第一個最嚴重的)
+    if priority_candidates:
+        result["priority_improvement"] = priority_candidates[0]
+    else:
+        result["priority_improvement"] = "動作協調良好，請繼續保持！"
 
     # 合併所有建議
     result["combined_advice"] = combine_all_advice(result["analyses"])

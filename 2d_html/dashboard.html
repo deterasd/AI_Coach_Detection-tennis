@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網球動作分析報告</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Importing colors from v3 and origin */
+            --bg-color: #0b0b0c;
+            --card-bg: #111214;
+            --ring-color: #222428;
+            --accent-color: #ffaa00;
+            /* Keeping origin's accent for high contrast, or use #10b981 (v3 High) */
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --font-family: 'PingFang TC', 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* App Container */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            gap: 15px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            margin-bottom: 5px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* File Input Wrapper for Button Styling */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            height: 100%;
+            width: 100%;
+            z-index: 10;
+            /* Ensure it stays on top */
+        }
+
+        .file-input-wrapper .btn {
+            pointer-events: none;
+            /* Let clicks pass through visual button if needed, though z-index handles it */
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn {
+            background: #1f2937;
+            border: 1px solid var(--ring-color);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #374151;
+        }
+
+        .btn i {
+            font-size: 1rem;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-main {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 0.8fr;
+            grid-template-rows: auto 1fr;
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Top Summary Card (New) */
+        .top-summary-card {
+            background: var(--card-bg);
+            border: 1px solid var(--ring-color);
+            border-radius: 20px;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            grid-column: 1 / -1;
+        }
+
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* 1. Score */
+        .score-block {
+            flex-direction: row;
+            align-items: baseline;
+            gap: 5px;
+            color: var(--accent-color);
+            min-width: 120px;
+        }
+
+        .score-val {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* 2. Rating */
+        .rating-block {
+            border-left: 1px solid #333;
+            padding-left: 20px;
+            min-width: 150px;
+        }
+
+        .rating-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .grade {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent-color);
+        }
+
+        .rating-desc {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* 3. Advice */
+        .advice-block {
+            flex: 1;
+            border-left: 1px solid #333;
+            padding-left: 20px;
+        }
+
+        .advice-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .advice-content {
+            font-size: 1.05rem;
+            color: #e5e7eb;
+            line-height: 1.6;
+            /* Show full GPT conversational feedback */
+            overflow: auto;
+            max-height: 100px;
+            padding-right: 5px;
+        }
+
+        /* Video Column */
+        .video-container {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #333;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .upload-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+            /* Let clicks pass through to video/inputs if needed */
+        }
+
+        /* Custom Video Controls Overlay */
+        .video-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            background: rgba(17, 18, 20, 0.85);
+            /* Semi-transparent dark */
+            border: 1px solid var(--ring-color);
+            border-radius: 12px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 20;
+            opacity: 0;
+            /* Hide by default, show on hover or when playing? */
+            transition: opacity 0.3s;
+        }
+
+        .video-container:hover .video-controls {
+            opacity: 1;
+        }
+
+        .progress-container {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-color);
+            border-radius: 3px;
+        }
+
+        /* Metrics Column */
+        .metrics-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            /* Reduced from 15px */
+            justify-content: flex-start;
+            /* Changed from space-between */
+            overflow-y: auto;
+            /* Enable vertical scrolling */
+            max-height: calc(100vh - 200px);
+            /* Limit height to viewport minus header */
+            padding-right: 5px;
+            /* Space for scrollbar */
+        }
+
+        /* Custom scrollbar styling */
+        .metrics-column::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .metrics-column::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .metrics-column::-webkit-scrollbar-thumb {
+            background: var(--accent-yellow);
+            border-radius: 3px;
+        }
+
+        .metrics-column::-webkit-scrollbar-thumb:hover {
+            background: #fbbf24;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--ring-color);
+            border-radius: 16px;
+            padding: 10px 16px;
+            /* Reduced from 15px 20px */
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            /* Reduced from 15px */
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: fit-content;
+            /* Allow cards to shrink */
+        }
+
+        /* Bar indicator for confidence/score */
+        .metric-bar-bg {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            width: 100%;
+            background: #1f2937;
+        }
+
+        .metric-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-green);
+            transition: width 1s ease-out;
+        }
+
+        .metric-icon-box {
+            width: 42px;
+            /* Reduced from 50px */
+            height: 42px;
+            /* Reduced from 50px */
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            /* Slightly smaller radius */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .metric-icon-box i {
+            color: var(--accent-color);
+            font-size: 1.3rem;
+            /* Reduced from 1.5rem */
+        }
+
+        .metric-info {
+            flex: 1;
+        }
+
+        .metric-title {
+            font-size: 1rem;
+            /* Restored from 0.9rem */
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+
+        .metric-subtitle {
+            font-size: 0.7rem;
+            /* Reduced from 0.75rem */
+            color: var(--text-secondary);
+            margin-bottom: 3px;
+            /* Reduced from 5px */
+        }
+
+        .metric-value {
+            font-size: 1.3rem;
+            /* Keep slightly reduced for compact display */
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .metric-hint {
+            font-size: 0.7rem;
+            /* Reduced from 0.75rem */
+            color: var(--accent-yellow);
+            margin-top: 2px;
+            /* Reduced from 4px */
+            line-height: 1.2;
+            /* Reduced from 1.3 */
+            opacity: 0.85;
+            /* Slightly more transparent */
+            font-weight: 400;
+            /* Lighter weight */
+        }
+
+        .status-chip {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: #333;
+            color: #ccc;
+            margin-left: 8px;
+        }
+
+        /* Radar Column */
+        .radar-column {
+            background: var(--card-bg);
+            border: 1px solid var(--ring-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .radar-title {
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        .radar-chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 200px;
+        }
+
+
+
+        /* Responsive Media Queries */
+        @media (max-width: 1200px) {
+            .dashboard-main {
+                grid-template-columns: 1fr 1fr;
+                /* 2 Column Layout */
+                grid-template-rows: auto auto 1fr;
+            }
+
+            /* Video takes full width on top row */
+            .video-container {
+                grid-column: 1 / -1;
+                min-height: 400px;
+            }
+
+            /* Metrics and Radar share the row */
+            .metrics-column {
+                grid-column: 1;
+            }
+
+            .radar-column {
+                grid-column: 2;
+            }
+        }
+
+        @media (max-width: 900px) {
+
+            /* Improve top summary wrapping */
+            .top-summary-card {
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 15px;
+            }
+
+            .advice-block {
+                min-width: 100%;
+                border-left: none;
+                border-top: 1px solid #333;
+                padding-left: 0;
+                padding-top: 15px;
+                margin-top: 5px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 10px;
+                height: auto;
+                overflow: auto;
+                /* Enable scroll on mobile */
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .actions .btn,
+            .file-input-wrapper {
+                width: 100%;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+
+            .dashboard-main {
+                grid-template-columns: 1fr;
+                /* Single Column */
+                display: flex;
+                flex-direction: column;
+            }
+
+            .top-summary-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .score-block,
+            .rating-block {
+                width: 100%;
+                justify-content: center;
+                border: none;
+                padding: 0;
+            }
+
+            .rating-block {
+                border-top: 1px solid #333;
+                padding-top: 15px;
+            }
+
+            .video-container {
+                min-height: 250px;
+            }
+
+            .metrics-column {
+                gap: 10px;
+            }
+
+            .metric-card {
+                padding: 12px;
+            }
+        }
+
+        /* Update top summary card to allow wrapping generally */
+        .top-summary-card {
+            flex-wrap: wrap;
+        }
+
+        /* Inputs are handled by .file-input-wrapper opactiy */
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <!-- Top Navigation -->
+        <header>
+            <div class="logo">網球動作分析報告</div>
+            <div class="actions">
+                <button class="btn" id="btnDetailReport" onclick="goToDetail()">
+                    <i class="fas fa-file-alt"></i> 詳細報告
+                </button>
+
+                <div class="file-input-wrapper">
+                    <button class="btn"><i class="fas fa-file-upload"></i> 載入數據 / 開始分析 (.json)</button>
+                    <input type="file" id="jsonInput" accept=".json">
+                </div>
+
+                <div class="file-input-wrapper">
+                    <button class="btn"><i class="fas fa-video"></i> 載入影片</button>
+                    <input type="file" id="videoInput" accept="video/*">
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard-main">
+            <!-- Score & Advice -->
+            <!-- Score & Rating & Advice Section (New Layout) -->
+            <div class="top-summary-card">
+                <!-- 1. Score -->
+                <div class="summary-item score-block">
+                    <div class="score-val" id="overallScore">--</div>
+                    <div class="score-label">分</div>
+                </div>
+
+                <!-- 2. Rating -->
+                <div class="summary-item rating-block">
+                    <div class="rating-title">綜合評級 <span class="grade" id="overallGrade">-</span> 級</div>
+                    <div class="rating-desc" id="overallDesc">---</div>
+                </div>
+
+                <!-- 3. Advice (One Sentence) -->
+                <div class="summary-item advice-block">
+                    <div class="advice-label">整體評價與建議</div>
+                    <div class="advice-content" id="gptAdviceSimple">
+                        請載入數據以查看分析結果。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Section -->
+            <div class="video-container">
+                <video id="videoPlayer" playsinline></video>
+
+                <!-- Upload Placeholder -->
+                <div class="upload-overlay" id="uploadOverlay">
+                    <div style="color: #666; font-size: 0.9rem;">
+                        <i class="fas fa-play-circle" style="font-size: 3rem; margin-bottom: 10px;"></i><br>
+                        請載入影片
+                    </div>
+                </div>
+
+                <!-- Custom Video Controls -->
+                <div class="video-controls" id="videoControls">
+                    <button class="play-btn" id="playBtn"><i class="fas fa-play"></i></button>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="time-display">
+                        <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Column -->
+            <div class="metrics-column">
+                <!-- Card 1: Backswing -->
+                <div class="metric-card">
+                    <div class="metric-icon-box"><i class="fas fa-redo"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">拉拍準備 (Backswing)</div>
+                        <div class="metric-value"><span id="mBackswing">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tBackswing">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bBackswing"></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Forward Swing -->
+                <div class="metric-card">
+                    <div class="metric-icon-box"><i class="fas fa-arrow-right"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">出拍前段 (Forward Swing)</div>
+                        <div class="metric-value"><span id="mForwardSwing">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tForwardSwing">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bForwardSwing"></div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Hit Ball -->
+                <div class="metric-card">
+                    <div class="metric-icon-box"><i class="fas fa-sun"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">擊球瞬間 (Impact)</div>
+                        <div class="metric-value"><span id="mHitballSwing">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tHitballSwing">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bHitballSwing"></div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Follow Through -->
+                <div class="metric-card">
+                    <div class="metric-icon-box"><i class="fas fa-hand-holding"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">收拍 (Follow Through)</div>
+                        <div class="metric-value"><span id="mFollowThrough">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tFollowThrough">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bFollowThrough"></div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Head Stability -->
+                <div class="metric-card">
+                    <div class="metric-icon-box"><i class="fas fa-user-circle"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">頭部穩定 (Head)</div>
+                        <div class="metric-value"><span id="mHead">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tHead">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bHead"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Radar Column -->
+            <div class="radar-column">
+                <div class="radar-title">能力分析雷達</div>
+                <div class="radar-chart-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="modalWrap" class="modal-backdrop">
+        <div class="modal">
+            <header>
+                <div>
+                    <div class="ttl" id="mdTitle">動作細節</div>
+                    <div class="muted" id="mdSubtitle"></div>
+                </div>
+                <button id="mdClose" class="btn">關閉</button>
+            </header>
+            <div class="content">
+                <div class="kv">
+                    <div class="k">分數 / 等級</div>
+                    <div class="v" id="mdScoreBand">-</div>
+                    <div class="k">檢視部位</div>
+                    <div class="v" id="mdPart">-</div>
+                    <div class="k">檢視動作標的(代碼)</div>
+                    <div class="v" id="mdCode">-</div>
+                    <div class="k">影片比較重點（右手慣用）</div>
+                    <div class="v" id="mdCompare">-</div>
+                    <div class="k">動作完成度回饋</div>
+                    <div class="v" id="mdCategory">-</div>
+                    <div class="k">動作修正回饋</div>
+                    <div class="v" id="mdFix">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .modal {
+            width: min(760px, 92vw);
+            max-height: 86vh;
+            overflow: auto;
+            background: #111214;
+            border: 1px solid #333;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            color: #eee;
+        }
+
+        .modal header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            background: #111214;
+            z-index: 1;
+        }
+
+        .modal header .ttl {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .modal .muted {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .modal .content {
+            padding: 20px;
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 12px 20px;
+        }
+
+        .kv .k {
+            color: #888;
+            font-size: 0.9rem;
+            padding-top: 4px;
+        }
+
+        .kv .v {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: #ddd;
+        }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText">分析中，請稍候...</div>
+    </div>
+
+    <script>
+        // --- Static Data (FEEDBACKS from v3) ---
+        const FEEDBACKS = {
+            Head: {
+                part: "頭部",
+                code: "Head",
+                compare: "右耳點與右腰位置平行移動。擊球前至擊球出去後約 5 幀，右耳與右眼的距離與水平角度大致保持不變，且成功擊球。",
+                levelText: {
+                    High: "頭部穩定，眼睛全程盯住球，擊球品質穩定。",
+                    Medium: "擊球過程中頭部略有晃動，部分瞬間視線可能離開球。",
+                    Low: "擊球過程頭部明顯不穩定，容易在擊球瞬間看不到球。"
+                },
+                fixText: "建議揮拍過程中，眼睛盯好擊球點，並盡量維持頭部不轉動。"
+            },
+            Backswing: {
+                part: "軀幹 — 拉拍/側身",
+                code: "Backswing",
+                compare: "拉拍準備好時，需要完整側身，看見身體最大正面面積，肩腰四點連線呈對稱梯形。",
+                levelText: {
+                    High: "拉拍側身完整，準備空間充足。",
+                    Medium: "拉拍側身略不足，轉身角度稍小，擊球空間還可以再大一些。",
+                    Low: "拉拍側身明顯不足，幾乎正對球，容易變成只用手去揮拍。"
+                },
+                fixText: "建議擊球前拉拍準備時先轉動側身，讓肩膀與腰部一起往後轉。"
+            },
+            ForwardSwing: {
+                part: "軀幹 — 擊球前段出拍",
+                code: "Forward-swing",
+                compare: "第一動：右手腕往下放，球拍頭逐漸朝後方；第二動：右手腕與右手肘往右肩–腰線靠近。",
+                levelText: {
+                    High: "出拍節奏順暢，手腕下放與向前帶動都很到位。",
+                    Medium: "有做出拍動作，但手腕下放或向前帶動略嫌不足。",
+                    Low: "出拍多半以手臂推球，手腕較僵硬，拍頭倒下與向前的動作不明顯。"
+                },
+                fixText: "出拍時先讓手腕在身體後方往下放，感覺拍頭往下倒，再由手腕與手肘帶動球拍往前甩出。"
+            },
+            HitballSwing: {
+                part: "擊球出拍 / 轉身",
+                code: "Hitball-swing",
+                compare: "身體加速轉身動作，右肩快速往左肩靠近。擊球瞬間，右手腕位置介於右肩–腰線與左手腕之間。",
+                levelText: {
+                    High: "擊球時轉身與手部出力協調良好，擊球點在身體前方，擊球扎實。",
+                    Medium: "有轉身與出力，但力道傳遞略不足，或有時擊球點稍微偏後。",
+                    Low: "轉身動作不足或過頭，擊球點多在身體側邊或太靠近身體。"
+                },
+                fixText: "擊球時先從下半身轉動腰部，再帶動肩膀與手臂，讓擊球點落在身體前方一點的位置。"
+            },
+            FollowThrough: {
+                part: "擊球後收拍",
+                code: "Follow-through",
+                compare: "擊球後右手腕往左肩方向、接近眼睛高度移動；球拍頭先朝上，再往左肩後方朝下完成收拍。",
+                levelText: {
+                    High: "擊球後收拍動作完整自然，動作有延續。",
+                    Medium: "有收拍，但幅度略小或有些僵硬。",
+                    Low: "擊球後很快停住，幾乎沒有完整收拍，容易影響出力與保護手臂。"
+                },
+                fixText: "收拍時讓右手手腕與球拍往左肩後方甩動，可以想像最後讓拍子停在左肩或左耳旁。"
+            }
+        };
+
+        // --- Video Logic ---
+        const videoInput = document.getElementById('videoInput');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const uploadOverlay = document.getElementById('uploadOverlay');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = playBtn.querySelector('i');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+
+        videoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                videoPlayer.src = url;
+                videoPlayer.load();
+                uploadOverlay.style.display = 'none';
+            }
+        });
+
+        function togglePlay() {
+            if (videoPlayer.paused) {
+                videoPlayer.play();
+                playIcon.className = 'fas fa-pause';
+            } else {
+                videoPlayer.pause();
+                playIcon.className = 'fas fa-play';
+            }
+        }
+
+        playBtn.addEventListener('click', togglePlay);
+        videoPlayer.addEventListener('click', togglePlay);
+
+        videoPlayer.addEventListener('timeupdate', () => {
+            const current = videoPlayer.currentTime;
+            const duration = videoPlayer.duration;
+            if (duration) {
+                const percent = (current / duration) * 100;
+                progressBar.style.width = `${percent}%`;
+                currentTimeEl.textContent = formatTime(current);
+            }
+        });
+
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            totalTimeEl.textContent = formatTime(videoPlayer.duration);
+        });
+
+        progressContainer.addEventListener('click', (e) => {
+            const rect = progressContainer.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            if (videoPlayer.duration) {
+                videoPlayer.currentTime = pos * videoPlayer.duration;
+            }
+        });
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // --- Analysis & Data Loading Logic ---
+        const jsonInput = document.getElementById('jsonInput');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Handle File Selection (Upload & Analyze)
+        jsonInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show Loading
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                // Determine if we should parse locally or upload
+                // If the file name suggests it's already an output (integrated_analysis), parse locally
+                // Otherwise (raw 3D json), upload to analyze
+
+                if (file.name.includes("_integrated_analysis") || file.name.includes("_gpt_feedback")) {
+                    // Local Parse Mode
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            updateDashboard(data);
+                            loadingOverlay.style.display = 'none';
+                        } catch (err) {
+                            alert("JSON 解析失敗: " + err);
+                            loadingOverlay.style.display = 'none';
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    // Upload Analysis Mode to Local Server
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch('http://localhost:8001/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        let errorMsg = `Server Error: ${response.statusText}`;
+                        try {
+                            const errData = await response.json();
+                            if (errData.detail) errorMsg = errData.detail;
+                            else if (errData.error) errorMsg = errData.error;
+                        } catch (e) { }
+                        throw new Error(errorMsg);
+                    }
+
+                    const result = await response.json();
+
+                    // Merge integrated data with GPT feedback
+                    if (result.integrated && Object.keys(result.integrated).length > 0) {
+                        const mergedData = { ...result.integrated };
+
+                        // Add GPT feedback to merged data if available
+                        if (result.gpt_feedback && result.gpt_feedback.suggestion) {
+                            mergedData.suggestion = result.gpt_feedback.suggestion;
+                        }
+
+                        // Call updateDashboard once with complete data
+                        updateDashboard(mergedData);
+                    }
+
+                    loadingOverlay.style.display = 'none';
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("分析失敗或無法連接伺服器。\n請確認已啟動 'python app_analysis.py'\n錯誤: " + err.message);
+                loadingOverlay.style.display = 'none';
+            }
+        });
+
+        // Initialize state from local storage or empty
+        let currentDashboardState = {};
+        try {
+            const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
+            if (cached) {
+                currentDashboardState = JSON.parse(cached);
+                // We will trigger restore in window.onload or explicitly call it here if DOM is ready
+                // But script is at bottom, so safe to call immediately? 
+                // Better to wait for DOMContentLoaded just in case, or call it at the end of script.
+            }
+        } catch (e) { console.error("Cache parse error", e); }
+
+        function updateDashboard(data) {
+            console.log("Updating Data:", data);
+
+            // Merge into global state
+            Object.assign(currentDashboardState, data);
+            // Save to SessionStorage (not LocalStorage, to avoid persistence across closed tabs)
+            sessionStorage.setItem('TENNIS_DASHBOARD_CACHE', JSON.stringify(currentDashboardState));
+
+            // 1. Validating GPT feedback (contains 'suggestion')
+            // 1. Validating GPT feedback (contains 'suggestion')
+            // (Legacy code for old layout removed)
+
+            // 2. Validating Integrated Analysis (contains 'analyses' and 'statistics')
+            if (!data.analyses || !data.statistics) {
+                console.error("Data validation failed: Missing 'analyses' or 'statistics'");
+                alert("錯誤：檔案格式不符！\n\n您似乎載入了「原始軌跡檔」(trajectory)，請載入包含分析結果的檔案。\n通常檔名會包含 \"_integrated_analysis.json\" 或 \"_gpt_feedback.json\"。");
+                return;
+            }
+
+            // Success
+            console.log("Data validation passed.");
+            const stats = data.statistics;
+
+            // Helper function to extract numerical data from advice text
+            function extractMetricHint(adviceText) {
+                if (!adviceText) return "";
+
+                // Extract values in parentheses with units (mm, °, ms, etc.)
+                const patterns = [
+                    /（([^）]*?[-]?\d+\.?\d*\s*[°℃%]?)([^)]*?)）/g,  // Angle/percentage
+                    /（([^）]*?\d+\.?\d*\s*→\s*\d+\.?\d*\s*mm)([^)]*?)）/g,  // Distance change
+                    /（([^）]*?\d+\.?\d*\s*mm)([^)]*?)）/g,  // Distance
+                ];
+
+                for (const pattern of patterns) {
+                    const match = adviceText.match(pattern);
+                    if (match && match[0]) {
+                        // Clean up and return the first meaningful match
+                        return match[0].replace(/（|）/g, '').trim();
+                    }
+                }
+
+                return "";
+            }
+
+            // 5. Head Stability
+            const headHint = data.analyses?.head_stability_advice &&
+                data.analyses.head_stability_advice.includes("眼睛有盯球")
+                ? "✓ 視線穩定" : "";
+            updateCard('Head', 'Head', stats.head_stability_confidence, headHint);
+
+            // 1. Backswing
+            const backswingHint = extractMetricHint(data.analyses?.backswing_advice || "");
+            updateCard('Backswing', 'Backswing', stats.backswing_confidence, backswingHint);
+
+            // 2. Forward Swing
+            const forwardHint = extractMetricHint(data.analyses?.forwardswing_advice || "");
+            updateCard('ForwardSwing', 'ForwardSwing', stats.forwardswing_confidence, forwardHint);
+
+            // 3. Hit Ball
+            const hitballHint = extractMetricHint(data.analyses?.hitballswing_advice || "");
+            updateCard('HitballSwing', 'HitballSwing', stats.hitballswing_confidence, hitballHint);
+
+            // 4. Follow Through
+            const followHint = extractMetricHint(data.analyses?.followthrough_advice || "");
+            updateCard('FollowThrough', 'FollowThrough', stats.followthrough_confidence, followHint);
+
+            // Overall Score (Average of 5 metrics)
+            const overall = Math.round(
+                (stats.backswing_confidence +
+                    stats.forwardswing_confidence +
+                    stats.hitballswing_confidence +
+                    stats.followthrough_confidence +
+                    stats.head_stability_confidence) / 5 * 100
+            );
+            document.getElementById('overallScore').innerText = overall;
+
+            // --- Grade Calculation (New) ---
+            let grade = "C";
+            let gradeDesc = "待加強";
+            let gradeColor = "#ef4444"; // Red
+
+            if (overall >= 90) { grade = "S"; gradeDesc = "完美"; gradeColor = "#a855f7"; } // Purple
+            else if (overall >= 85) { grade = "A+"; gradeDesc = "極佳"; gradeColor = "#10b981"; } // Green
+            else if (overall >= 80) { grade = "A"; gradeDesc = "非常協調"; gradeColor = "#10b981"; }
+            else if (overall >= 70) { grade = "B"; gradeDesc = "良好"; gradeColor = "#fbbf24"; } // Yellow
+            else { grade = "C"; gradeDesc = "基礎"; gradeColor = "#ef4444"; } // Red
+
+            const elGrade = document.getElementById('overallGrade');
+            if (elGrade) {
+                elGrade.innerText = grade;
+                elGrade.style.color = gradeColor;
+            }
+            const elDesc = document.getElementById('overallDesc');
+            if (elDesc) elDesc.innerText = gradeDesc;
+
+            // Update Radar Chart
+            const toScore = (conf) => Math.round((conf || 0) * 100);
+            updateRadar([
+                toScore(stats.backswing_confidence),
+                toScore(stats.forwardswing_confidence),
+                toScore(stats.hitballswing_confidence),
+                toScore(stats.followthrough_confidence),
+                toScore(stats.head_stability_confidence)
+            ]);
+
+            // --- NEW: Sychronize Data for Detailed Report Page ---
+
+            // specific logic to extract text advice
+            // PRIORITY: Use GPT suggestion (conversational) first, fallback to combined_advice
+            let fullAdvice = "尚無詳細建議";
+            if (data.suggestion) {
+                // GPT conversational feedback (preferred)
+                fullAdvice = data.suggestion;
+                console.log("✅ Using GPT suggestion:", fullAdvice);
+            } else if (data.combined_advice) {
+                // Structured fallback
+                fullAdvice = data.combined_advice.replace(/A\.|B\.|C\./g, '\n• ');
+                console.log("Using combined_advice:", fullAdvice);
+            }
+
+            // --- Display Full GPT Advice ---
+            let simpleAdvice = "尚無建議";
+            if (fullAdvice && fullAdvice !== "尚無詳細建議") {
+                // Display the complete GPT feedback (now it should be conversational)
+                simpleAdvice = fullAdvice.trim();
+                console.log("Displaying advice:", simpleAdvice);
+            }
+            const elSimpleAdvice = document.getElementById('gptAdviceSimple');
+            if (elSimpleAdvice) {
+                elSimpleAdvice.innerText = simpleAdvice;
+                console.log("Set element text to:", elSimpleAdvice.innerText);
+            } else {
+                console.error("Element gptAdviceSimple not found!");
+            }
+
+            // Construct a record object matching tennis_rating_ui_feedback_v3 structure
+            // Detail page expects 0-10 scale, so convert from 0-1 by multiplying by 10
+            const syncRecord = {
+                id: "ANALYSIS_RESULT",
+                hand: "right",
+                video: 1,
+                Head: (stats.head_stability_confidence || 0) * 10,
+                Backswing: (stats.backswing_confidence || 0) * 10,
+                ForwardSwing: (stats.forwardswing_confidence || 0) * 10,
+                HitballSwing: (stats.hitballswing_confidence || 0) * 10,
+                FollowThrough: (stats.followthrough_confidence || 0) * 10,
+                // Use overall score for metrics we don't analyze
+                BodyWeight: overall / 10,
+                HitTiming: overall / 10,
+                RacketFace: overall / 10,
+                overall: overall / 10,
+                advice: fullAdvice,  // GPT conversational for dashboard
+                combined_advice: data.combined_advice || ""  // Structured advice for detail page
+            };
+
+            localStorage.setItem('tennisAnalysisData', JSON.stringify(syncRecord));
+            document.getElementById('btnDetailReport').style.display = 'inline-block';
+        }
+
+        function goToDetail() {
+            // Open the feedback page in the same window or new tab
+            window.location.href = '../../tennis_rating_ui_feedback_v3.html';
+        }
+
+        // Update Card & Bind Click Event for Modal
+        function updateCard(uiId, feedbackKey, confidence, metricHint = "") {
+            const score = Math.round((confidence || 0) * 100);
+            let band = "Low";
+            let color = "var(--accent-red)";
+
+            if (score >= 85) { band = "High"; color = "var(--accent-green)"; }
+            else if (score >= 70) { band = "Medium"; color = "var(--accent-yellow)"; }
+
+            // Update UI
+            const elScore = document.getElementById(`m${uiId}`);
+            if (elScore) {
+                elScore.innerText = score + " / 100";
+
+                // Add or update metric hint
+                let hintEl = elScore.parentElement.querySelector('.metric-hint');
+                if (metricHint && metricHint.trim()) {
+                    if (!hintEl) {
+                        hintEl = document.createElement('div');
+                        hintEl.className = 'metric-hint';
+                        elScore.parentElement.appendChild(hintEl);
+                    }
+                    hintEl.textContent = metricHint;
+                    hintEl.style.display = 'block';
+                } else if (hintEl) {
+                    hintEl.style.display = 'none';
+                }
+            } else {
+                console.warn(`Element m${uiId} not found`);
+            }
+
+            const tag = document.getElementById(`t${uiId}`);
+            if (tag) {
+                tag.innerText = band;
+            } else {
+                console.warn(`Element t${uiId} not found`);
+            }
+            tag.style.color = color;
+            tag.style.border = `1px solid ${color}`;
+            tag.style.background = `rgba(0,0,0,0.3)`;
+
+            document.getElementById(`b${uiId}`).style.width = score + "%";
+            document.getElementById(`b${uiId}`).style.background = color;
+
+            // Bind Click for Modal
+            const card = document.getElementById(`m${uiId}`).closest('.metric-card');
+            card.style.cursor = 'pointer';
+            card.onclick = () => openModal(feedbackKey, score, band);
+        }
+
+        // --- Modal Logic ---
+        const modalWrap = document.getElementById('modalWrap');
+        const mdTitle = document.getElementById('mdTitle');
+        const mdScoreBand = document.getElementById('mdScoreBand');
+        const mdPart = document.getElementById('mdPart');
+        const mdCode = document.getElementById('mdCode');
+        const mdCompare = document.getElementById('mdCompare');
+        const mdCategory = document.getElementById('mdCategory');
+        const mdFix = document.getElementById('mdFix');
+
+        function openModal(key, score, band) {
+            const data = FEEDBACKS[key] || {};
+
+            mdTitle.innerText = data.part || key;
+            mdScoreBand.innerText = `${score} / 100 · ${band}`;
+
+            mdPart.innerText = data.part || '-';
+            mdCode.innerText = data.code || '-';
+            mdCompare.innerText = data.compare || '-';
+
+            // Level-based text
+            const levelText = data.levelText || {};
+            mdCategory.innerText = levelText[band] || levelText.Medium || '-';
+
+            mdFix.innerText = data.fixText || '-';
+
+            modalWrap.style.display = 'flex';
+        }
+
+        document.getElementById('mdClose').onclick = () => {
+            modalWrap.style.display = 'none';
+        };
+
+        window.onclick = (e) => {
+            if (e.target == modalWrap) {
+                modalWrap.style.display = 'none';
+            }
+        };
+
+        // --- Radar Chart ---
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        let radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['拉拍', '向前出拍', '擊球轉身', '完整收拍', '頭部穩定'],
+                datasets: [{
+                    label: '動作評分',
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: 'rgba(255, 170, 0, 0.2)',
+                    borderColor: '#ffaa00',
+                    pointBackgroundColor: '#ffaa00',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#ffaa00'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        pointLabels: {
+                            font: { size: 12 },
+                            color: '#9ca3af'
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100,
+                        ticks: { display: false, backdropColor: 'transparent' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        function updateRadar(dataArray) {
+            radarChart.data.datasets[0].data = dataArray;
+            radarChart.update();
+        }
+
+        // --- Restore State on Load (Session Persistence Only) ---
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
+                if (cached) {
+                    const cachedData = JSON.parse(cached);
+                    console.log("🔄 Restoring session dashboard state...", cachedData);
+
+                    // Restore the data
+                    if (cachedData.statistics) {
+                        updateDashboard(cachedData);
+                        // Note: updateDashboard handles UI updates and Detail button visibility
+                        console.log("✅ Dashboard session restored successfully");
+                    }
+                }
+            } catch (e) {
+                console.warn("⚠️ Failed to restore session state:", e);
+            }
+        });
+
+    </script>
+</body>
+
+</html>

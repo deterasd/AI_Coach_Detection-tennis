@@ -237,7 +237,17 @@ def process_video(
     output_path = video_path.replace('.mp4', '_processed.mp4')
     info_panel_width = 400
     out_w, out_h = OUTPUT_WIDTH + info_panel_width, OUTPUT_HEIGHT
-    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), original_fps, (out_w, out_h))
+    
+    # 使用 safe_video_writer 替代硬編碼
+    from video_writer_utils import safe_video_writer
+    out, actual_path = safe_video_writer(output_path, original_fps, (out_w, out_h), 'avc1')
+    
+    if out is None:
+        print(f"❌ 無法建立 VideoWriter，跳過影片輸出")
+        return None
+    
+    # Update output_path in case it fell back to .avi
+    output_path = actual_path
 
     # === 畫圖主迴圈 ===
     for i in range(total_frames):

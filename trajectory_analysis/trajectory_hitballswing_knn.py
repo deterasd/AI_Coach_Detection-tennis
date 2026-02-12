@@ -444,13 +444,13 @@ def analyze_hitballswing(trajectory_data, knn_dataset_path: str = "knn_dataset_n
             frames_data = trajectory_data
         
         if not isinstance(frames_data, list) or len(frames_data) == 0:
-            return "軌跡數據格式不正確", 0.0
+            return "軌跡數據格式不正確", 0.0, None
         
         # 找出擊球幀
         impact_idx = _find_impact_frame(frames_data)
         
         if impact_idx is None:
-            return "未找到擊球幀，無法進行擊球出拍分析", 0.0
+            return "未找到擊球幀，無法進行擊球出拍分析", 0.0, None
         
         impact_frame = frames_data[impact_idx]
         
@@ -477,20 +477,45 @@ def analyze_hitballswing(trajectory_data, knn_dataset_path: str = "knn_dataset_n
         
         combined_advice = "".join(advice_parts)
         
-        # 計算信心度
-        valid_count = sum([
-            a_result["is_valid"],
-            b_result["is_valid"]
-        ])
-        confidence = valid_count / 2.0
+        # 計算信心度 (基於 Level)
+        # Level 1 = 1.0 (100分), Level 2 = 0.8 (80分), Level 3 = 0.6 (60分), Invalid = 0.0
+        score_map = {1: 1.0, 2: 0.8, 3: 0.6, 0: 0.0, None: 0.0}
         
-        return combined_advice, confidence
+        # 收集個別項目的 Level
+        levels = {
+            "擊球轉身動作": a_result.get("level"),
+            "擊球手腕位置": b_result.get("level")
+        }
+        
+        scores = [score_map.get(lvl, 0.0) for lvl in levels.values()]
+        
+        # 找出優先改善項目 (Level 3 > Level 2)
+        priority_item = None
+        max_level = 0
+        
+        for name, lvl in levels.items():
+            if lvl and lvl > max_level:
+                max_level = lvl
+                priority_item = name
+            elif lvl and lvl == max_level and max_level >= 2:
+                pass
+        
+        if max_level < 2:
+            priority_item = None
+        
+        # 如果所有項目都無效，信心度為 0
+        if all(s == 0.0 for s in scores) and valid_count == 0:
+            confidence = 0.0
+        else:
+            confidence = sum(scores) / 2.0
+        
+        return combined_advice, confidence, priority_item
         
     except Exception as e:
         print(f"擊球出拍分析失敗: {e}")
         import traceback
         traceback.print_exc()
-        return f"擊球出拍分析失敗: {str(e)}", 0.0
+        return f"擊球出拍分析失敗: {str(e)}", 0.0, None
 
 
 # ========== 詳細分析函式 ==========

@@ -307,13 +307,13 @@ def analyze_followthrough(trajectory_data, knn_dataset_path: str = "knn_dataset_
             frames_data = trajectory_data
         
         if not isinstance(frames_data, list) or len(frames_data) == 0:
-            return "軌跡數據格式不正確", 0.0
+            return "軌跡數據格式不正確", 0.0, None
         
         # 找出擊球幀
         impact_idx = _find_impact_frame(frames_data)
         
         if impact_idx is None:
-            return "未找到擊球幀，無法進行收拍分析", 0.0
+            return "未找到擊球幀，無法進行收拍分析", 0.0, None
         
         # 起點：擊球幀，終點：右手肘離左肩最近幀
         start_frame = frames_data[impact_idx]
@@ -324,20 +324,32 @@ def analyze_followthrough(trajectory_data, knn_dataset_path: str = "knn_dataset_
         result = _analyze_followthrough(start_frame, end_frame, pro_ranges)
         
         # 組合建議
+        # 計算信心度 (基於 Level)
+        # Level 1 = 1.0 (100分), Level 2 = 0.8 (80分), Level 3 = 0.6 (60分), Invalid = 0.0
+        score_map = {1: 1.0, 2: 0.8, 3: 0.6, 0: 0.0, None: 0.0}
+        
+        priority_item = None
+        
         if result["is_valid"]:
             advice = f"收拍:{result['advice']}"
-            confidence = 1.0
+            lvl = result.get("level")
+            confidence = score_map.get(lvl, 0.0)
+            
+            # 設定優先改善項目
+            if lvl and lvl >= 2:
+                priority_item = "收拍動作"
         else:
             advice = "收拍:數據不足"
             confidence = 0.0
+            priority_item = None
         
-        return advice, confidence
+        return advice, confidence, priority_item
         
     except Exception as e:
         print(f"收拍分析失敗: {e}")
         import traceback
         traceback.print_exc()
-        return f"收拍分析失敗: {str(e)}", 0.0
+        return f"收拍分析失敗: {str(e)}", 0.0, None
 
 
 # ========== 詳細分析函式 ==========

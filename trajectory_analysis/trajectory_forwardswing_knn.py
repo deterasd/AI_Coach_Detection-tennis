@@ -90,12 +90,16 @@ def _calculate_distance_to_line(point: np.ndarray, line_start: np.ndarray, line_
     return float(distance)
 
 
-def _find_ball_bounce_frame(frames: List[Dict]) -> Optional[int]:
+def _find_ball_bounce_frame(frames: List[Dict], impact_idx: int = None) -> Optional[int]:
     """找出球落地幀的索引（Y值最大的幀，因為Y越大=越低）"""
     max_y = -float('inf')
     bounce_idx = None
     
-    for i, frame in enumerate(frames):
+    # 搜尋範圍：如果已知擊球幀，只找擊球前的幀；否則找全部
+    search_end = impact_idx if impact_idx is not None else len(frames)
+    
+    for i in range(search_end):
+        frame = frames[i]
         ball = _get_point(frame, "tennis_ball")
         if ball is not None:
             if ball[1] > max_y:
@@ -323,21 +327,21 @@ def analyze_forwardswing(trajectory_data, knn_dataset_path: str = None, expert_f
             frames_data = trajectory_data
         
         if not isinstance(frames_data, list) or len(frames_data) == 0:
-            return "軌跡數據格式不正確", 0.0
+            return "軌跡數據格式不正確", 0.0, None
         
         # 找出關鍵幀
         impact_idx = _find_impact_frame(frames_data)
-        bounce_idx = _find_ball_bounce_frame(frames_data)
+        bounce_idx = _find_ball_bounce_frame(frames_data, impact_idx)
         
         if impact_idx is None:
-            return "未找到擊球幀，無法進行前段出拍分析", 0.0
+            return "未找到擊球幀，無法進行前段出拍分析", 0.0, None
         
         if bounce_idx is None:
-            return "未找到球落地幀，無法進行前段出拍分析", 0.0
+            return "未找到球落地幀，無法進行前段出拍分析", 0.0, None
         
         # Forward-swing 區間：bounce_idx → impact_idx
         if bounce_idx >= impact_idx:
-            return "球落地幀在擊球幀之後，數據異常", 0.0
+            return "球落地幀在擊球幀之後，數據異常", 0.0, None
         
         # 起點幀和終點幀
         start_frame = frames_data[bounce_idx]
@@ -374,21 +378,46 @@ def analyze_forwardswing(trajectory_data, knn_dataset_path: str = None, expert_f
         
         combined_advice = "".join(advice_parts)
         
-        # 計算信心度
-        valid_count = sum([
-            a_result["is_valid"],
-            b_result["is_valid"],
-            c_result["is_valid"]
-        ])
-        confidence = valid_count / 3.0
+        # 計算信心度 (基於 Level)
+        # Level 1 = 1.0 (100分), Level 2 = 0.8 (80分), Level 3 = 0.6 (60分), Invalid = 0.0
+        score_map = {1: 1.0, 2: 0.8, 3: 0.6, 0: 0.0, None: 0.0}
         
-        return combined_advice, confidence
+        # 收集個別項目的 Level
+        levels = {
+            "出拍手腕下放": a_result.get("level"),
+            "出拍向前帶動": b_result.get("level"),
+            "出拍球拍角度": c_result.get("level")
+        }
+        
+        scores = [score_map.get(lvl, 0.0) for lvl in levels.values()]
+        
+        # 找出優先改善項目 (Level 3 > Level 2)
+        priority_item = None
+        max_level = 0
+        
+        for name, lvl in levels.items():
+            if lvl and lvl > max_level:
+                max_level = lvl
+                priority_item = name
+            elif lvl and lvl == max_level and max_level >= 2:
+                pass
+        
+        if max_level < 2:
+            priority_item = None
+        
+        # 如果所有項目都無效，信心度為 0
+        if all(s == 0.0 for s in scores) and valid_count == 0:
+            confidence = 0.0
+        else:
+            confidence = sum(scores) / 3.0
+        
+        return combined_advice, confidence, priority_item
         
     except Exception as e:
         print(f"前段出拍分析失敗: {e}")
         import traceback
         traceback.print_exc()
-        return f"前段出拍分析失敗: {str(e)}", 0.0
+        return f"前段出拍分析失敗: {str(e)}", 0.0, None
 
 
 # ========== 詳細分析函式 ==========
@@ -410,7 +439,7 @@ def analyze_forwardswing_detailed(trajectory_data, knn_dataset_path: str = None,
         
         # 找出關鍵幀
         impact_idx = _find_impact_frame(frames_data)
-        bounce_idx = _find_ball_bounce_frame(frames_data)
+        bounce_idx = _find_ball_bounce_frame(frames_data, impact_idx)
         
         if impact_idx is None:
             return {"error": "未找到擊球幀"}

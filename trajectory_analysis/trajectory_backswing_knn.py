@@ -54,12 +54,16 @@ def _calculate_angle_xz(p1: np.ndarray, p2: np.ndarray) -> float:
     return float(np.degrees(np.arctan2(dz, dx)))
 
 
-def _find_ball_bounce_frame(frames: List[Dict]) -> Optional[int]:
+def _find_ball_bounce_frame(frames: List[Dict], impact_idx: int = None) -> Optional[int]:
     """找出球落地幀的索引（Y值最大的幀，因為Y越大=越低）"""
     max_y = -float('inf')
     bounce_idx = None
     
-    for i, frame in enumerate(frames):
+    # 搜尋範圍：如果已知擊球幀，只找擊球前的幀；否則找全部
+    search_end = impact_idx if impact_idx is not None else len(frames)
+    
+    for i in range(search_end):
+        frame = frames[i]
         ball = _get_point(frame, "tennis_ball")
         if ball is not None:
             if ball[1] > max_y:
@@ -207,7 +211,7 @@ def _calculate_pro_backswing_ranges(knn_dataset) -> Dict:
         if not frames:
             continue
         impact_idx = _find_impact_frame(frames)
-        bounce_idx = _find_ball_bounce_frame(frames)
+        bounce_idx = _find_ball_bounce_frame(frames, impact_idx)
         backswing_idx = _find_backswing_ready_frame(frames, bounce_idx, impact_idx)
         frame_idx = backswing_idx if backswing_idx is not None else bounce_idx
         if frame_idx is None or frame_idx >= len(frames):
@@ -537,11 +541,11 @@ def analyze_backswing(trajectory_data, knn_dataset_path: str = None, expert_file
             frames_data = trajectory_data
         
         if not isinstance(frames_data, list) or len(frames_data) == 0:
-            return "軌跡數據格式不正確", 0.0
+            return "軌跡數據格式不正確", 0.0, None
         
         # 找出關鍵幀
         impact_idx = _find_impact_frame(frames_data)
-        bounce_idx = _find_ball_bounce_frame(frames_data)
+        bounce_idx = _find_ball_bounce_frame(frames_data, impact_idx)
         
         # 決定分析幀（優先使用拉拍準備好的幀）
         backswing_ready_idx = _find_backswing_ready_frame(frames_data, bounce_idx, impact_idx)
@@ -552,7 +556,7 @@ def analyze_backswing(trajectory_data, knn_dataset_path: str = None, expert_file
             analysis_frame_idx = bounce_idx  # 備用：球落地幀
         else:
             # 如果連球落地幀都找不到，返回錯誤
-            return "無法找到合適的分析幀（需要球落地幀或拉拍準備好的幀）", 0.0
+            return "無法找到合適的分析幀（需要球落地幀或拉拍準備好的幀）", 0.0, None
         
         analysis_frame = frames_data[analysis_frame_idx]
         
@@ -602,22 +606,50 @@ def analyze_backswing(trajectory_data, knn_dataset_path: str = None, expert_file
         
         combined_advice = "".join(advice_parts)
         
-        # 計算信心度
-        valid_count = sum([
-            rotation_result["is_valid"],
-            wrist_height_result["is_valid"],
-            paddle_result["is_valid"],
-            timing_result["is_valid"]
-        ])
-        confidence = valid_count / 4.0
+        # 計算信心度 (基於 Level)
+        # Level 1 = 1.0 (100分), Level 2 = 0.8 (80分), Level 3 = 0.6 (60分), Invalid = 0.0
+        score_map = {1: 1.0, 2: 0.8, 3: 0.6, 0: 0.0, None: 0.0}
         
-        return combined_advice, confidence
+        # 收集個別項目的 Level
+        levels = {
+            "拉拍側身": rotation_result.get("level"),
+            "拉拍手腕高度": wrist_height_result.get("level"),
+            "拉拍球拍朝向": paddle_result.get("level"),
+            "拉拍準備時機": timing_result.get("level")
+        }
+        
+        scores = [score_map.get(lvl, 0.0) for lvl in levels.values()]
+        
+        # 找出優先改善項目 (Level 3 > Level 2)
+        priority_item = None
+        max_level = 0
+        
+        for name, lvl in levels.items():
+            if lvl and lvl > max_level:
+                max_level = lvl
+                # 暫存這個等級的第一個遇到的項目
+                priority_item = name
+            elif lvl and lvl == max_level and max_level >= 2:
+                # 同等級不覆蓋，保留第一個
+                pass
+        
+        if max_level < 2:
+            priority_item = None  # Level 1 或沒有資料，不需改善
+            
+        # 如果所有項目都無效，信心度為 0
+        if all(s == 0.0 for s in scores) and valid_count == 0:
+            confidence = 0.0
+        else:
+            # 取平均 (總分 / 項目數)
+            confidence = sum(scores) / 4.0
+        
+        return combined_advice, confidence, priority_item
         
     except Exception as e:
         print(f"拉拍分析失敗: {e}")
         import traceback
         traceback.print_exc()
-        return f"拉拍分析失敗: {str(e)}", 0.0
+        return f"拉拍分析失敗: {str(e)}", 0.0, None
 
 
 # ========== 詳細分析函式（返回完整結果） ==========
@@ -642,7 +674,7 @@ def analyze_backswing_detailed(trajectory_data, knn_dataset_path: str = None, ex
         
         # 找出關鍵幀
         impact_idx = _find_impact_frame(frames_data)
-        bounce_idx = _find_ball_bounce_frame(frames_data)
+        bounce_idx = _find_ball_bounce_frame(frames_data, impact_idx)
         
         # 決定分析幀（優先使用拉拍準備好的幀）
         backswing_ready_idx = _find_backswing_ready_frame(frames_data, bounce_idx, impact_idx)

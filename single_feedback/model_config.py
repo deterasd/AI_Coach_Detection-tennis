@@ -7,7 +7,7 @@ MODEL = "gpt-4o-mini"
 
 # 優化參數設定以提升速度
 TEMPERATURE = 0.5  # 降低溫度以加快生成速度
-MAX_TOKENS = 100   # 降低 token 數量，2 句建議不需要太多
+MAX_TOKENS = 150   # 簡短的口語化建議（2-3句話）
 FREQUENCY_PENALTY = 0.0
 PRESENCE_PENALTY = 0.0
 MAX_CONTEXT_QUESTIONS = 10

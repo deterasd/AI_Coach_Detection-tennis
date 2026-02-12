@@ -1,256 +1,705 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video and Trajectory Comparison</title>
+    <title>網球動作分析報告</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-color: #ffaa00;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-muted: #555555;
+            --success-color: #4cd964;
+            --font-family: 'PingFang TC', 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
         body {
             margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            display: flex;
-            gap: 20px;
-            min-height: 100vh;
-        }
-
-        .left-panel {
-            flex: 1;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .right-panel {
-            flex: 1.5;
+            padding: 0;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            overflow: hidden;
+        }
+
+        /* App Container */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            gap: 15px;
+        }
+
+        /* Header */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            margin-bottom: 5px;
+        }
+
+        .top-bar-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .back-btn i,
+        .export-btn i {
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-main {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 0.8fr;
+            grid-template-rows: auto 1fr;
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+            /* Important for scroll */
+        }
+
+        /* Score Section (Spans Top Left/Center) */
+        .score-section {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 15px;
+            height: 100px;
+        }
+
+        .score-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-big {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            line-height: 1;
+        }
+
+        .score-sub {
+            font-size: 1rem;
+            margin-top: 20px;
+            margin-left: 5px;
+        }
+
+        .grade-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px 25px;
+            min-width: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .grade-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .grade-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .grade-desc {
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        .advice-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px 25px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .advice-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .advice-text {
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .export-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            width: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .export-card:hover {
+            background: #2a2a2a;
+        }
+
+        .export-icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+
+        .export-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+
+        /* Main Content Columns */
+
+        /* 1. Video Column */
+        .video-container {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #333;
         }
 
         video {
             width: 100%;
-            max-height: 60vh;
-            background: black;
-            margin-bottom: 20px;
-            border-radius: 4px;
+            height: 100%;
+            object-fit: contain;
         }
 
-        .file-input {
-            margin-bottom: 10px;
-            display: block;
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        /* File Upload Overlay (Custom) */
+        .upload-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
         }
 
-        .speed-control {
+        .upload-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        #videoInput {
+            display: none;
+        }
+
+
+        /* 2. Metrics Column */
+        .metrics-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            justify-content: space-between;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px 20px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-            padding: 10px;
-            background: #f8f8f8;
-            border-radius: 4px;
-        }
-
-        .speed-control input[type="range"] {
+            gap: 15px;
             flex: 1;
         }
 
-        .chart-box {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            height: calc(40vh - 20px);
+        .metric-icon-box {
+            width: 50px;
+            height: 50px;
+            background: #fff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .trajectory-controls {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        h2 {
+        .metric-icon-box i {
             color: #333;
-            margin: 0 0 15px 0;
+            font-size: 1.5rem;
         }
 
-        .filename {
-            color: #666;
-            font-size: 0.9em;
+        .metric-info {
+            flex: 1;
+        }
+
+        .metric-title {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: bold;
+        }
+
+        .metric-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .metric-unit {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+
+        /* 3. Radar Chart Column */
+        .radar-column {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .radar-title {
+            text-align: center;
+            font-size: 1rem;
             margin-bottom: 10px;
+            color: var(--text-secondary);
         }
 
-        #speedValue {
-            min-width: 40px;
-            text-align: right;
+        .radar-chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 200px;
+        }
+
+        .radar-stats {
+            margin-top: 20px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+        }
+
+        .stat-val {
+            color: var(--accent-color);
+        }
+
+        /* Footer Controls */
+        .footer-controls {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .play-btn {
+            width: 50px;
+            height: 50px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 170, 0, 0.3);
+        }
+
+        .play-btn i {
+            color: #000;
+            font-size: 1.2rem;
+            margin-left: 3px;
+            /* visual center fix */
+        }
+
+        .time-display {
+            font-family: monospace;
+            font-size: 1.2rem;
+            min-width: 60px;
+        }
+
+        .timestamp-info {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--accent-color);
+            font-size: 0.9rem;
+            margin: 0 15px;
+        }
+
+        .progress-container {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent-color);
+            border-radius: 3px;
+            width: 0%;
+            position: relative;
+        }
+
+        .progress-handle {
+            width: 16px;
+            height: 16px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            position: absolute;
+            right: -8px;
+            top: -5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
 
 <body>
-    <div class="left-panel">
-        <h2>Video Player</h2>
-        <input type="file" id="videoInput" accept="video/*" class="file-input">
-        <video id="videoPlayer" controls></video>
-        <div class="speed-control">
-            <label>Playback Speed:</label>
-            <input type="range" id="speedControl" min="0.25" max="2" step="0.25" value="1">
-            <span id="speedValue">1x</span>
-        </div>
-    </div>
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <header class="top-bar">
+            <!-- <div class="back-btn"><i class="fas fa-arrow-left"></i></div> -->
+            <div class="top-bar-title">成果報告</div>
+            <!-- <div class="placeholder" style="width: 20px;"></div> -->
+        </header>
 
-    <div class="right-panel">
-        <div class="trajectory-controls">
-            <h2>Trajectory Files</h2>
-            <input type="file" id="jsonInput1" accept=".json" class="file-input">
-            <input type="file" id="jsonInput2" accept=".json" class="file-input">
+        <!-- Main Dashboard -->
+        <div class="dashboard-main">
+            <!-- Header Row: Score, Grade, Advice, Export -->
+            <div class="score-section">
+                <div class="score-card">
+                    <span class="score-big">90</span>
+                    <span class="score-sub">分</span>
+                </div>
+
+                <div class="grade-card">
+                    <span class="grade-title">綜合評級 A 級</span>
+                    <span class="grade-desc">非常協調</span>
+                </div>
+
+                <div class="advice-card">
+                    <span class="advice-title">整體評價與建議</span>
+                    <span class="advice-text">
+                        Lag 保留不足，建議延後出棒時機。<br>
+                        身體重心轉移順暢，但揮拍軌跡稍顯不穩。
+                    </span>
+                </div>
+
+                <div class="export-card" id="fullReportBtn">
+                    <i class="fas fa-file-alt export-icon"></i>
+                    <span class="export-text">完整報告</span>
+                </div>
+            </div>
+
+            <!-- Video Section -->
+            <div class="video-container">
+                <video id="videoPlayer" playsinline></video>
+                <div class="upload-overlay" id="uploadOverlay">
+                    <label class="upload-btn" for="videoInput">
+                        <i class="fas fa-video"></i> 上傳影片
+                    </label>
+                    <input type="file" id="videoInput" accept="video/*">
+                </div>
+            </div>
+
+            <!-- Metrics Column -->
+            <div class="metrics-column">
+                <!-- Card 1 -->
+                <div class="metric-card">
+                    <div class="metric-icon-box">
+                        <i class="fas fa-ruler-horizontal"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-title">節奏快慢</div>
+                        <div class="metric-subtitle">Swing Duration</div>
+                        <div class="metric-value">偏快 <span class="metric-unit">(295.0 ms)</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="metric-card">
+                    <div class="metric-icon-box">
+                        <i class="fas fa-bezier-curve"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-title">揮拍軌跡穩定</div>
+                        <div class="metric-subtitle">Swing Plane Angle</div>
+                        <div class="metric-value">理想 <span class="metric-unit">(-0.9°)</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="metric-card">
+                    <div class="metric-icon-box">
+                        <i class="fas fa-child"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-title">身體扭轉蓄力</div>
+                        <div class="metric-subtitle">X-Factor</div>
+                        <div class="metric-value">可加強 <span class="metric-unit">(57.0°)</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="metric-card">
+                    <div class="metric-icon-box">
+                        <i class="fas fa-running"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-title">髖部帶動</div>
+                        <div class="metric-subtitle">Hip Leading Time</div>
+                        <div class="metric-value">優良 <span class="metric-unit">(0.12 s)</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Radar Column -->
+            <div class="radar-column">
+                <div class="radar-title">三大面向雷達</div>
+                <div class="radar-chart-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+                <div class="radar-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">力量累積</span>
+                        <span class="stat-val">中</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">時序協調</span>
+                        <span class="stat-val">高</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">姿態穩定</span>
+                        <span class="stat-val">高</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="chart-box">
-            <div class="filename" id="filename1"></div>
-            <canvas id="trajectoryChart1"></canvas>
-        </div>
+        <!-- Footer Control Bar -->
+        <footer class="footer-controls">
+            <div class="time-display" id="currentTime">00:02</div>
 
-        <div class="chart-box">
-            <div class="filename" id="filename2"></div>
-            <canvas id="trajectoryChart2"></canvas>
-        </div>
+            <div class="timestamp-info">
+                <i class="far fa-clock"></i>
+                <span id="dateStamp">時間戳記: 2026-02-03 13:30:00</span>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-handle"></div>
+                </div>
+            </div>
+
+            <div class="time-display" id="totalTime" style="text-align: right;">00:10</div>
+
+            <button class="play-btn" id="playBtn">
+                <i class="fas fa-play"></i>
+            </button>
+        </footer>
     </div>
 
     <script>
-        // Video handling
+        // --- Video Logic ---
         const videoInput = document.getElementById('videoInput');
         const videoPlayer = document.getElementById('videoPlayer');
-        const speedControl = document.getElementById('speedControl');
-        const speedValue = document.getElementById('speedValue');
+        const uploadOverlay = document.getElementById('uploadOverlay');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = playBtn.querySelector('i');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
 
+        // Load Video
         videoInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const url = URL.createObjectURL(file);
                 videoPlayer.src = url;
+                videoPlayer.load();
+                uploadOverlay.style.display = 'none'; // Hide upload button after loading
             }
         });
 
-        speedControl.addEventListener('input', (e) => {
-            const speed = e.target.value;
-            videoPlayer.playbackRate = speed;
-            speedValue.textContent = speed + 'x';
-        });
-
-        // Trajectory charts
-        let charts = {
-            chart1: null,
-            chart2: null
-        };
-
-        function createChart(canvasId, data, filename) {
-            const points = data
-                .map(frame => ({
-                    x: frame.right_wrist?.x,
-                    y: frame.right_wrist?.y,
-                    frame: frame.frame
-                }))
-                .filter(point => point.x != null && point.y != null);
-
-            // Get the canvas context
-            const ctx = document.getElementById(canvasId).getContext('2d');
-
-            // Destroy existing chart if it exists
-            if (charts[canvasId]) {
-                charts[canvasId].destroy();
+        // Toggle Play/Pause
+        function togglePlay() {
+            if (videoPlayer.paused) {
+                videoPlayer.play();
+                playIcon.className = 'fas fa-pause';
+            } else {
+                videoPlayer.pause();
+                playIcon.className = 'fas fa-play';
             }
-
-            // Create new chart
-            charts[canvasId] = new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Wrist Trajectory',
-                        data: points,
-                        borderColor: '#4DC4C0',
-                        backgroundColor: 'rgba(77, 196, 192, 0.5)',
-                        showLine: true,
-                        pointRadius: 3,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 0
-                    },
-                    scales: {
-                        x: {
-                            type: 'linear',
-                            position: 'bottom',
-                            title: {
-                                display: true,
-                                text: 'X Position'
-                            },
-                            grid: {
-                                color: '#E5E5E5'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            reverse: true,
-                            title: {
-                                display: true,
-                                text: 'Y Position'
-                            },
-                            grid: {
-                                color: '#E5E5E5'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    return `Frame: ${context.raw.frame}, X: ${context.raw.x.toFixed(2)}, Y: ${context.raw.y.toFixed(2)}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
         }
 
-        // Handle trajectory file inputs
-        document.getElementById('jsonInput1').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('filename1').textContent = file.name;
-                const text = await file.text();
-                const data = JSON.parse(text);
-                createChart('trajectoryChart1', data);
+        playBtn.addEventListener('click', togglePlay);
+        videoPlayer.addEventListener('click', togglePlay);
+
+        // Update Progress
+        videoPlayer.addEventListener('timeupdate', () => {
+            const current = videoPlayer.currentTime;
+            const duration = videoPlayer.duration;
+            if (duration) {
+                const percent = (current / duration) * 100;
+                progressBar.style.width = `${percent}%`;
+
+                currentTimeEl.textContent = formatTime(current);
             }
         });
 
-        document.getElementById('jsonInput2').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('filename2').textContent = file.name;
-                const text = await file.text();
-                const data = JSON.parse(text);
-                createChart('trajectoryChart2', data);
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            totalTimeEl.textContent = formatTime(videoPlayer.duration);
+        });
+
+        // Seek
+        progressContainer.addEventListener('click', (e) => {
+            const rect = progressContainer.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            if (videoPlayer.duration) {
+                videoPlayer.currentTime = pos * videoPlayer.duration;
             }
         });
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // --- Radar Chart ---
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        const radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['力量累積', '時序協調', '姿態穩定'],
+                datasets: [{
+                    label: '能力值',
+                    data: [70.3, 90, 85],
+                    backgroundColor: 'rgba(255, 170, 0, 0.2)',
+                    borderColor: '#ffaa00',
+                    pointBackgroundColor: '#ffaa00',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#ffaa00'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        pointLabels: {
+                            font: {
+                                size: 12
+                            },
+                            color: '#888'
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100,
+                        ticks: {
+                            display: false, // hide numbers on scale
+                            backdropColor: 'transparent'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // --- Set Date ---
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 19).replace('T', ' ');
+        document.getElementById('dateStamp').textContent = `設計時間: ${dateStr}`;
+
+        // --- Full Report Navigation ---
+        document.getElementById('fullReportBtn').addEventListener('click', () => {
+            // Synthesize "A Grade" data matching the Tennis Rating UI structure
+            const analysisData = {
+                id: "Analysis-" + now.getTime().toString().slice(-4),
+                hand: "right",
+                video: 1,
+                Head: 9.0,
+                Backswing: 9.0,
+                ForwardSwing: 8.5,
+                HitballSwing: 9.0,
+                FollowThrough: 9.0,
+                BodyWeight: 8.5,
+                HitTiming: 9.0,
+                RacketFace: 9.0,
+                overall: 9.0
+            };
+
+            // Save to localStorage
+            localStorage.setItem('tennisAnalysisData', JSON.stringify(analysisData));
+
+            // Navigate (Adjust path as needed to reach the file in the same or parent dir)
+            // Assuming both are in Desktop/網球 based on user info, but let's check relative path
+            // origin.html is in AI_Coach_Detection-tennis/2d_html/.archive/
+            // target is in Desktop/網球 (../../..)
+            window.location.href = '../../../tennis_rating_ui_feedback_v3.html';
+        });
+
     </script>
 </body>
 

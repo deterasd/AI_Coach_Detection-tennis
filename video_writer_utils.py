@@ -7,7 +7,7 @@ import cv2
 import os
 from pathlib import Path
 
-def safe_video_writer(output_path, fps, frame_size, fourcc_preference='mp4v'):
+def safe_video_writer(output_path, fps, frame_size, fourcc_preference='avc1'):
     """
     安全的 VideoWriter 初始化，支持多編碼器回退
     
@@ -27,9 +27,10 @@ def safe_video_writer(output_path, fps, frame_size, fourcc_preference='mp4v'):
     
     # 編碼器回退序列
     codec_fallbacks = [
-        (fourcc_preference, cv2.VideoWriter_fourcc(*fourcc_preference)),
-        ('XVID', cv2.VideoWriter_fourcc(*'XVID')),
+        ('avc1', cv2.VideoWriter_fourcc(*'avc1')),
         ('H264', cv2.VideoWriter_fourcc(*'H264')),
+        ('mp4v', cv2.VideoWriter_fourcc(*'mp4v')),
+        ('XVID', cv2.VideoWriter_fourcc(*'XVID')),
         ('X264', cv2.VideoWriter_fourcc(*'X264')),
         ('MP4V', cv2.VideoWriter_fourcc(*'MP4V')),
     ]

@@ -276,12 +276,12 @@ def analyze_head_stability(trajectory_data, knn_dataset_path: str = None, expert
             frames_data = trajectory_data
         
         if not isinstance(frames_data, list) or len(frames_data) == 0:
-            return "軌跡數據格式不正確", 0.0
+            return "軌跡數據格式不正確", 0.0, None
         
         # 找出擊球幀
         impact_idx = _find_impact_frame(frames_data)
         if impact_idx is None:
-            return "未找到擊球幀，無法進行頭部穩定度分析", 0.0
+            return "未找到擊球幀，無法進行頭部穩定度分析", 0.0, None
         
         impact_frame = frames_data[impact_idx]
         
@@ -302,22 +302,30 @@ def analyze_head_stability(trajectory_data, knn_dataset_path: str = None, expert
         else:
             combined_advice = "擊球過程中頭部略不穩定，建議揮拍過程中，眼睛盯好擊球點，並維持頭不轉動。"
         
-        # 計算信心度
-        confidence = 1.0
-        if not parallel_analysis.get("is_valid", False):
-            confidence *= 0.5
-        if not head_stability.get("is_valid", False):
-            confidence *= 0.5
-        if impact_idx < 10:  # 擊球幀太早，數據可能不足
-            confidence *= 0.8
+        # 計算信心度 (基於 Level)
+        # Level 1 (成功擊球) = 1.0, Level 3 (未擊中) = 0.6, Invalid = 0.0
+        # 10/10 vs 6/10
         
-        return combined_advice, confidence
+        is_data_valid = parallel_analysis.get("is_valid", False) and head_stability.get("is_valid", False)
+        priority_item = None
+        
+        if not is_data_valid:
+            confidence = 0.0
+            priority_item = None
+        elif ball_contact_success:
+            confidence = 1.0  # Level 1
+            priority_item = None
+        else:
+            confidence = 0.6  # Level 3
+            priority_item = "眼睛盯球與擊球穩定度"
+        
+        return combined_advice, confidence, priority_item
         
     except Exception as e:
         print(f"頭部穩定度分析失敗: {e}")
         import traceback
         traceback.print_exc()
-        return f"頭部穩定度分析失敗: {str(e)}", 0.0
+        return f"頭部穩定度分析失敗: {str(e)}", 0.0, None
 
 
 # ========== 測試用 ==========

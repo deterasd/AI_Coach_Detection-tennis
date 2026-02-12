@@ -1,6 +1,6 @@
 {
-  "analysis_timestamp": "2026-02-01T16:49:01.346424",
-  "trajectory_file": "/Users/cindychang/Desktop/pickleball_ai_coach/trajectory/0129test/outdoor6__2_45_segment(3D_trajectory_smoothed).json",
+  "analysis_timestamp": "2026-02-04T12:58:27.803749",
+  "trajectory_file": "/Users/jerrytsai/Desktop/網球/AI_Coach_Detection-tennis/trajectory/0129test/outdoor6__2_45_segment(3D_trajectory_smoothed).json",
   "nearest_expert": "outdoor6__2_45_segment(3D_trajectory_smoothed).json",
   "expert_distance": 0.0,
   "analyses": {
@@ -13,8 +13,8 @@
   },
   "combined_advice": "A.側身:拉拍側身完整B.手腕高度:拉拍右手腕高度太高（手腕 Y=50.0 mm、肩 Y=431.0 mm，建議在肩～肩腰中點 431.0～199.0 mm），建議拉拍準備時可以將手腕降低到胸部位置C.球拍朝向:拉拍球拍頭得宜D.準備時機:拉拍有點慢，建議提早在球落地彈起時做好拉拍準備動作。\n\nA.手腕下放:擊球出拍前球拍下放和拍頭倒下不足（起點球拍 -11.6°、終點 26.7°，應逐漸趨近水平 0°）。建議要出拍時，手腕在身體後方往下放。B.向前帶動:出拍手腕向前帶動球拍得宜C.球拍角度:出拍手腕向前時球拍頭朝後或朝下不足（終點球拍 26.7°，理想 -30°～-45°）。建議出拍時球拍頭往下壓後再向前送。\n\nA.轉身:擊球時轉身動作得宜B.手腕位置:擊球時右手腕位置得宜\n\n收拍:擊球後收拍動作得宜\n\n左右位置在理想區間，揮拍距離掌握良好。上下高度在理想區間，擊球高度掌握良好。前後深度在理想區間，擊球時機掌握良好。",
   "statistics": {
-    "backswing_confidence": 1.0,
-    "forwardswing_confidence": 1.0,
+    "backswing_confidence": 0.85,
+    "forwardswing_confidence": 0.8666666666666667,
     "hitballswing_confidence": 1.0,
     "followthrough_confidence": 1.0,
     "contact_zone": {
@@ -52,5 +52,7 @@
       }
     },
     "head_stability_confidence": 1.0
-  }
+  },
+  "priority_improvement": "拉拍手腕高度",
+  "action_type": "正拍"
 }
