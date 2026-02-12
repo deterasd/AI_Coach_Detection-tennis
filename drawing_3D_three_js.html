@@ -2782,13 +2782,12 @@
     
     // 初始化：建立場景、控制器與各種設定
     init();
+    animate(); // 啟動動畫循環
     console.log("🚀 [系統啟動] 3D 軌跡頁面載入完成");
 
-    // --- 自動偵測第一球完成標記 ---
-    let notifiedFolders = new Set();
-    let isInitialLoad = true;
-    let isChecking = false; // 掃描鎖，防止重複执行
-    const FILE_SERVER_PORT = 3000;
+    // --- 自動偵測所有球的完成標記 ---
+    let lastCheckedFolder = null;
+    let notifiedBalls = new Set(); // 記錄已通知過的 "folder-ballNumber" 組合
 
     // 啟動定時輪詢
     setInterval(checkFirstBallReady, 3000);
@@ -2800,73 +2799,54 @@
     }, 500);
 
     document.getElementById('testNotifyBtn').onclick = () => {
-        notifyFirstBall("測試用戶");
+        notifyBallReady("測試用戶", 1);
     };
 
     async function checkFirstBallReady() {
-        if (isChecking) return; // 如果還在檢查中，跳過這一次
-        isChecking = true;
-
         try {
-            const host = window.location.hostname || 'localhost';
-            const response = await fetch(`http://${host}:${FILE_SERVER_PORT}/getFolders`);
-            if (!response.ok) {
-                isChecking = false;
-                return;
-            }
-            
-            const folders = await response.json();
-            if (!folders || !Array.isArray(folders)) {
-                isChecking = false;
-                return;
-            }
+            const response = await fetch('/getFolders');
+            if (!response.ok) return;
+            const folderInfos = await response.json();
+            if (folderInfos.length === 0) return;
 
-            // 如果是第一次啟動，直接把「當下所有資料夾」都加入已處理清單，絕對不彈窗
-            if (isInitialLoad) {
-                folders.forEach(f => notifiedFolders.add(f));
-                console.log(`[通知系統] ⚡ 系統啟動，已將現有 ${folders.length} 個資料夾設為靜音。`);
-                isInitialLoad = false;
-                isChecking = false;
-                return;
+            // 按修改时间排序，取得最新的一個
+            folderInfos.sort((a, b) => b.mtime - a.mtime);
+            const latestFolderInfo = folderInfos[0];
+            const latestFolderFull = latestFolderInfo.name;
+            const cleanName = latestFolderFull.split('_trajectory')[0].replace(/_+$/, ''); // 移除末尾的下划线
+
+            // 如果換了新資料夾（新客戶），重設通知狀態
+            if (latestFolderFull !== lastCheckedFolder) {
+                lastCheckedFolder = latestFolderFull;
+                notifiedBalls.clear(); // 清空已通知記錄，這樣新客戶的球會重新通知
             }
 
-            // 非初始化階段：找出「新出現在清單中」或「還沒通知過」的資料夾
-            const pendingFolders = folders.filter(f => !notifiedFolders.has(f));
-            
-            for (const folderName of pendingFolders) {
-                const checkPaths = [
-                    folderName,
-                    `${folderName}/trajectory_1`
-                ];
-
-                let foundReady = false;
-                for (const pathSuffix of checkPaths) {
-                    try {
-                        const vRes = await fetch(`http://${host}:${FILE_SERVER_PORT}/getVideos?folder=${encodeURIComponent(pathSuffix)}`);
-                        if (vRes.ok) {
-                            const files = await vRes.json();
-                            if (files && files.includes('ready.txt')) {
-                                foundReady = true;
-                                break;
-                            }
+            // 檢查所有 trajectory_N 資料夾
+            for (let ballNum = 1; ballNum <= 50; ballNum++) {
+                const ballKey = `${latestFolderFull}-ball${ballNum}`;
+                
+                // 如果已經通知過，跳過
+                if (notifiedBalls.has(ballKey)) continue;
+                
+                try {
+                    const videoResponse = await fetch(`/getVideos?folder=${latestFolderFull}/trajectory_${ballNum}`);
+                    if (videoResponse.ok) {
+                        const files = await videoResponse.json();
+                        if (files.includes('ready.txt')) {
+                            notifyBallReady(cleanName, ballNum);
+                            notifiedBalls.add(ballKey); // 標記為已通知
                         }
-                    } catch (e) {}
-                }
-
-                if (foundReady) {
-                    console.log(`[通知系統] 🚩 發現新完成標記: ${folderName}`);
-                    notifyFirstBall(folderName.split('__')[0]);
-                    notifiedFolders.add(folderName); // 立即標記，防止重複
+                    }
+                } catch (e) {
+                    // 如果找不到該球的資料夾，繼續檢查下一個
                 }
             }
         } catch (error) {
             console.error("[通知系統] 輪詢異常:", error);
-        } finally {
-            isChecking = false; // 釋放鎖
         }
     }
 
-    function notifyFirstBall(playerName) {
+    function notifyBallReady(playerName, ballNumber) {
         const notification = document.createElement('div');
         notification.id = 'readyNotification';
         notification.style.cssText = `
@@ -2885,23 +2865,25 @@
             animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         `;
         notification.innerHTML = `
-            <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>Analysis Complete!</strong></div>
-            <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">The first pitch for <strong> ${playerName}</strong> has been completed.</div>
+            <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>🔔 Analysis Complete!</strong></div>
+            <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">Player <strong>${playerName}</strong> - Ball <strong>${ballNumber}</strong> result is ready.</div>
             <div style="display: flex; gap: 10px;">
-                <button id="viewResultBtn" title="View 3D Result Now" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View 3D Trajectory</button>
-                <button id="closeNotifyBtn" title="Dismiss Notification" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
+                <button id="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View Result</button>
+                <button id="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
             </div>
         `;
         document.body.appendChild(notification);
 
-        // 更新 aria-live 區域供螢幕閱讀器讀取
-        const liveRegion = document.getElementById('notification-live-region');
-        if (liveRegion) liveRegion.textContent = `Analysis complete! User ${playerName}'s first ball is finished.`;
-
-        const msg = new SpeechSynthesisUtterance(`Analysis for ${playerName} is complete. You can view the result now.`);
+        // 語音通知 - 修複語音問題
+        window.speechSynthesis.cancel(); // 停止任何正在進行的語音
+        const msg = new SpeechSynthesisUtterance(`Ball ${ballNumber} result for ${playerName} is ready. Please check the display.`);
         msg.lang = "en-US";
+        msg.rate = 0.9; // 調整說話速度
+        msg.pitch = 1.0;
+        msg.volume = 1.0; // 確保音量最大
         window.speechSynthesis.speak(msg);
 
+        // 點擊「立即查看」
         document.getElementById('viewResultBtn').onclick = () => {
             // 在 3D 頁面中，點擊後開啟資料夾選擇器 (dirInput)
             const dirInput = document.getElementById('dirInput');
@@ -2915,6 +2897,7 @@
 
         document.getElementById('closeNotifyBtn').onclick = () => notification.remove();
 
+        // 20秒後自動消失
         setTimeout(() => {
             if (document.getElementById('readyNotification')) {
                 notification.style.opacity = '0';
@@ -2933,9 +2916,6 @@
         }
     `;
     document.head.appendChild(style3D);
-
-    // 每 3 秒檢查一次
-    setInterval(checkFirstBallReady, 3000);
   </script>
 </body>
 </html>

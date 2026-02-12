@@ -123,9 +123,9 @@ folderSelect.addEventListener('change', e => {
     }
 });
 
-// --- Polling for First Ball Ready ---
+// --- Polling for All Balls Ready ---
 let lastCheckedFolder = null;
-let isFirstBallNotified = false;
+let notifiedBalls = new Set(); // 記錄已通知過的 "folder-ballNumber" 組合
 
 async function checkFirstBallReady() {
     try {
@@ -138,23 +138,32 @@ async function checkFirstBallReady() {
         folderInfos.sort((a, b) => b.mtime - a.mtime);
         const latestFolderInfo = folderInfos[0];
         const latestFolderFull = latestFolderInfo.name; // 例如 "最8_trajectory"
-        const cleanName = latestFolderFull.split('_trajectory')[0];
+        const cleanName = latestFolderFull.split('_trajectory')[0].replace(/_+$/, ''); // 移除末尾的下划线
 
         // 如果換了新資料夾（新客戶），重設通知狀態
         if (latestFolderFull !== lastCheckedFolder) {
             lastCheckedFolder = latestFolderFull;
-            isFirstBallNotified = false;
+            notifiedBalls.clear(); // 清空已通知記錄，這樣新客戶的球會重新通知
         }
 
-        if (isFirstBallNotified) return;
-
-        // 檢查 trajectory_1 資料夾下是否有 ready.txt
-        const videoResponse = await fetch(`/getVideos?folder=${latestFolderFull}/trajectory_1`);
-        if (videoResponse.ok) {
-            const files = await videoResponse.json();
-            if (files.includes('ready.txt')) {
-                notifyFirstBall(cleanName);
-                isFirstBallNotified = true;
+        // 檢查所有 trajectory_N 資料夾
+        for (let ballNum = 1; ballNum <= 50; ballNum++) {
+            const ballKey = `${latestFolderFull}-ball${ballNum}`;
+            
+            // 如果已經通知過，跳過
+            if (notifiedBalls.has(ballKey)) continue;
+            
+            try {
+                const videoResponse = await fetch(`/getVideos?folder=${latestFolderFull}/trajectory_${ballNum}`);
+                if (videoResponse.ok) {
+                    const files = await videoResponse.json();
+                    if (files.includes('ready.txt')) {
+                        notifyBallReady(cleanName, ballNum);
+                        notifiedBalls.add(ballKey); // 標記為已通知
+                    }
+                }
+            } catch (e) {
+                // 如果找不到該球的資料夾，繼續檢查下一個
             }
         }
     } catch (error) {
@@ -162,7 +171,7 @@ async function checkFirstBallReady() {
     }
 }
 
-function notifyFirstBall(playerName) {
+function notifyBallReady(playerName, ballNumber) {
     // 視覺通知 (升級版)
     const notification = document.createElement('div');
     notification.id = 'readyNotification';
@@ -181,18 +190,22 @@ function notifyFirstBall(playerName) {
         animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     `;
     notification.innerHTML = `
-        <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>🔔 分析完成！</strong></div>
-        <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">客戶 <strong>${playerName}</strong> 的第一球結果已產出。</div>
+        <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>🔔 Analysis Complete!</strong></div>
+        <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">Player <strong>${playerName}</strong> - Ball <strong>${ballNumber}</strong> result is ready.</div>
         <div style="display: flex; gap: 10px;">
-            <button id="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">立即查看結果</button>
-            <button id="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">忽略</button>
+            <button id="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View Result</button>
+            <button id="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
         </div>
     `;
     document.body.appendChild(notification);
 
-    // 語音通知
-    const msg = new SpeechSynthesisUtterance(`${playerName}的第一顆球結果已產出，請至大螢幕查看。`);
-    msg.lang = "zh-TW";
+    // 語音通知 - 修複語音問題
+    window.speechSynthesis.cancel(); // 停止任何正在進行的語音
+    const msg = new SpeechSynthesisUtterance(`Ball ${ballNumber} result for ${playerName} is ready. Please check the display.`);
+    msg.lang = "en-US";
+    msg.rate = 0.9; // 調整說話速度
+    msg.pitch = 1.0;
+    msg.volume = 1.0; // 確保音量最大
     window.speechSynthesis.speak(msg);
 
     // 點擊「立即查看」
