@@ -1,1671 +1,2048 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tennis Rating – High/Medium/Low</title>
+    <style>
+      :root {
+        --bg: #0b0b0c;
+        --card: #111214;
+        --muted: #6b7280;
+        --text: #e5e7eb;
+        --ring: #222428;
+        --hi: #10b981;
+        --med: #f59e0b;
+        --low: #ef4444;
+        --bar-bg: #1f2937;
+        --chip-hi-bg: #0c3b2f;
+        --chip-hi-t: #9ff3d0;
+        --chip-hi-b: #134e3a;
+        --chip-med-bg: #3d2b06;
+        --chip-med-t: #ffe6a3;
+        --chip-med-b: #7c5200;
+        --chip-low-bg: #3f0a0a;
+        --chip-low-t: #ffb3b3;
+        --chip-low-b: #7f1d1d;
+        --accent: #93c5fd;
+      }
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tennis Rating – High/Medium/Low</title>
-  <style>
-    :root {
-      --bg: #0b0b0c;
-      --card: #111214;
-      --muted: #6b7280;
-      --text: #e5e7eb;
-      --ring: #222428;
-      --hi: #10b981;
-      --med: #f59e0b;
-      --low: #ef4444;
-      --bar-bg: #1f2937;
-      --chip-hi-bg: #0c3b2f;
-      --chip-hi-t: #9ff3d0;
-      --chip-hi-b: #134e3a;
-      --chip-med-bg: #3d2b06;
-      --chip-med-t: #ffe6a3;
-      --chip-med-b: #7c5200;
-      --chip-low-bg: #3f0a0a;
-      --chip-low-t: #ffb3b3;
-      --chip-low-b: #7f1d1d;
-      --accent: #93c5fd;
-    }
+      * {
+        box-sizing: border-box;
+      }
 
-    * {
-      box-sizing: border-box;
-    }
+      html,
+      body {
+        background: radial-gradient(
+          circle at top,
+          #020617 0,
+          #020617 45%,
+          #020617 60%,
+          #000 100%
+        );
+        color: var(--text);
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Noto Sans TC",
+          Segoe UI,
+          Roboto,
+          sans-serif;
+      }
 
-    html,
-    body {
-      background: radial-gradient(circle at top, #020617 0, #020617 45%, #020617 60%, #000 100%);
-      color: var(--text);
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans TC", Segoe UI, Roboto, sans-serif;
-    }
+      /* ===== 網球場＋球網底紋 ===== */
+      body {
+        position: relative;
+      }
 
-    /* ===== 網球場＋球網底紋 ===== */
-    body {
-      position: relative;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0.22;
-      background-image:
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.22;
+        background-image:
         /* 抽象揮拍軌跡 */
-        linear-gradient(130deg, transparent 0 30%, rgba(56, 189, 248, 0.10) 45%, transparent 60%),
-        linear-gradient(300deg, transparent 0 55%, rgba(74, 222, 128, 0.10) 70%, transparent 85%),
-        /* 球網感的細格線 */
-        repeating-linear-gradient(to right,
-          transparent 0 6px,
-          rgba(148, 163, 184, 0.10) 7px,
-          transparent 8px),
-        repeating-linear-gradient(to bottom,
-          transparent 0 6px,
-          rgba(148, 163, 184, 0.08) 7px,
-          transparent 8px);
-      background-size:
-        100% 100%,
-        100% 100%,
-        180px 22px,
-        180px 22px;
-      background-position:
-        center 10%,
-        center 70%,
-        center 72%,
-        center 72%;
-      mix-blend-mode: screen;
-      z-index: 0;
-    }
+          linear-gradient(
+            130deg,
+            transparent 0 30%,
+            rgba(56, 189, 248, 0.1) 45%,
+            transparent 60%
+          ),
+          linear-gradient(
+            300deg,
+            transparent 0 55%,
+            rgba(74, 222, 128, 0.1) 70%,
+            transparent 85%
+          ),
+          /* 球網感的細格線 */
+          repeating-linear-gradient(
+              to right,
+              transparent 0 6px,
+              rgba(148, 163, 184, 0.1) 7px,
+              transparent 8px
+            ),
+          repeating-linear-gradient(
+            to bottom,
+            transparent 0 6px,
+            rgba(148, 163, 184, 0.08) 7px,
+            transparent 8px
+          );
+        background-size:
+          100% 100%,
+          100% 100%,
+          180px 22px,
+          180px 22px;
+        background-position:
+          center 10%,
+          center 70%,
+          center 72%,
+          center 72%;
+        mix-blend-mode: screen;
+        z-index: 0;
+      }
 
-    .wrap {
-      max-width: 1020px;
-      /* 整體寬度稍微縮短一點 */
-      margin: 24px auto;
-      padding: 0 16px;
-      position: relative;
-      z-index: 1;
-      /* 壓在背景底紋之上 */
-    }
+      .wrap {
+        max-width: 1020px;
+        /* 整體寬度稍微縮短一點 */
+        margin: 24px auto;
+        padding: 0 16px;
+        position: relative;
+        z-index: 1;
+        /* 壓在背景底紋之上 */
+      }
 
-    .row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-
-    @media (min-width: 960px) {
       .row {
-        grid-template-columns: 1.1fr 0.9fr;
-      }
-    }
-
-    .card {
-      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.14), transparent 55%),
-        var(--card);
-      border: 1px solid rgba(55, 65, 81, 0.85);
-      border-radius: 18px;
-      padding: 16px 16px 14px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(6px);
-      transition:
-        transform 0.18s ease-out,
-        box-shadow 0.18s ease-out,
-        border-color 0.18s ease-out,
-        background 0.18s ease-out;
-    }
-
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: -40%;
-      background: radial-gradient(circle at top, rgba(148, 163, 184, 0.08), transparent 60%);
-      opacity: 0.7;
-      pointer-events: none;
-    }
-
-    .card>* {
-      position: relative;
-      z-index: 1;
-    }
-
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 22px 55px rgba(0, 0, 0, 0.7);
-      border-color: rgba(148, 163, 184, 0.9);
-    }
-
-    .title {
-      font-size: 20px;
-      font-weight: 700;
-      margin: 0 0 8px;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    /* ===== 上面控制列：縮短寬度，一排排滿 ===== */
-    .controls {
-      display: flex;
-      flex-wrap: nowrap;
-      align-items: flex-start;
-      gap: 8px;
-      overflow-x: hidden;
-    }
-
-    .control-block {
-      flex: 0 0 auto;
-      min-width: 110px;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      /* 與另外兩個 control-block 頂部對齊 */
-    }
-
-    .control-block.control-select {
-      min-width: 220px;
-      /* 選擇紀錄略寬一點 */
-    }
-
-    .control-block.control-th {
-      min-width: 230px;
-      /* 門檻區塊固定寬度 */
-    }
-
-    .control-label {
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 3px;
-    }
-
-    .control-inline {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .control-file {
-      max-width: 260px;
-      /* CSV 段落縮短 */
-    }
-
-    select,
-    input[type='number'],
-    input[type='checkbox'] {
-      background: #0f1012;
-      color: var(--text);
-      border: 1px solid var(--ring);
-      border-radius: 10px;
-      padding: 6px 8px;
-      font-size: 13px;
-    }
-
-    select#recordSelect {
-      width: 210px;
-      /* 避免太寬 */
-    }
-
-    #thHigh,
-    #thMed {
-      width: 54px;
-      /* 門檻輸入縮短 */
-      text-align: center;
-    }
-
-    /* 隱藏實際 file input，用客製按鈕 */
-    #csvFile {
-      display: none;
-    }
-
-    .file-name {
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .btn-outline {
-      background: #020617;
-      color: var(--text);
-      border: 1px solid #4b5563;
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .btn-outline:hover {
-      background: #111827;
-    }
-
-    .chip {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      border: 1px solid transparent;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .hi {
-      background: rgba(22, 163, 74, 0.18);
-      color: #bbf7d0;
-      border-color: rgba(34, 197, 94, 0.8);
-    }
-
-    .med {
-      background: rgba(217, 119, 6, 0.16);
-      color: #fed7aa;
-      border-color: rgba(245, 158, 11, 0.85);
-    }
-
-    .low {
-      background: rgba(220, 38, 38, 0.18);
-      color: #fecaca;
-      border-color: rgba(248, 113, 113, 0.9);
-    }
-
-    .legend {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .legend-chips {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .legend .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .hi-dot {
-      background: var(--hi);
-    }
-
-    .med-dot {
-      background: var(--med);
-    }
-
-    .low-dot {
-      background: var(--low);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    @media (min-width:720px) {
-      .grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    .bar {
-      height: 9px;
-      background: radial-gradient(circle at top, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.4));
-      border-radius: 999px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .bar>.fill {
-      position: absolute;
-      inset: 0;
-      width: 0%;
-      background: linear-gradient(90deg, rgba(148, 163, 184, 0.4), rgba(248, 250, 252, 0.9));
-      box-shadow: 0 0 10px rgba(148, 163, 184, 0.8);
-      transition: width 0.35s ease-out;
-    }
-
-    .row-item {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .name {
-      font-size: 14px;
-      color: #aeb3be;
-    }
-
-    /* ===== 動作名稱 + 小圖示 ===== */
-    .name-with-icon {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .icon svg {
-      width: 16px;
-      height: 16px;
-      display: block;
-      opacity: 0.9;
-    }
-
-    .icon-small svg {
-      width: 14px;
-      height: 14px;
-      display: block;
-      opacity: 0.9;
-    }
-
-    .score {
-      font-weight: 700;
-    }
-
-    .prior {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .prior .item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border: 1px solid var(--ring);
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: #0f1012;
-    }
-
-    .donut-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 0 4px;
-    }
-
-    .footer-note {
-      margin-top: 14px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .kicker {
-      font-size: 12px;
-      color: var(--accent);
-    }
-
-    .subtle {
-      color: #cbd5e1;
-      font-size: 12px;
-    }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.45);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-    }
-
-    .modal {
-      width: min(760px, 92vw);
-      max-height: 86vh;
-      overflow: auto;
-      background: var(--card);
-      border: 1px solid var(--ring);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    }
-
-    .modal header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--ring);
-      position: sticky;
-      top: 0;
-      background: var(--card);
-      border-top-left-radius: 16px;
-      border-top-right-radius: 16px;
-    }
-
-    .modal header .ttl {
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .modal .content {
-      padding: 12px 16px 18px 16px;
-    }
-
-    .kv {
-      display: grid;
-      grid-template-columns: 120px 1fr;
-      gap: 8px 14px;
-    }
-
-    .kv .k {
-      color: var(--muted);
-      font-size: 13px;
-      padding-top: 6px;
-    }
-
-    .kv .v {
-      font-size: 14px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .btn {
-      background: #0f1012;
-      color: var(--text);
-      border: 1px solid var(--ring);
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-
-    .btn-ghost {
-      background: transparent;
-      border-color: #4b5563;
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: 13px;
-    }
-
-    .btn-ghost:hover {
-      background: #111827;
-    }
-
-    .btn:hover {
-      filter: brightness(1.1);
-    }
-
-    .clickable {
-      cursor: pointer;
-    }
-
-    .body-map-wrap {
-      margin-top: 18px;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1.4fr);
-      gap: 20px;
-      align-items: flex-start;
-    }
-
-    @media (max-width: 640px) {
-      .body-map-wrap {
+        display: grid;
         grid-template-columns: 1fr;
-        justify-items: center;
-      }
-    }
-
-    .body-map {
-      width: 150px;
-      height: 250px;
-      padding: 8px 10px;
-      border-radius: 20px;
-      background: radial-gradient(circle at top, #0b1120, #020617);
-      border: 1px solid rgba(51, 65, 85, 0.9);
-      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
-    }
-
-    .body-map-side {
-      flex: 1;
-      min-width: 220px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .body-map-legend {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .gpt-panel {
-      border-radius: 14px;
-      border: 1px dashed rgba(148, 163, 184, 0.7);
-      padding: 10px 12px;
-      background: rgba(2, 6, 23, 0.9);
-    }
-
-    .gpt-panel .gpt-title {
-      font-size: 12px;
-      color: var(--accent);
-      margin-bottom: 4px;
-    }
-
-    .gpt-text {
-      font-size: 13px;
-      color: #e5e7eb;
-      line-height: 1.7;
-    }
-
-    .bm-part .body-shape {
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .bm-dim .body-shape {
-      fill: #1e293b;
-      stroke: #475569;
-      opacity: 0.35;
-    }
-
-    .bm-active .body-shape {
-      fill: url(#activeGradient);
-      stroke: #fca5a5;
-      opacity: 1;
-      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
-      animation: pulse-glow 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse-glow {
-
-      0%,
-      100% {
-        filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+        gap: 16px;
       }
 
-      50% {
-        filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.9));
+      @media (min-width: 960px) {
+        .row {
+          grid-template-columns: 1.1fr 0.9fr;
+        }
       }
-    }
 
-    /* donut 只保留填滿動畫 + 網球指針，沒有呼吸特效 */
-    #donutFill {
-      transition: stroke-dasharray 0.45s ease-out, stroke 0.3s ease-out;
-    }
+      .card {
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(148, 163, 184, 0.14),
+            transparent 55%
+          ),
+          var(--card);
+        border: 1px solid rgba(55, 65, 81, 0.85);
+        border-radius: 18px;
+        padding: 16px 16px 14px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(6px);
+        transition:
+          transform 0.18s ease-out,
+          box-shadow 0.18s ease-out,
+          border-color 0.18s ease-out,
+          background 0.18s ease-out;
+      }
 
-    #donutBall {
-      transition: cx 0.45s ease-out, cy 0.45s ease-out;
-      opacity: 0;
-    }
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: -40%;
+        background: radial-gradient(
+          circle at top,
+          rgba(148, 163, 184, 0.08),
+          transparent 60%
+        );
+        opacity: 0.7;
+        pointer-events: none;
+      }
 
+      .card > * {
+        position: relative;
+        z-index: 1;
+      }
 
-    /* Back Button Style */
-    .back-nav {
-      margin-bottom: 12px;
-    }
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 22px 55px rgba(0, 0, 0, 0.7);
+        border-color: rgba(148, 163, 184, 0.9);
+      }
 
-    .back-btn-ui {
-      background: transparent;
-      border: none;
-      color: var(--text);
-      font-size: 1.2rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 0;
-    }
+      .title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
 
-    .back-btn-ui:hover {
-      color: var(--accent);
-    }
-    /* ===== 六大分析卡片 ===== */
-    .analysis-cards-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
 
-    @media (max-width: 640px) {
-      .analysis-cards-grid { grid-template-columns: 1fr; }
-    }
+      /* ===== 上面控制列：縮短寬度，一排排滿 ===== */
+      .controls {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        gap: 8px;
+        overflow-x: hidden;
+      }
 
-    .analysis-card {
-      background: #0a0c0f;
-      border: 1px solid var(--ring);
-      border-radius: 14px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: border-color 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
+      .control-block {
+        flex: 0 0 auto;
+        min-width: 110px;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        /* 與另外兩個 control-block 頂部對齊 */
+      }
 
-    .analysis-card:hover {
-      border-color: rgba(148, 163, 184, 0.4);
-    }
+      .control-block.control-select {
+        min-width: 220px;
+        /* 選擇紀錄略寬一點 */
+      }
 
-    .ac-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+      .control-block.control-th {
+        min-width: 230px;
+        /* 門檻區塊固定寬度 */
+      }
 
-    .ac-icon { font-size: 18px; flex-shrink: 0; }
+      .control-label {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 3px;
+      }
 
-    .ac-title {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--accent);
-      flex: 1;
-    }
+      .control-inline {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
 
-    .ac-conf {
-      font-size: 12px;
-      font-weight: 700;
-      color: #e5e7eb;
-      background: rgba(148,163,184,0.1);
-      border: 1px solid rgba(148,163,184,0.2);
-      border-radius: 999px;
-      padding: 2px 8px;
-    }
+      .control-file {
+        max-width: 260px;
+        /* CSV 段落縮短 */
+      }
 
-    .ac-bar-bg {
-      height: 4px;
-      background: #1f2937;
-      border-radius: 999px;
-      overflow: hidden;
-    }
+      select,
+      input[type="number"],
+      input[type="checkbox"] {
+        background: #0f1012;
+        color: var(--text);
+        border: 1px solid var(--ring);
+        border-radius: 10px;
+        padding: 6px 8px;
+        font-size: 13px;
+      }
 
-    .ac-bar-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #38bdf8, #818cf8);
-      border-radius: 999px;
-      transition: width 0.6s ease-out;
-    }
+      select#recordSelect {
+        width: 210px;
+        /* 避免太寬 */
+      }
 
-    .ac-text {
-      font-size: 13px;
-      color: #cbd5e1;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+      #thHigh,
+      #thMed {
+        width: 54px;
+        /* 門檻輸入縮短 */
+        text-align: center;
+      }
 
-    .ac-flags {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
+      /* 隱藏實際 file input，用客製按鈕 */
+      #csvFile {
+        display: none;
+      }
 
-    .flag-chip {
-      font-size: 10px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-    }
+      .file-name {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
 
-    .flag-ok  { background: rgba(16,185,129,0.18); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
-    .flag-warn{ background: rgba(239,68,68,0.18);  color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+      .btn-outline {
+        background: #020617;
+        color: var(--text);
+        border: 1px solid #4b5563;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
 
-    /* ===== Advice Section 多分區樣式（仿 Action Analysis）===== */
-    .advice-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: 4px;
-    }
+      .btn-outline:hover {
+        background: #111827;
+      }
 
-    .advice-section {
-      border: 1px solid var(--ring);
-      border-radius: 14px;
-      padding: 12px 14px 14px;
-      background: #0a0c0f;
-      transition: border-color 0.2s;
-    }
+      .chip {
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
 
-    .advice-section:hover {
-      border-color: rgba(148, 163, 184, 0.45);
-    }
+      .hi {
+        background: rgba(22, 163, 74, 0.18);
+        color: #bbf7d0;
+        border-color: rgba(34, 197, 94, 0.8);
+      }
 
-    .advice-section h3 {
-      margin: 0 0 10px;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+      .med {
+        background: rgba(217, 119, 6, 0.16);
+        color: #fed7aa;
+        border-color: rgba(245, 158, 11, 0.85);
+      }
 
-    .advice-item {
-      font-size: 13.5px;
-      color: var(--text);
-      line-height: 1.75;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: rgba(15, 16, 18, 0.6);
-      border: 1px solid rgba(55, 65, 81, 0.6);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+      .low {
+        background: rgba(220, 38, 38, 0.18);
+        color: #fecaca;
+        border-color: rgba(248, 113, 113, 0.9);
+      }
 
-    .advice-item.suggestion-box {
-      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.06), transparent 60%),
-        rgba(15, 16, 18, 0.6);
-      border-color: rgba(56, 189, 248, 0.2);
-    }
+      .legend {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 8px;
+      }
 
-    .advice-item.gpt-box {
-      background: radial-gradient(circle at top left, rgba(74, 222, 128, 0.07), transparent 60%),
-        rgba(15, 16, 18, 0.6);
-      border-color: rgba(74, 222, 128, 0.2);
-      font-size: 14px;
-    }
+      .legend-chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
 
-    .advice-kv {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 8px;
-    }
+      .legend .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
 
-    .advice-kv-item {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--ring);
-      border-radius: 10px;
-      padding: 8px 10px;
-    }
+      .hi-dot {
+        background: var(--hi);
+      }
 
-    .advice-kv-item .kv-label {
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 3px;
-    }
+      .med-dot {
+        background: var(--med);
+      }
 
-    .advice-kv-item .kv-val {
-      font-size: 13px;
-      color: var(--text);
-      font-weight: 600;
-    }
+      .low-dot {
+        background: var(--low);
+      }
 
-    .advice-row {
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      font-size: 13px;
-    }
-    .advice-row:last-child { border-bottom: none; }
-    .advice-row strong { color: var(--muted); font-weight: 500; }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
 
-    .advice-empty {
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-      padding: 28px 0;
-    }
-  </style>
-</head>
+      @media (min-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
 
-<body>
-  <div class="wrap">
-    <!-- Back Button (v3) -->
-    <div class="back-nav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <button class="back-btn-ui" onclick="window.history.back()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        返回 Dashboard
-      </button>
-    </div>
+      .bar {
+        height: 9px;
+        background: radial-gradient(
+          circle at top,
+          rgba(15, 23, 42, 1),
+          rgba(15, 23, 42, 0.4)
+        );
+        border-radius: 999px;
+        position: relative;
+        overflow: hidden;
+      }
 
-    <div class="card" style="margin-bottom:16px;">
-      <div class="controls">
-        <div class="control-block">
-          <div class="control-label">資料筆數</div>
-          <div class="subtle" id="count"></div>
-        </div>
+      .bar > .fill {
+        position: absolute;
+        inset: 0;
+        width: 0%;
+        background: linear-gradient(
+          90deg,
+          rgba(148, 163, 184, 0.4),
+          rgba(248, 250, 252, 0.9)
+        );
+        box-shadow: 0 0 10px rgba(148, 163, 184, 0.8);
+        transition: width 0.35s ease-out;
+      }
 
-        <div class="control-block control-select">
-          <div class="control-label">選擇紀錄</div>
-          <select id="recordSelect"></select>
-        </div>
+      .row-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
 
-        <label class="control-inline" style="display:none;">
-          <input type="checkbox" id="useWeighted" checked />
-          使用核心加權
-        </label>
+      .name {
+        font-size: 14px;
+        color: #aeb3be;
+      }
 
-        <div class="control-inline control-file" style="display:none;">
-          <button type="button" class="btn-outline" id="btnPickFile">匯入 CSV</button>
-          <span id="csvFileName" class="file-name subtle">未選擇</span>
-          <input type="file" id="csvFile" accept=".csv" />
-        </div>
+      /* ===== 動作名稱 + 小圖示 ===== */
+      .name-with-icon {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
 
-        <div class="control-block control-th">
-          <div class="control-label">分級門檻</div>
-          <div class="subtle">
-            High ≥
-            <input id="thHigh" type="number" min="6" max="10" step="0.1" value="8.5" />
-            &nbsp;&nbsp;Med ≥
-            <input id="thMed" type="number" min="5" max="10" step="0.1" value="7.0" />
-          </div>
-        </div>
-      </div>
-    </div>
+      .icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+        opacity: 0.9;
+      }
 
-    <div class="row">
-      <div class="card">
-        <h2 class="title">綜合評分</h2>
-        <div class="donut-wrap">
-          <svg id="donut" width="220" height="220" viewBox="0 0 220 220" role="img" aria-label="Overall donut">
-            <defs>
-              <linearGradient id="gradHi" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#34d399" />
-                <stop offset="100%" stop-color="#10b981" />
-              </linearGradient>
-              <linearGradient id="gradMed" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#fbbf24" />
-                <stop offset="100%" stop-color="#f59e0b" />
-              </linearGradient>
-              <linearGradient id="gradLow" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#f87171" />
-                <stop offset="100%" stop-color="#ef4444" />
-              </linearGradient>
-              <radialGradient id="tennisBallGrad" cx="50%" cy="40%" r="70%">
-                <stop offset="0%" stop-color="#f0fdf4" />
-                <stop offset="45%" stop-color="#4ade80" />
-                <stop offset="100%" stop-color="#16a34a" />
-              </radialGradient>
-            </defs>
-            <circle cx="110" cy="110" r="90" stroke="#1f2937" stroke-width="18" fill="none" />
-            <circle id="donutFill" cx="110" cy="110" r="90" stroke="url(#gradMed)" stroke-width="18" fill="none"
-              stroke-linecap="round" transform="rotate(-90 110 110)" stroke-dasharray="0 999" />
-            <circle id="donutBall" cx="110" cy="20" r="7" fill="url(#tennisBallGrad)" stroke="#bbf7d0"
-              stroke-width="1.4" style="filter: drop-shadow(0 0 8px rgba(74,222,128,0.9));" />
-            <text id="donutText" x="110" y="105" text-anchor="middle" style="font-size:40px; font-weight:800;"
-              fill="#f9fafb">0.0</text>
-            <text id="donutBand" x="110" y="132" text-anchor="middle" style="font-size:13px; fill:#9ca3af;">MED</text>
-            <text id="donutSub" x="110" y="152" text-anchor="middle" style="font-size:12px; fill:#9ca3af;">Weighted
-              Overall</text>
+      .icon-small svg {
+        width: 14px;
+        height: 14px;
+        display: block;
+        opacity: 0.9;
+      }
+
+      .score {
+        font-weight: 700;
+      }
+
+      .prior {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .prior .item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid var(--ring);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #0f1012;
+      }
+
+      .donut-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 0 4px;
+      }
+
+      .footer-note {
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .kicker {
+        font-size: 12px;
+        color: var(--accent);
+      }
+
+      .subtle {
+        color: #cbd5e1;
+        font-size: 12px;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+
+      .modal {
+        width: min(760px, 92vw);
+        max-height: 86vh;
+        overflow: auto;
+        background: var(--card);
+        border: 1px solid var(--ring);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      .modal header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--ring);
+        position: sticky;
+        top: 0;
+        background: var(--card);
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+      }
+
+      .modal header .ttl {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .modal .content {
+        padding: 12px 16px 18px 16px;
+      }
+
+      .kv {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 8px 14px;
+      }
+
+      .kv .k {
+        color: var(--muted);
+        font-size: 13px;
+        padding-top: 6px;
+      }
+
+      .kv .v {
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      .btn {
+        background: #0f1012;
+        color: var(--text);
+        border: 1px solid var(--ring);
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      .btn-ghost {
+        background: transparent;
+        border-color: #4b5563;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+
+      .btn-ghost:hover {
+        background: #111827;
+      }
+
+      .btn:hover {
+        filter: brightness(1.1);
+      }
+
+      .clickable {
+        cursor: pointer;
+      }
+
+      .body-map-wrap {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1.4fr);
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      @media (max-width: 640px) {
+        .body-map-wrap {
+          grid-template-columns: 1fr;
+          justify-items: center;
+        }
+      }
+
+      .body-map {
+        width: 150px;
+        height: 250px;
+        padding: 8px 10px;
+        border-radius: 20px;
+        background: radial-gradient(circle at top, #0b1120, #020617);
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+      }
+
+      .body-map-side {
+        flex: 1;
+        min-width: 220px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .body-map-legend {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .gpt-panel {
+        border-radius: 14px;
+        border: 1px dashed rgba(148, 163, 184, 0.7);
+        padding: 10px 12px;
+        background: rgba(2, 6, 23, 0.9);
+      }
+
+      .gpt-panel .gpt-title {
+        font-size: 12px;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      .gpt-text {
+        font-size: 13px;
+        color: #e5e7eb;
+        line-height: 1.7;
+      }
+
+      .bm-part .body-shape {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .bm-dim .body-shape {
+        fill: #1e293b;
+        stroke: #475569;
+        opacity: 0.35;
+      }
+
+      .bm-active .body-shape {
+        fill: url(#activeGradient);
+        stroke: #fca5a5;
+        opacity: 1;
+        filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
+        animation: pulse-glow 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse-glow {
+        0%,
+        100% {
+          filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+        }
+
+        50% {
+          filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.9));
+        }
+      }
+
+      /* donut 只保留填滿動畫 + 網球指針，沒有呼吸特效 */
+      #donutFill {
+        transition:
+          stroke-dasharray 0.45s ease-out,
+          stroke 0.3s ease-out;
+      }
+
+      #donutBall {
+        transition:
+          cx 0.45s ease-out,
+          cy 0.45s ease-out;
+        opacity: 0;
+      }
+
+      /* Back Button Style */
+      .back-nav {
+        margin-bottom: 12px;
+      }
+
+      .back-btn-ui {
+        background: transparent;
+        border: none;
+        color: var(--text);
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+      }
+
+      .back-btn-ui:hover {
+        color: var(--accent);
+      }
+      /* ===== 六大分析卡片 ===== */
+      .analysis-cards-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 640px) {
+        .analysis-cards-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .analysis-card {
+        background: #0a0c0f;
+        border: 1px solid var(--ring);
+        border-radius: 14px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: border-color 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .analysis-card:hover {
+        border-color: rgba(148, 163, 184, 0.4);
+      }
+
+      .ac-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .ac-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .ac-title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--accent);
+        flex: 1;
+      }
+
+      .ac-conf {
+        font-size: 12px;
+        font-weight: 700;
+        color: #e5e7eb;
+        background: rgba(148, 163, 184, 0.1);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 999px;
+        padding: 2px 8px;
+      }
+
+      .ac-bar-bg {
+        height: 4px;
+        background: #1f2937;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .ac-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+        border-radius: 999px;
+        transition: width 0.6s ease-out;
+      }
+
+      .ac-text {
+        font-size: 13px;
+        color: #cbd5e1;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .ac-flags {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      .flag-chip {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .flag-ok {
+        background: rgba(16, 185, 129, 0.18);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+      }
+      .flag-warn {
+        background: rgba(239, 68, 68, 0.18);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+      }
+
+      /* ===== Advice Section 多分區樣式（仿 Action Analysis）===== */
+      .advice-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 4px;
+      }
+
+      .advice-section {
+        border: 1px solid var(--ring);
+        border-radius: 14px;
+        padding: 12px 14px 14px;
+        background: #0a0c0f;
+        transition: border-color 0.2s;
+      }
+
+      .advice-section:hover {
+        border-color: rgba(148, 163, 184, 0.45);
+      }
+
+      .advice-section h3 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .advice-item {
+        font-size: 13.5px;
+        color: var(--text);
+        line-height: 1.75;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: rgba(15, 16, 18, 0.6);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .advice-item.suggestion-box {
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.06),
+            transparent 60%
+          ),
+          rgba(15, 16, 18, 0.6);
+        border-color: rgba(56, 189, 248, 0.2);
+      }
+
+      .advice-item.gpt-box {
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(74, 222, 128, 0.07),
+            transparent 60%
+          ),
+          rgba(15, 16, 18, 0.6);
+        border-color: rgba(74, 222, 128, 0.2);
+        font-size: 14px;
+      }
+
+      .advice-kv {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 8px;
+      }
+
+      .advice-kv-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--ring);
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+
+      .advice-kv-item .kv-label {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 3px;
+      }
+
+      .advice-kv-item .kv-val {
+        font-size: 13px;
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .advice-row {
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 13px;
+      }
+      .advice-row:last-child {
+        border-bottom: none;
+      }
+      .advice-row strong {
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .advice-empty {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 28px 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <!-- Back Button (v3) -->
+      <div
+        class="back-nav"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        "
+      >
+        <button class="back-btn-ui" onclick="window.history.back()">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
-        </div>
-        <div class="legend">
-          <div class="legend-chips">
-            <span class="chip hi"><span class="dot hi-dot"></span> High</span>
-            <span class="chip med"><span class="dot med-dot"></span> Medium</span>
-            <span class="chip low"><span class="dot low-dot"></span> Low</span>
-          </div>
-          <!-- v5 button retained but uses local data -->
-          <button id="btnOverallGpt" class="btn btn-ghost" style="display:none;">AI 個人化評語</button>
-        </div>
-        <div class="footer-note">提示：可調整門檻使分級更鼓勵或更嚴格。</div>
+          返回 Dashboard
+        </button>
       </div>
 
-      <div class="card">
-        <h2 class="title">優先改善（最低三項）</h2>
-        <div id="priority" class="prior"></div>
-        <div class="footer-note">點擊任一項可查看細節與教練建議。</div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <h2 class="title">各動作分數</h2>
-      <div id="list" class="grid"></div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <h2 class="title">詳細建議</h2>
-      <div class="muted" style="margin-bottom:12px;">AI 教練完整分析建議</div>
-
-      <div class="advice-panel" id="advicePanel">
-        <!-- 📊 動作識別摘要（參考 2D Action Recognition） -->
-        <div class="advice-section" id="advSectionRecognition">
-          <h3>📊 動作識別摘要</h3>
-          <div class="advice-kv" id="advRecognitionKv">
-            <div class="advice-row"><strong>持拍手：</strong><span id="recHand">-</span></div>
-            <div class="advice-row"><strong>動作類型：</strong><span id="recActionType">-</span></div>
-            <div class="advice-row"><strong>相似度：</strong><span id="recSimilarity">-</span></div>
+      <div class="card" style="margin-bottom: 16px">
+        <div class="controls">
+          <div class="control-block">
+            <div class="control-label">資料筆數</div>
+            <div class="subtle" id="count"></div>
           </div>
-        </div>
 
-        <!-- 六大分析卡片 -->
-        <div class="analysis-cards-grid" id="analysisCardsGrid">
+          <div class="control-block control-select">
+            <div class="control-label">選擇紀錄</div>
+            <select id="recordSelect"></select>
+          </div>
 
-          <!-- 拉拍 -->
-          <div class="analysis-card" id="cardBackswing">
-            <div class="ac-header">
-              <span class="ac-icon">🔄</span>
-              <span class="ac-title">拉拍準備 (Backswing)</span>
-              <span class="ac-conf" id="confBackswing">--</span>
+          <label class="control-inline" style="display: none">
+            <input type="checkbox" id="useWeighted" checked />
+            使用核心加權
+          </label>
+
+          <div class="control-inline control-file" style="display: none">
+            <button type="button" class="btn-outline" id="btnPickFile">
+              匯入 CSV
+            </button>
+            <span id="csvFileName" class="file-name subtle">未選擇</span>
+            <input type="file" id="csvFile" accept=".csv" />
+          </div>
+
+          <div class="control-block control-th">
+            <div class="control-label">分級門檻</div>
+            <div class="subtle">
+              High ≥
+              <input
+                id="thHigh"
+                type="number"
+                min="6"
+                max="10"
+                step="0.1"
+                value="8.5"
+              />
+              &nbsp;&nbsp;Med ≥
+              <input
+                id="thMed"
+                type="number"
+                min="5"
+                max="10"
+                step="0.1"
+                value="7.0"
+              />
             </div>
-            <div class="ac-bar-bg"><div class="ac-bar-fill" id="barBackswing"></div></div>
-            <div class="ac-text" id="textBackswing">尚無資料</div>
           </div>
-
-          <!-- 出拍前段 -->
-          <div class="analysis-card" id="cardForwardswing">
-            <div class="ac-header">
-              <span class="ac-icon">➡️</span>
-              <span class="ac-title">出拍前段 (Forward Swing)</span>
-              <span class="ac-conf" id="confForwardswing">--</span>
-            </div>
-            <div class="ac-bar-bg"><div class="ac-bar-fill" id="barForwardswing"></div></div>
-            <div class="ac-text" id="textForwardswing">尚無資料</div>
-          </div>
-
-          <!-- 擊球瞬間 -->
-          <div class="analysis-card" id="cardHitballswing">
-            <div class="ac-header">
-              <span class="ac-icon">☀️</span>
-              <span class="ac-title">擊球瞬間 (Impact)</span>
-              <span class="ac-conf" id="confHitballswing">--</span>
-            </div>
-            <div class="ac-bar-bg"><div class="ac-bar-fill" id="barHitballswing"></div></div>
-            <div class="ac-text" id="textHitballswing">尚無資料</div>
-          </div>
-
-          <!-- 收拍 -->
-          <div class="analysis-card" id="cardFollowthrough">
-            <div class="ac-header">
-              <span class="ac-icon">↪️</span>
-              <span class="ac-title">收拍 (Follow Through)</span>
-              <span class="ac-conf" id="confFollowthrough">--</span>
-            </div>
-            <div class="ac-bar-bg"><div class="ac-bar-fill" id="barFollowthrough"></div></div>
-            <div class="ac-text" id="textFollowthrough">尚無資料</div>
-          </div>
-
-          <!-- 擊球點區域 -->
-          <div class="analysis-card" id="cardContactzone">
-            <div class="ac-header">
-              <span class="ac-icon">🎯</span>
-              <span class="ac-title">擊球點區域 (Contact Zone)</span>
-              <span class="ac-conf" id="confContactzone">--</span>
-            </div>
-            <div class="ac-bar-bg"><div class="ac-bar-fill" id="barContactzone"></div></div>
-            <div class="ac-text" id="textContactzone">尚無資料</div>
-          </div>
-
-          <!-- 頭部穩定 -->
-          <div class="analysis-card" id="cardHead">
-            <div class="ac-header">
-              <span class="ac-icon">👁️</span>
-              <span class="ac-title">頭部穩定 (Head)</span>
-              <span class="ac-conf" id="confHead">--</span>
-            </div>
-            <div class="ac-bar-bg"><div class="ac-bar-fill" id="barHead"></div></div>
-            <div class="ac-text" id="textHead">尚無資料</div>
-          </div>
-
         </div>
       </div>
 
-      <!-- Hidden raw for debug if needed -->
-      <pre id="raw" style="display:none;"></pre>
-    </div>
-  </div>
-
-  <!-- Detail Modal (v5 with Body Map) -->
-  <div id="modalWrap" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal">
-      <header>
-        <div>
-          <div class="ttl" id="mdTitle">動作細節</div>
-          <div class="muted" id="mdSubtitle"></div>
-        </div>
-        <button id="mdClose" class="btn">關閉</button>
-      </header>
-      <div class="content">
-        <div class="kv">
-          <div class="k">分數 / 等級</div>
-          <div class="v" id="mdScoreBand">-</div>
-          <div class="k">檢視部位</div>
-          <div class="v" id="mdPart">-</div>
-          <div class="k">檢視動作標的(代碼)</div>
-          <div class="v" id="mdCode">-</div>
-          <div class="k">影片比較重點（右手慣用）</div>
-          <div class="v" id="mdCompare">-</div>
-          <div class="k">動作完成度回饋</div>
-          <div class="v" id="mdCategory">-</div>
-          <div class="k">動作修正回饋</div>
-          <div class="v" id="mdFix">-</div>
-        </div>
-
-        <div class="body-map-wrap">
-          <div class="body-map">
-            <svg viewBox="0 0 80 170" id="bodyMapSvg" aria-label="body map">
+      <div class="row">
+        <div class="card">
+          <h2 class="title">綜合評分</h2>
+          <div class="donut-wrap">
+            <svg
+              id="donut"
+              width="220"
+              height="220"
+              viewBox="0 0 220 220"
+              role="img"
+              aria-label="Overall donut"
+            >
               <defs>
-                <linearGradient id="activeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color="#fecaca" />
-                  <stop offset="45%" stop-color="#f97373" />
-                  <stop offset="100%" stop-color="#b91c1c" />
+                <linearGradient id="gradHi" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#34d399" />
+                  <stop offset="100%" stop-color="#10b981" />
                 </linearGradient>
+                <linearGradient id="gradMed" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#fbbf24" />
+                  <stop offset="100%" stop-color="#f59e0b" />
+                </linearGradient>
+                <linearGradient id="gradLow" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#f87171" />
+                  <stop offset="100%" stop-color="#ef4444" />
+                </linearGradient>
+                <radialGradient id="tennisBallGrad" cx="50%" cy="40%" r="70%">
+                  <stop offset="0%" stop-color="#f0fdf4" />
+                  <stop offset="45%" stop-color="#4ade80" />
+                  <stop offset="100%" stop-color="#16a34a" />
+                </radialGradient>
               </defs>
-              <!-- 頭部 -->
-              <g id="bm-head" class="bm-part bm-dim">
-                <circle class="body-shape" cx="40" cy="20" r="11" />
-                <circle class="face-detail" cx="36" cy="18" r="1.4" fill="#f9fafb" />
-                <circle class="face-detail" cx="44" cy="18" r="1.4" fill="#f9fafb" />
-                <path class="face-detail" d="M35 22 Q40 26 45 22" stroke="#f9fafb" stroke-width="1.3" fill="none"
-                  stroke-linecap="round" />
-                <circle class="face-detail" cx="33" cy="20" r="1.5" fill="#fb7185" opacity="0.8" />
-                <circle class="face-detail" cx="47" cy="20" r="1.5" fill="#fb7185" opacity="0.8" />
-              </g>
-              <!-- 上半身 -->
-              <g id="bm-upper" class="bm-part bm-dim">
-                <rect class="body-shape" x="28" y="30" width="24" height="34" rx="7" />
-                <path d="M30 32 Q40 38 50 32" stroke="#0f172a" stroke-width="1" fill="none" opacity="0.9" />
-                <rect class="body-shape" x="16" y="34" width="9" height="30" rx="4.5" />
-                <rect class="body-shape" x="55" y="34" width="9" height="30" rx="4.5" />
-              </g>
-              <!-- 下半身 -->
-              <g id="bm-lower" class="bm-part bm-dim">
-                <rect class="body-shape" x="32" y="64" width="8" height="32" rx="4" />
-                <rect class="body-shape" x="40" y="64" width="8" height="32" rx="4" />
-                <rect x="30.5" y="94" width="10" height="5" rx="2.5" fill="#111827" stroke="#6b7280"
-                  stroke-width="0.8" />
-                <rect x="39.5" y="94" width="10" height="5" rx="2.5" fill="#111827" stroke="#6b7280"
-                  stroke-width="0.8" />
-              </g>
-              <!-- 網球拍 -->
-              <g id="bm-racket" class="bm-part bm-dim">
-                <ellipse class="body-shape" cx="68" cy="26" rx="7.5" ry="10" />
-                <ellipse cx="68" cy="26" rx="6" ry="8" fill="none" stroke="#e5e7eb" stroke-width="0.6" opacity="0.9" />
-                <g stroke="#e5e7eb" stroke-width="0.4" opacity="0.8">
-                  <line x1="66" y1="18" x2="66" y2="34" />
-                  <line x1="68" y1="18" x2="68" y2="34" />
-                  <line x1="70" y1="18" x2="70" y2="34" />
-                  <line x1="62" y1="23" x2="74" y2="23" />
-                  <line x1="62" y1="26" x2="74" y2="26" />
-                  <line x1="62" y1="29" x2="74" y2="29" />
-                </g>
-                <path class="body-shape" d="M65 32 L71 32 L69 36 L67 36 Z" />
-                <rect class="body-shape" x="66.2" y="36" width="3.6" height="13" rx="1.8" />
-                <rect x="66.4" y="42" width="3.2" height="7" rx="1.6" fill="#0f172a" stroke="#9ca3af"
-                  stroke-width="0.5" />
-              </g>
+              <circle
+                cx="110"
+                cy="110"
+                r="90"
+                stroke="#1f2937"
+                stroke-width="18"
+                fill="none"
+              />
+              <circle
+                id="donutFill"
+                cx="110"
+                cy="110"
+                r="90"
+                stroke="url(#gradMed)"
+                stroke-width="18"
+                fill="none"
+                stroke-linecap="round"
+                transform="rotate(-90 110 110)"
+                stroke-dasharray="0 999"
+              />
+              <circle
+                id="donutBall"
+                cx="110"
+                cy="20"
+                r="7"
+                fill="url(#tennisBallGrad)"
+                stroke="#bbf7d0"
+                stroke-width="1.4"
+                style="filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.9))"
+              />
+              <text
+                id="donutText"
+                x="110"
+                y="105"
+                text-anchor="middle"
+                style="font-size: 40px; font-weight: 800"
+                fill="#f9fafb"
+              >
+                0.0
+              </text>
+              <text
+                id="donutBand"
+                x="110"
+                y="132"
+                text-anchor="middle"
+                style="font-size: 13px; fill: #9ca3af"
+              >
+                MED
+              </text>
+              <text
+                id="donutSub"
+                x="110"
+                y="152"
+                text-anchor="middle"
+                style="font-size: 12px; fill: #9ca3af"
+              >
+                Weighted Overall
+              </text>
             </svg>
           </div>
+          <div class="legend">
+            <div class="legend-chips">
+              <span class="chip hi"><span class="dot hi-dot"></span> High</span>
+              <span class="chip med"
+                ><span class="dot med-dot"></span> Medium</span
+              >
+              <span class="chip low"
+                ><span class="dot low-dot"></span> Low</span
+              >
+            </div>
+            <!-- v5 button retained but uses local data -->
+            <button
+              id="btnOverallGpt"
+              class="btn btn-ghost"
+              style="display: none"
+            >
+              AI 個人化評語
+            </button>
+          </div>
+          <div class="footer-note">提示：可調整門檻使分級更鼓勵或更嚴格。</div>
+        </div>
 
-          <div class="body-map-side">
-            <div class="body-map-legend">
-              <div class="kicker" style="margin-bottom:4px;">Q 版人體熱區示意</div>
-              <div>
-                紅色漸層部位代表目前系統偵測到最需要優先調整的區域，
-                目前僅標示 <b>Low 等級</b> 的弱點部位。
+        <div class="card">
+          <h2 class="title">優先改善（最低三項）</h2>
+          <div id="priority" class="prior"></div>
+          <div class="footer-note">點擊任一項可查看細節與教練建議。</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 16px">
+        <h2 class="title">各動作分數</h2>
+        <div id="list" class="grid"></div>
+      </div>
+
+      <div class="card" style="margin-top: 16px">
+        <h2 class="title">詳細建議</h2>
+        <div class="muted" style="margin-bottom: 12px">AI 教練完整分析建議</div>
+
+        <div class="advice-panel" id="advicePanel">
+          <!-- 📊 動作識別摘要（參考 2D Action Recognition） -->
+          <div class="advice-section" id="advSectionRecognition">
+            <h3>📊 動作識別摘要</h3>
+            <div class="advice-kv" id="advRecognitionKv">
+              <div class="advice-row">
+                <strong>持拍手：</strong><span id="recHand">-</span>
+              </div>
+              <div class="advice-row">
+                <strong>動作類型：</strong><span id="recActionType">-</span>
+              </div>
+              <div class="advice-row">
+                <strong>相似度：</strong><span id="recSimilarity">-</span>
               </div>
             </div>
-            <!-- Future place for AI feedback specific to part if needed, for now modal has it in text -->
+          </div>
+
+          <!-- 六大分析卡片 -->
+          <div class="analysis-cards-grid" id="analysisCardsGrid">
+            <!-- 拉拍 -->
+            <div class="analysis-card" id="cardBackswing">
+              <div class="ac-header">
+                <span class="ac-icon">🔄</span>
+                <span class="ac-title">拉拍準備 (Backswing)</span>
+                <span class="ac-conf" id="confBackswing">--</span>
+              </div>
+              <div class="ac-bar-bg">
+                <div class="ac-bar-fill" id="barBackswing"></div>
+              </div>
+              <div class="ac-text" id="textBackswing">尚無資料</div>
+            </div>
+
+            <!-- 出拍前段 -->
+            <div class="analysis-card" id="cardForwardswing">
+              <div class="ac-header">
+                <span class="ac-icon">➡️</span>
+                <span class="ac-title">出拍前段 (Forward Swing)</span>
+                <span class="ac-conf" id="confForwardswing">--</span>
+              </div>
+              <div class="ac-bar-bg">
+                <div class="ac-bar-fill" id="barForwardswing"></div>
+              </div>
+              <div class="ac-text" id="textForwardswing">尚無資料</div>
+            </div>
+
+            <!-- 擊球瞬間 -->
+            <div class="analysis-card" id="cardHitballswing">
+              <div class="ac-header">
+                <span class="ac-icon">☀️</span>
+                <span class="ac-title">擊球瞬間 (Impact)</span>
+                <span class="ac-conf" id="confHitballswing">--</span>
+              </div>
+              <div class="ac-bar-bg">
+                <div class="ac-bar-fill" id="barHitballswing"></div>
+              </div>
+              <div class="ac-text" id="textHitballswing">尚無資料</div>
+            </div>
+
+            <!-- 收拍 -->
+            <div class="analysis-card" id="cardFollowthrough">
+              <div class="ac-header">
+                <span class="ac-icon">↪️</span>
+                <span class="ac-title">收拍 (Follow Through)</span>
+                <span class="ac-conf" id="confFollowthrough">--</span>
+              </div>
+              <div class="ac-bar-bg">
+                <div class="ac-bar-fill" id="barFollowthrough"></div>
+              </div>
+              <div class="ac-text" id="textFollowthrough">尚無資料</div>
+            </div>
+
+            <!-- 擊球點區域 -->
+            <div class="analysis-card" id="cardContactzone">
+              <div class="ac-header">
+                <span class="ac-icon">🎯</span>
+                <span class="ac-title">擊球點區域 (Contact Zone)</span>
+                <span class="ac-conf" id="confContactzone">--</span>
+              </div>
+              <div class="ac-bar-bg">
+                <div class="ac-bar-fill" id="barContactzone"></div>
+              </div>
+              <div class="ac-text" id="textContactzone">尚無資料</div>
+            </div>
+
+            <!-- 頭部穩定 -->
+            <div class="analysis-card" id="cardHead">
+              <div class="ac-header">
+                <span class="ac-icon">👁️</span>
+                <span class="ac-title">頭部穩定 (Head)</span>
+                <span class="ac-conf" id="confHead">--</span>
+              </div>
+              <div class="ac-bar-bg">
+                <div class="ac-bar-fill" id="barHead"></div>
+              </div>
+              <div class="ac-text" id="textHead">尚無資料</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hidden raw for debug if needed -->
+        <pre id="raw" style="display: none"></pre>
+      </div>
+    </div>
+
+    <!-- Detail Modal (v5 with Body Map) -->
+    <div
+      id="modalWrap"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div class="modal">
+        <header>
+          <div>
+            <div class="ttl" id="mdTitle">動作細節</div>
+            <div class="muted" id="mdSubtitle"></div>
+          </div>
+          <button id="mdClose" class="btn">關閉</button>
+        </header>
+        <div class="content">
+          <div class="kv">
+            <div class="k">分數 / 等級</div>
+            <div class="v" id="mdScoreBand">-</div>
+            <div class="k">檢視部位</div>
+            <div class="v" id="mdPart">-</div>
+            <div class="k">檢視動作標的(代碼)</div>
+            <div class="v" id="mdCode">-</div>
+            <div class="k">影片比較重點（右手慣用）</div>
+            <div class="v" id="mdCompare">-</div>
+            <div class="k">動作完成度回饋</div>
+            <div class="v" id="mdCategory">-</div>
+            <div class="k">動作修正回饋</div>
+            <div class="v" id="mdFix">-</div>
+          </div>
+
+          <div class="body-map-wrap">
+            <div class="body-map">
+              <svg viewBox="0 0 80 170" id="bodyMapSvg" aria-label="body map">
+                <defs>
+                  <linearGradient
+                    id="activeGradient"
+                    x1="0%"
+                    y1="0%"
+                    x2="0%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" stop-color="#fecaca" />
+                    <stop offset="45%" stop-color="#f97373" />
+                    <stop offset="100%" stop-color="#b91c1c" />
+                  </linearGradient>
+                </defs>
+                <!-- 頭部 -->
+                <g id="bm-head" class="bm-part bm-dim">
+                  <circle class="body-shape" cx="40" cy="20" r="11" />
+                  <circle
+                    class="face-detail"
+                    cx="36"
+                    cy="18"
+                    r="1.4"
+                    fill="#f9fafb"
+                  />
+                  <circle
+                    class="face-detail"
+                    cx="44"
+                    cy="18"
+                    r="1.4"
+                    fill="#f9fafb"
+                  />
+                  <path
+                    class="face-detail"
+                    d="M35 22 Q40 26 45 22"
+                    stroke="#f9fafb"
+                    stroke-width="1.3"
+                    fill="none"
+                    stroke-linecap="round"
+                  />
+                  <circle
+                    class="face-detail"
+                    cx="33"
+                    cy="20"
+                    r="1.5"
+                    fill="#fb7185"
+                    opacity="0.8"
+                  />
+                  <circle
+                    class="face-detail"
+                    cx="47"
+                    cy="20"
+                    r="1.5"
+                    fill="#fb7185"
+                    opacity="0.8"
+                  />
+                </g>
+                <!-- 上半身 -->
+                <g id="bm-upper" class="bm-part bm-dim">
+                  <rect
+                    class="body-shape"
+                    x="28"
+                    y="30"
+                    width="24"
+                    height="34"
+                    rx="7"
+                  />
+                  <path
+                    d="M30 32 Q40 38 50 32"
+                    stroke="#0f172a"
+                    stroke-width="1"
+                    fill="none"
+                    opacity="0.9"
+                  />
+                  <rect
+                    class="body-shape"
+                    x="16"
+                    y="34"
+                    width="9"
+                    height="30"
+                    rx="4.5"
+                  />
+                  <rect
+                    class="body-shape"
+                    x="55"
+                    y="34"
+                    width="9"
+                    height="30"
+                    rx="4.5"
+                  />
+                </g>
+                <!-- 下半身 -->
+                <g id="bm-lower" class="bm-part bm-dim">
+                  <rect
+                    class="body-shape"
+                    x="32"
+                    y="64"
+                    width="8"
+                    height="32"
+                    rx="4"
+                  />
+                  <rect
+                    class="body-shape"
+                    x="40"
+                    y="64"
+                    width="8"
+                    height="32"
+                    rx="4"
+                  />
+                  <rect
+                    x="30.5"
+                    y="94"
+                    width="10"
+                    height="5"
+                    rx="2.5"
+                    fill="#111827"
+                    stroke="#6b7280"
+                    stroke-width="0.8"
+                  />
+                  <rect
+                    x="39.5"
+                    y="94"
+                    width="10"
+                    height="5"
+                    rx="2.5"
+                    fill="#111827"
+                    stroke="#6b7280"
+                    stroke-width="0.8"
+                  />
+                </g>
+                <!-- 網球拍 -->
+                <g id="bm-racket" class="bm-part bm-dim">
+                  <ellipse
+                    class="body-shape"
+                    cx="68"
+                    cy="26"
+                    rx="7.5"
+                    ry="10"
+                  />
+                  <ellipse
+                    cx="68"
+                    cy="26"
+                    rx="6"
+                    ry="8"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    stroke-width="0.6"
+                    opacity="0.9"
+                  />
+                  <g stroke="#e5e7eb" stroke-width="0.4" opacity="0.8">
+                    <line x1="66" y1="18" x2="66" y2="34" />
+                    <line x1="68" y1="18" x2="68" y2="34" />
+                    <line x1="70" y1="18" x2="70" y2="34" />
+                    <line x1="62" y1="23" x2="74" y2="23" />
+                    <line x1="62" y1="26" x2="74" y2="26" />
+                    <line x1="62" y1="29" x2="74" y2="29" />
+                  </g>
+                  <path class="body-shape" d="M65 32 L71 32 L69 36 L67 36 Z" />
+                  <rect
+                    class="body-shape"
+                    x="66.2"
+                    y="36"
+                    width="3.6"
+                    height="13"
+                    rx="1.8"
+                  />
+                  <rect
+                    x="66.4"
+                    y="42"
+                    width="3.2"
+                    height="7"
+                    rx="1.6"
+                    fill="#0f172a"
+                    stroke="#9ca3af"
+                    stroke-width="0.5"
+                  />
+                </g>
+              </svg>
+            </div>
+
+            <div class="body-map-side">
+              <div class="body-map-legend">
+                <div class="kicker" style="margin-bottom: 4px">
+                  Q 版人體熱區示意
+                </div>
+                <div>
+                  紅色漸層部位代表目前系統偵測到最需要優先調整的區域，
+                  目前僅標示 <b>Low 等級</b> 的弱點部位。
+                </div>
+              </div>
+              <!-- Future place for AI feedback specific to part if needed, for now modal has it in text -->
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-
-  <script>
-    // 嘗試從 LocalStorage 讀取同步數據
-    let savedRecords = null;
-    try {
-      const stored = localStorage.getItem('TENNIS_ANALYSIS_SYNC');
-      if (stored) {
-        savedRecords = JSON.parse(stored);
-      }
-    } catch (e) {
-      console.warn("Local storage parse error", e);
-    }
-
-    // 預設 DEMO 一筆，若有同步數據則使用同步數據
-    // 預設空的，等待同步或匯入
-    let RECORDS = savedRecords || [];
-
-    const PARTS = [
-      { key: "Head", label: "頭部穩定度" },
-      { key: "Backswing", label: "拉拍/側身" },
-      { key: "ForwardSwing", label: "出拍前段" },
-      { key: "HitballSwing", label: "擊球出拍/轉身" },
-      { key: "FollowThrough", label: "收拍" },
-      { key: "BodyWeight", label: "重心高低" },
-      { key: "HitTiming", label: "擊球點/節奏" },
-      { key: "RacketFace", label: "拍面角度" }
-    ];
-
-    // 加權
-    const WEIGHTS = {
-      Head: 1.0,
-      Backswing: 1.0,
-      ForwardSwing: 1.0,
-      HitballSwing: 1.5,
-      FollowThrough: 1.0,
-      BodyWeight: 1.0,
-      HitTiming: 1.2,
-      RacketFace: 1.2
-    };
-
-    // ===== 評語字典：不同等級給不同文字 =====
-    const FEEDBACKS = {
-      Head: {
-        part: "頭部",
-        code: "Head",
-        compare:
-          "右耳點與右腰位置平行移動。擊球前至擊球出去後約 5 幀，右耳與右眼的距離與水平角度大致保持不變，且成功擊球（擊球點在球拍線上，沒有揮空拍或打框）。",
-        levelText: {
-          High: "頭部穩定，眼睛全程盯住球，擊球品質穩定。",
-          Medium: "擊球過程中頭部略有晃動，部分瞬間視線可能離開球。",
-          Low: "擊球過程頭部明顯不穩定，容易在擊球瞬間看不到球。"
-        },
-        fixText:
-          "建議揮拍過程中，眼睛盯好擊球點，並盡量維持頭部不轉動。可以先用慢速揮拍練習，刻意在球離拍後再把頭抬起來。"
-      },
-
-      Backswing: {
-        part: "軀幹 — 拉拍/側身",
-        code: "Backswing",
-        compare:
-          "拉拍準備好時，需要完整側身，看見身體最大正面面積，肩腰四點連線呈對稱梯形，或肩線與腰線接近最大值。",
-        levelText: {
-          High: "拉拍側身完整，準備空間充足。",
-          Medium: "拉拍側身略不足，轉身角度稍小，擊球空間還可以再大一些。",
-          Low: "拉拍側身明顯不足，幾乎正對球，容易變成只用手去揮拍。"
-        },
-        fixText:
-          "建議擊球前拉拍準備時先轉動側身，讓肩膀與腰部一起往後轉，再把球拍拉到身體後方，形成明顯的準備姿勢。"
-      },
-
-      ForwardSwing: {
-        part: "軀幹 — 擊球前段出拍",
-        code: "Forward-swing",
-        compare:
-          "第一動：右手腕往下放，球拍頭逐漸朝後方（A 線與地平線接近 0°）；第二動：右手腕與右手肘往右肩–腰線靠近，球拍頭朝後並略朝下（約 -30° ~ -45°），身體開始轉身。",
-        levelText: {
-          High: "出拍節奏順暢，手腕下放與向前帶動都很到位。",
-          Medium:
-            "有做出拍動作，但手腕下放或向前帶動略嫌不足，拍頭路徑可以再大一點。",
-          Low: "出拍多半以手臂推球，手腕較僵硬，拍頭倒下與向前的動作不明顯。"
-        },
-        fixText:
-          "出拍時先讓手腕在身體後方往下放，感覺拍頭往下倒，再由手腕與手肘帶動球拍往前甩出，而不是只用肩膀推拍面。"
-      },
-
-      HitballSwing: {
-        part: "擊球出拍 / 轉身",
-        code: "Hitball-swing",
-        compare:
-          "身體加速轉身動作，右肩快速往左肩靠近、右腰快速往左腰靠近，肩線與腰線距離縮短至接近 0。擊球瞬間，右手腕位置介於右肩–腰線與左手腕之間，高度在膝蓋與肩膀之間。",
-        levelText: {
-          High: "擊球時轉身與手部出力協調良好，擊球點在身體前方，擊球扎實。",
-          Medium:
-            "有轉身與出力，但力道傳遞略不足，或有時擊球點稍微偏後。",
-          Low: "轉身動作不足或過頭，擊球點多在身體側邊或太靠近身體，容易力道不穩定。"
-        },
-        fixText:
-          "擊球時先從下半身轉動腰部，再帶動肩膀與手臂，讓擊球點落在身體前方一點的位置。若常過度轉身，則在身體正面對向擊球方向後就逐漸減速收拍。"
-      },
-
-      FollowThrough: {
-        part: "擊球後收拍",
-        code: "Follow-through",
-        compare:
-          "擊球後右手腕往左肩方向、接近眼睛高度移動；球拍頭先朝上，再往左肩後方朝下完成收拍。",
-        levelText: {
-          High: "擊球後收拍動作完整自然，動作有延續。",
-          Medium: "有收拍，但幅度略小或有些僵硬。",
-          Low: "擊球後很快停住，幾乎沒有完整收拍，容易影響出力與保護手臂。"
-        },
-        fixText:
-          "收拍時讓右手手腕與球拍往左肩後方甩動，可以想像最後讓拍子停在左肩或左耳旁，避免擊球後立即煞車。"
-      },
-
-      BodyWeight: {
-        part: "下肢 — 重心高低",
-        code: "Body-weight",
-        compare:
-          "擊球時兩腳膝蓋要彎曲，球速越快屈膝要越明顯、膝部內角度越小。擊球後右腳膝部內角度要比擊球前小，且右腳膝部內角度比左腳小，代表重心有往前送。",
-        levelText: {
-          High: "擊球身體重心高度適中，屈膝與重心前送都表現良好。",
-          Medium: "擊球時整體重心略高或前送不足，穩定度與力道還可以再提升。",
-          Low: "擊球時重心明顯過高，多半用直膝擊球，重心沒有往前移動。"
-        },
-        fixText:
-          "建議揮拍時微微屈膝，好像要坐到椅子上，再在擊球瞬間將重心往前送到左腳，讓下半身幫助出力與穩定。"
-      },
-
-      HitTiming: {
-        part: "節奏 — 擊球點/太慢",
-        code: "Hit-timing",
-        compare:
-          "擊球點位置介於右肩–腰線與左手腕之間，高度在膝蓋與肩膀之間，偏前不偏後。",
-        levelText: {
-          High: "擊球點位置恰當，多數球都在身體前方擊中，節奏穩定。",
-          Medium:
-            "偶爾擊球點稍微偏後，容易打成較短或較高的球，但整體節奏尚可。",
-          Low: "擊球點經常太後方或太靠近身體，容易變成勉強撈球或打框。"
-        },
-        fixText:
-          "建議把擊球點放在身體前方一個拍面的距離，練習提早完成拉拍與出拍，讓球「進到你準備好的擊球點」再擊球，而不是等球到身體旁邊才出手。"
-      },
-
-      RacketFace: {
-        part: "拍面 — 擊球拍面角度",
-        code: "Racket-face",
-        compare:
-          "拍面向量與地平線夾角建議介於 10° 至 -30° 之間，可利用球飛出去的角度估計；過仰容易飛高出界。",
-        levelText: {
-          High: "擊球拍面角度穩定，球的弧線與落點控制良好。",
-          Medium: "拍面偶爾略仰，部分球會偏高或偏長。",
-          Low: "拍面經常過仰，球容易飛得太高或直接出界。"
-        },
-        fixText:
-          "擊球時想像拍面稍微「蓋住球」，讓拍面略向下壓，球先往前走再往上過網。可以先從中等力量開始，感受拍面角度對球弧線的影響。"
-      }
-    };
-
-
-    // 哪個評分項目對應哪些身體區域
-    const BODY_ZONES_BY_PART = {
-      Head: ["head"],
-      Backswing: ["upper", "racket"],
-      ForwardSwing: ["upper", "racket"],
-      HitballSwing: ["upper", "racket"],
-      FollowThrough: ["upper", "racket"],
-      BodyWeight: ["lower"],
-      HitTiming: ["upper", "racket"],
-      RacketFace: ["racket"]
-    };
-
-    const $ = (q) => document.querySelector(q);
-    const bodyZoneElems = {
-      head: $("#bm-head"),
-      upper: $("#bm-upper"),
-      lower: $("#bm-lower"),
-      racket: $("#bm-racket")
-    };
-
-    function setBodyZones(activeZones) {
-      const zones = Array.isArray(activeZones) ? activeZones : [];
-      // Reset
-      Object.values(bodyZoneElems).forEach(el => {
-        if (el) {
-          el.classList.remove("bm-dim", "bm-active");
-          el.classList.add("bm-dim");
+    <script>
+      // 嘗試從 LocalStorage 讀取同步數據
+      let savedRecords = null;
+      try {
+        const stored = localStorage.getItem("TENNIS_ANALYSIS_SYNC");
+        if (stored) {
+          savedRecords = JSON.parse(stored);
         }
-      });
-      // Activate
-      Object.entries(bodyZoneElems).forEach(([key, el]) => {
-        if (!el) return;
-        if (zones.includes(key)) {
-          el.classList.remove("bm-dim");
-          el.classList.add("bm-active");
-        }
-      });
-    }
-
-    function getPartIconSvg(key) {
-      if (key === "Head") {
-        return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6" r="3.2" fill="none" stroke="#e5e7eb" stroke-width="1.2"/><rect x="7" y="9" width="6" height="5" rx="2.5" fill="none" stroke="#e5e7eb" stroke-width="1.1"/><path d="M5.5 9.5h9" stroke="#38bdf8" stroke-width="1.1" stroke-linecap="round" /></svg>`;
-      }
-      if (key === "BodyWeight") {
-        return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="4.5" r="2.2" fill="none" stroke="#e5e7eb" stroke-width="1.2"/><path d="M10 7.2 L7.5 10.5 L6 13" fill="none" stroke="#e5e7eb" stroke-width="1.2" stroke-linecap="round"/><path d="M10 7.2 L12.5 10.2 L14 13" fill="none" stroke="#e5e7eb" stroke-width="1.2" stroke-linecap="round"/><path d="M4.5 15.2h11" stroke="#4ade80" stroke-width="1.2" stroke-linecap="round"/></svg>`;
-      }
-      if (key === "HitTiming") {
-        return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="#e5e7eb" stroke-width="1.1"/><path d="M10 10 L10 6.8" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round"/><path d="M10 10 L12.6 11.6" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round"/><circle cx="10" cy="10" r="0.9" fill="#38bdf8"/></svg>`;
-      }
-      if (key === "RacketFace") {
-        return `<svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="8" cy="8" rx="3.2" ry="4.1" fill="none" stroke="#e5e7eb" stroke-width="1.1" transform="rotate(-18 8 8)"/><line x1="9.7" y1="11.2" x2="12.3" y2="15.2" stroke="#e5e7eb" stroke-width="1.1" stroke-linecap="round"/><path d="M13.5 7.5 L17 6.5" stroke="#facc15" stroke-width="1.1" stroke-linecap="round"/><path d="M13.5 9.5 L17 8.7" stroke="#f97316" stroke-width="1.1" stroke-linecap="round"/></svg>`;
-      }
-      return `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 15 C7 11.5 10 9 14 7" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round"/><ellipse cx="14.5" cy="6.5" rx="2.5" ry="3.2" fill="none" stroke="#e5e7eb" stroke-width="1.1" transform="rotate(-20 14.5 6.5)"/><circle cx="6" cy="15.2" r="1.4" fill="#22c55e"/></svg>`;
-    }
-
-    const elSelect = $("#recordSelect");
-    const elCount = $("#count");
-    const elWeighted = $("#useWeighted");
-    const elHigh = $("#thHigh");
-    const elMed = $("#thMed");
-    const elList = $("#list");
-    const elPrior = $("#priority");
-    const elAdvice = $("#adviceDisplay");
-    const donutFill = $("#donutFill");
-    const donutText = $("#donutText");
-    const donutSub = $("#donutSub");
-    const donutBand = $("#donutBand");
-    const donutBall = $("#donutBall");
-
-    // Modal 元件
-    const modalWrap = $("#modalWrap");
-    const mdTitle = $("#mdTitle");
-    const mdSubtitle = $("#mdSubtitle");
-    const mdScoreBand = $("#mdScoreBand");
-    const mdPart = $("#mdPart");
-    const mdCode = $("#mdCode");
-    const mdCompare = $("#mdCompare");
-    const mdCategory = $("#mdCategory");
-    const mdFix = $("#mdFix");
-    const mdClose = $("#mdClose");
-    const mdGpt = $("#mdGpt");
-
-    function bandOf(score, thHigh, thMed) {
-      if (score >= thHigh) return "High";
-      if (score >= thMed) return "Medium";
-      return "Low";
-    }
-    function chipClass(band) {
-      if (band === "High") return "chip hi";
-      if (band === "Medium") return "chip med";
-      return "chip low";
-    }
-    function donutGradient(band) {
-      if (band === "High") return "url(#gradHi)";
-      if (band === "Medium") return "url(#gradMed)";
-      return "url(#gradLow)";
-    }
-    function computeOverall(rec, weighted) {
-      if (rec.overall && rec.overall > 0) return rec.overall;
-      if (!weighted) {
-        let sum = 0;
-        for (const p of PARTS) sum += rec[p.key] ?? 0;
-        return sum / PARTS.length;
-      }
-      let sw = 0;
-      let sx = 0;
-      for (const p of PARTS) {
-        const w = WEIGHTS[p.key] ?? 1;
-        sw += w;
-        sx += (rec[p.key] ?? 0) * w;
-      }
-      return sx / sw;
-    }
-
-    function setDonut(value, band, weighted) {
-      const radius = 90;
-      const circ = 2 * Math.PI * radius;
-      const clamped = Math.max(0, Math.min(10, value));
-      const ratio = clamped / 10;
-      const dash = circ * ratio;
-      donutFill.setAttribute("stroke-dasharray", dash + " " + (circ - dash));
-      donutFill.setAttribute("stroke", donutGradient(band));
-      donutText.textContent = clamped.toFixed(1);
-      donutBand.textContent = band.toUpperCase();
-      donutSub.textContent = weighted ? "Weighted Overall" : "Overall";
-
-      // 網球指針沿著外圓跑：-90° 起始，順時針
-      if (donutBall) {
-        if (ratio <= 0) {
-          donutBall.style.opacity = "0";
-        } else {
-          const angle = -Math.PI / 2 + ratio * 2 * Math.PI;
-          const rBall = radius;
-          const cx = 110 + Math.cos(angle) * rBall;
-          const cy = 110 + Math.sin(angle) * rBall;
-          donutBall.setAttribute("cx", cx.toFixed(2));
-          donutBall.setAttribute("cy", cy.toFixed(2));
-          donutBall.style.opacity = "1";
-        }
-      }
-    }
-
-    function openDetail(partKey, score, band) {
-      const metaPart = PARTS.find((p) => p.key === partKey);
-      const fb = FEEDBACKS[partKey] || {};
-      const level = band || "Medium";
-
-      mdTitle.textContent = metaPart ? metaPart.label : partKey;
-      mdSubtitle.textContent = metaPart ? `代碼：${partKey}` : partKey;
-
-      mdScoreBand.textContent = `${score.toFixed(1)} / 10 · ${band}`;
-      mdPart.textContent = fb.part || "-";
-      mdCode.textContent = fb.code || partKey;
-      mdCompare.textContent = fb.compare || "-";
-
-      if (fb.levelText) {
-        mdCategory.textContent = fb.levelText[level] || fb.levelText.Medium || "-";
-      } else {
-        mdCategory.textContent = "-";
+      } catch (e) {
+        console.warn("Local storage parse error", e);
       }
 
-      if (typeof fb.fixText === "string") {
-        mdFix.textContent = fb.fixText;
-      } else if (fb.fixText && typeof fb.fixText === "object") {
-        mdFix.textContent = fb.fixText[level] || fb.fixText.Medium || fb.fixText.High || "-";
-      } else {
-        mdFix.textContent = "-";
-      }
+      // 預設 DEMO 一筆，若有同步數據則使用同步數據
+      // 預設空的，等待同步或匯入
+      let RECORDS = savedRecords || [];
 
-      // 根據 BodyMap 設定
-      // 只有分數 Low 才標記熱區？ V5 是這麼做的。
-      // 但如果想 always show part, 可以改。目前照 V5 邏輯:
-      if (band === "Low") {
-        const zones = BODY_ZONES_BY_PART[partKey] || [];
-        setBodyZones(zones);
-      } else {
-        // 如果不是 Low，可以考慮是否要顯示該部位？
-        // V5 logic: `setBodyZones([])` for non-Low via single click.
-        // Let's modify to ALWAYS show the part dim/highlighted
-        const zones = BODY_ZONES_BY_PART[partKey] || [];
-        setBodyZones(zones); // Always highlight relevant part
-      }
+      const PARTS = [
+        { key: "Head", label: "頭部穩定度" },
+        { key: "Backswing", label: "拉拍/側身" },
+        { key: "ForwardSwing", label: "出拍前段" },
+        { key: "HitballSwing", label: "擊球出拍/轉身" },
+        { key: "FollowThrough", label: "收拍" },
+        { key: "BodyWeight", label: "重心高低" },
+        { key: "HitTiming", label: "擊球點/節奏" },
+        { key: "RacketFace", label: "拍面角度" },
+      ];
 
-      // Update GPT text in modal if we have it
-      if (mdGpt) {
-        // We use global advice or specific? v3 uses global advice in `rec.advice`.
-        // Modal doesn't have specific per-part advice in v3, so just show generic or hide.
-        // Or show the full advice?
-        // Let's leave mdGpt text default.
-      }
-
-      modalWrap.style.display = "flex";
-      modalWrap.setAttribute("aria-hidden", "false");
-    }
-
-    function closeDetail() {
-      modalWrap.style.display = "none";
-      modalWrap.setAttribute("aria-hidden", "true");
-    }
-    if (mdClose) mdClose.addEventListener("click", closeDetail);
-    if (modalWrap) {
-      modalWrap.addEventListener("click", (e) => {
-        if (e.target === modalWrap) closeDetail();
-      });
-    }
-
-    function hookClickable() {
-      document.querySelectorAll("#priority .item").forEach((node) => {
-        const key = node.getAttribute("data-key");
-        const score = Number(node.getAttribute("data-score") || "0");
-        const band = node.getAttribute("data-band") || "-";
-        node.classList.add("clickable");
-        node.addEventListener("click", () => openDetail(key, score, band));
-      });
-      document.querySelectorAll("#list .row-item").forEach((node) => {
-        const key = node.getAttribute("data-key");
-        const score = Number(node.getAttribute("data-score") || "0");
-        const band = node.getAttribute("data-band") || "-";
-        node.classList.add("clickable");
-        node.addEventListener("click", () => openDetail(key, score, band));
-      });
-    }
-
-    // ===== CSV 匯入 =====
-    const elCsv = document.querySelector("#csvFile");
-    const btnPickFile = document.querySelector("#btnPickFile");
-    const elCsvName = document.querySelector("#csvFileName");
-    if (btnPickFile && elCsv) {
-      btnPickFile.addEventListener("click", () => elCsv.click());
-    }
-
-    function mapRawScore(v) {
-      var s = (v === undefined || v === null) ? "" : String(v).trim();
-      if (!s) return 0;
-      var n = Number(s);
-      if (!isFinite(n) || n <= 0) return 0;
-      if (n === 1) return 10;
-      if (n === 2) return 8;
-      if (n === 3) return 6;
-      return 0;
-    }
-
-    function avgScoreFrom(cols, idxMap, names) {
-      var sum = 0;
-      var cnt = 0;
-      names.forEach(function (name) {
-        if (!(name in idxMap)) return;
-        var val = cols[idxMap[name]];
-        var sc = mapRawScore(val);
-        if (sc > 0) {
-          sum += sc;
-          cnt++;
-        }
-      });
-      return cnt ? sum / cnt : 0;
-    }
-
-    function parseCsv(text) {
-      const lines = text.trim().split(/\r?\n/);
-      if (!lines.length) return [];
-      const headers = lines[0].split(",").map(function (h) { return h.trim(); });
-      // ... same logic ...
-      const must = ["ID", "usehand", "Vedio#"];
-      const hasAll = must.every(function (h) { return headers.indexOf(h) !== -1; });
-      if (!hasAll) {
-        alert("CSV 欄位至少需包含: " + must.join(", "));
-        return [];
-      }
-      const idx = {};
-      headers.forEach(function (h, i) { idx[h] = i; });
-      const out = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i];
-        if (!row.trim()) continue;
-        const cols = [];
-        let cur = "";
-        let inQ = false;
-        for (let j = 0; j < row.length; j++) {
-          const ch = row[j];
-          if (ch === '"') { inQ = !inQ; continue; }
-          if (ch === "," && !inQ) { cols.push(cur); cur = ""; continue; }
-          cur += ch;
-        }
-        cols.push(cur);
-
-        const rec = {
-          id: (cols[idx["ID"]] || "").trim(),
-          hand: (cols[idx["usehand"]] || "").trim(),
-          video: Number((cols[idx["Vedio#"]] || "0").trim())
-        };
-
-        if ("Head" in idx) rec.Head = mapRawScore(cols[idx["Head"]]);
-        else rec.Head = 0;
-
-        if ("Backswing" in idx) rec.Backswing = Number((cols[idx["Backswing"]] || "0").trim());
-        else rec.Backswing = avgScoreFrom(cols, idx, ["BackswingA", "BackswingB", "BackswingC", "BackswingD"]);
-
-        if ("ForwardSwing" in idx) rec.ForwardSwing = Number((cols[idx["ForwardSwing"]] || "0").trim());
-        else rec.ForwardSwing = avgScoreFrom(cols, idx, ["Forward-swingA", "Forward-swingB", "Forward-swingC"]);
-
-        if ("HitballSwing" in idx) rec.HitballSwing = Number((cols[idx["HitballSwing"]] || "0").trim());
-        else rec.HitballSwing = avgScoreFrom(cols, idx, ["Hitball-swingA", "Hitball-swingB"]);
-
-        if ("FollowThrough" in idx) rec.FollowThrough = Number((cols[idx["FollowThrough"]] || "0").trim());
-        else if ("Follow-through" in idx) rec.FollowThrough = avgScoreFrom(cols, idx, ["Follow-through"]);
-        else rec.FollowThrough = 0;
-
-        if ("BodyWeight" in idx) rec.BodyWeight = Number((cols[idx["BodyWeight"]] || "0").trim());
-        else rec.BodyWeight = avgScoreFrom(cols, idx, ["body-weightA", "body-weightB"]);
-
-        if ("HitTiming" in idx) rec.HitTiming = Number((cols[idx["HitTiming"]] || "0").trim());
-        else if ("hit-timing" in idx) rec.HitTiming = avgScoreFrom(cols, idx, ["hit-timing"]);
-        else rec.HitTiming = 0;
-
-        if ("RacketFace" in idx) rec.RacketFace = Number((cols[idx["RacketFace"]] || "0").trim());
-        else if ("reacket-face" in idx) rec.RacketFace = avgScoreFrom(cols, idx, ["reacket-face"]);
-        else rec.RacketFace = 0;
-
-        if ("overall" in idx) rec.overall = Number((cols[idx["overall"]] || "0").trim());
-
-        out.push(rec);
-      }
-      return out;
-    }
-
-    if (elCsv) {
-      elCsv.addEventListener("change", (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (file && elCsvName) elCsvName.textContent = file.name;
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const arr = parseCsv(String(reader.result || ""));
-          if (arr && arr.length) {
-            RECORDS = arr;
-            init();
-          } else {
-            alert("CSV 讀取失敗或無資料");
-          }
-        };
-        reader.readAsText(file, "utf-8");
-      });
-    }
-
-    function render() {
-      const thHigh = parseFloat(elHigh.value);
-      const thMed = parseFloat(elMed.value);
-      const weighted = elWeighted.checked;
-      const idx = elSelect.value;
-      const rec = RECORDS[parseInt(idx, 10)] || {
-        id: "-", hand: "-", video: 0,
-        Head: 0, Backswing: 0, ForwardSwing: 0, HitballSwing: 0, FollowThrough: 0,
-        BodyWeight: 0, HitTiming: 0, RacketFace: 0, overall: 0, advice: "請匯入數據或等待分析結果"
+      // 加權
+      const WEIGHTS = {
+        Head: 1.0,
+        Backswing: 1.0,
+        ForwardSwing: 1.0,
+        HitballSwing: 1.5,
+        FollowThrough: 1.0,
+        BodyWeight: 1.0,
+        HitTiming: 1.2,
+        RacketFace: 1.2,
       };
 
-      const parts = PARTS.map((p) => ({
-        key: p.key,
-        label: p.label,
-        score: Number(rec[p.key] || 0)
-      }));
+      // ===== 評語字典：不同等級給不同文字 =====
+      const FEEDBACKS = {
+        Head: {
+          part: "頭部",
+          code: "Head",
+          compare:
+            "右耳點與右腰位置平行移動。擊球前至擊球出去後約 5 幀，右耳與右眼的距離與水平角度大致保持不變，且成功擊球（擊球點在球拍線上，沒有揮空拍或打框）。",
+          levelText: {
+            High: "頭部穩定，眼睛全程盯住球，擊球品質穩定。",
+            Medium: "擊球過程中頭部略有晃動，部分瞬間視線可能離開球。",
+            Low: "擊球過程頭部明顯不穩定，容易在擊球瞬間看不到球。",
+          },
+          fixText:
+            "建議揮拍過程中，眼睛盯好擊球點，並盡量維持頭部不轉動。可以先用慢速揮拍練習，刻意在球離拍後再把頭抬起來。",
+        },
 
-      const overall = computeOverall(rec, weighted);
-      const overallBand = bandOf(overall, thHigh, thMed);
-      setDonut(overall, overallBand, weighted);
+        Backswing: {
+          part: "軀幹 — 拉拍/側身",
+          code: "Backswing",
+          compare:
+            "拉拍準備好時，需要完整側身，看見身體最大正面面積，肩腰四點連線呈對稱梯形，或肩線與腰線接近最大值。",
+          levelText: {
+            High: "拉拍側身完整，準備空間充足。",
+            Medium: "拉拍側身略不足，轉身角度稍小，擊球空間還可以再大一些。",
+            Low: "拉拍側身明顯不足，幾乎正對球，容易變成只用手去揮拍。",
+          },
+          fixText:
+            "建議擊球前拉拍準備時先轉動側身，讓肩膀與腰部一起往後轉，再把球拍拉到身體後方，形成明顯的準備姿勢。",
+        },
 
-      // --- Data Source Indicator ---
-      const badge = document.getElementById('dataSourceBadge');
-      if (badge) {
-        if (rec.id === "ANALYSIS_RESULT") {
-          badge.style.display = "inline-flex";
-        } else {
-          badge.style.display = "none";
+        ForwardSwing: {
+          part: "軀幹 — 擊球前段出拍",
+          code: "Forward-swing",
+          compare:
+            "第一動：右手腕往下放，球拍頭逐漸朝後方（A 線與地平線接近 0°）；第二動：右手腕與右手肘往右肩–腰線靠近，球拍頭朝後並略朝下（約 -30° ~ -45°），身體開始轉身。",
+          levelText: {
+            High: "出拍節奏順暢，手腕下放與向前帶動都很到位。",
+            Medium:
+              "有做出拍動作，但手腕下放或向前帶動略嫌不足，拍頭路徑可以再大一點。",
+            Low: "出拍多半以手臂推球，手腕較僵硬，拍頭倒下與向前的動作不明顯。",
+          },
+          fixText:
+            "出拍時先讓手腕在身體後方往下放，感覺拍頭往下倒，再由手腕與手肘帶動球拍往前甩出，而不是只用肩膀推拍面。",
+        },
+
+        HitballSwing: {
+          part: "擊球出拍 / 轉身",
+          code: "Hitball-swing",
+          compare:
+            "身體加速轉身動作，右肩快速往左肩靠近、右腰快速往左腰靠近，肩線與腰線距離縮短至接近 0。擊球瞬間，右手腕位置介於右肩–腰線與左手腕之間，高度在膝蓋與肩膀之間。",
+          levelText: {
+            High: "擊球時轉身與手部出力協調良好，擊球點在身體前方，擊球扎實。",
+            Medium: "有轉身與出力，但力道傳遞略不足，或有時擊球點稍微偏後。",
+            Low: "轉身動作不足或過頭，擊球點多在身體側邊或太靠近身體，容易力道不穩定。",
+          },
+          fixText:
+            "擊球時先從下半身轉動腰部，再帶動肩膀與手臂，讓擊球點落在身體前方一點的位置。若常過度轉身，則在身體正面對向擊球方向後就逐漸減速收拍。",
+        },
+
+        FollowThrough: {
+          part: "擊球後收拍",
+          code: "Follow-through",
+          compare:
+            "擊球後右手腕往左肩方向、接近眼睛高度移動；球拍頭先朝上，再往左肩後方朝下完成收拍。",
+          levelText: {
+            High: "擊球後收拍動作完整自然，動作有延續。",
+            Medium: "有收拍，但幅度略小或有些僵硬。",
+            Low: "擊球後很快停住，幾乎沒有完整收拍，容易影響出力與保護手臂。",
+          },
+          fixText:
+            "收拍時讓右手手腕與球拍往左肩後方甩動，可以想像最後讓拍子停在左肩或左耳旁，避免擊球後立即煞車。",
+        },
+
+        BodyWeight: {
+          part: "下肢 — 重心高低",
+          code: "Body-weight",
+          compare:
+            "擊球時兩腳膝蓋要彎曲，球速越快屈膝要越明顯、膝部內角度越小。擊球後右腳膝部內角度要比擊球前小，且右腳膝部內角度比左腳小，代表重心有往前送。",
+          levelText: {
+            High: "擊球身體重心高度適中，屈膝與重心前送都表現良好。",
+            Medium: "擊球時整體重心略高或前送不足，穩定度與力道還可以再提升。",
+            Low: "擊球時重心明顯過高，多半用直膝擊球，重心沒有往前移動。",
+          },
+          fixText:
+            "建議揮拍時微微屈膝，好像要坐到椅子上，再在擊球瞬間將重心往前送到左腳，讓下半身幫助出力與穩定。",
+        },
+
+        HitTiming: {
+          part: "節奏 — 擊球點/太慢",
+          code: "Hit-timing",
+          compare:
+            "擊球點位置介於右肩–腰線與左手腕之間，高度在膝蓋與肩膀之間，偏前不偏後。",
+          levelText: {
+            High: "擊球點位置恰當，多數球都在身體前方擊中，節奏穩定。",
+            Medium:
+              "偶爾擊球點稍微偏後，容易打成較短或較高的球，但整體節奏尚可。",
+            Low: "擊球點經常太後方或太靠近身體，容易變成勉強撈球或打框。",
+          },
+          fixText:
+            "建議把擊球點放在身體前方一個拍面的距離，練習提早完成拉拍與出拍，讓球「進到你準備好的擊球點」再擊球，而不是等球到身體旁邊才出手。",
+        },
+
+        RacketFace: {
+          part: "拍面 — 擊球拍面角度",
+          code: "Racket-face",
+          compare:
+            "拍面向量與地平線夾角建議介於 10° 至 -30° 之間，可利用球飛出去的角度估計；過仰容易飛高出界。",
+          levelText: {
+            High: "擊球拍面角度穩定，球的弧線與落點控制良好。",
+            Medium: "拍面偶爾略仰，部分球會偏高或偏長。",
+            Low: "拍面經常過仰，球容易飛得太高或直接出界。",
+          },
+          fixText:
+            "擊球時想像拍面稍微「蓋住球」，讓拍面略向下壓，球先往前走再往上過網。可以先從中等力量開始，感受拍面角度對球弧線的影響。",
+        },
+      };
+
+      // 哪個評分項目對應哪些身體區域
+      const BODY_ZONES_BY_PART = {
+        Head: ["head"],
+        Backswing: ["upper", "racket"],
+        ForwardSwing: ["upper", "racket"],
+        HitballSwing: ["upper", "racket"],
+        FollowThrough: ["upper", "racket"],
+        BodyWeight: ["lower"],
+        HitTiming: ["upper", "racket"],
+        RacketFace: ["racket"],
+      };
+
+      const $ = (q) => document.querySelector(q);
+      const bodyZoneElems = {
+        head: $("#bm-head"),
+        upper: $("#bm-upper"),
+        lower: $("#bm-lower"),
+        racket: $("#bm-racket"),
+      };
+
+      function setBodyZones(activeZones) {
+        const zones = Array.isArray(activeZones) ? activeZones : [];
+        // Reset
+        Object.values(bodyZoneElems).forEach((el) => {
+          if (el) {
+            el.classList.remove("bm-dim", "bm-active");
+            el.classList.add("bm-dim");
+          }
+        });
+        // Activate
+        Object.entries(bodyZoneElems).forEach(([key, el]) => {
+          if (!el) return;
+          if (zones.includes(key)) {
+            el.classList.remove("bm-dim");
+            el.classList.add("bm-active");
+          }
+        });
+      }
+
+      function getPartIconSvg(key) {
+        if (key === "Head") {
+          return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6" r="3.2" fill="none" stroke="#e5e7eb" stroke-width="1.2"/><rect x="7" y="9" width="6" height="5" rx="2.5" fill="none" stroke="#e5e7eb" stroke-width="1.1"/><path d="M5.5 9.5h9" stroke="#38bdf8" stroke-width="1.1" stroke-linecap="round" /></svg>`;
+        }
+        if (key === "BodyWeight") {
+          return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="4.5" r="2.2" fill="none" stroke="#e5e7eb" stroke-width="1.2"/><path d="M10 7.2 L7.5 10.5 L6 13" fill="none" stroke="#e5e7eb" stroke-width="1.2" stroke-linecap="round"/><path d="M10 7.2 L12.5 10.2 L14 13" fill="none" stroke="#e5e7eb" stroke-width="1.2" stroke-linecap="round"/><path d="M4.5 15.2h11" stroke="#4ade80" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+        }
+        if (key === "HitTiming") {
+          return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="#e5e7eb" stroke-width="1.1"/><path d="M10 10 L10 6.8" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round"/><path d="M10 10 L12.6 11.6" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round"/><circle cx="10" cy="10" r="0.9" fill="#38bdf8"/></svg>`;
+        }
+        if (key === "RacketFace") {
+          return `<svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="8" cy="8" rx="3.2" ry="4.1" fill="none" stroke="#e5e7eb" stroke-width="1.1" transform="rotate(-18 8 8)"/><line x1="9.7" y1="11.2" x2="12.3" y2="15.2" stroke="#e5e7eb" stroke-width="1.1" stroke-linecap="round"/><path d="M13.5 7.5 L17 6.5" stroke="#facc15" stroke-width="1.1" stroke-linecap="round"/><path d="M13.5 9.5 L17 8.7" stroke="#f97316" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+        }
+        return `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 15 C7 11.5 10 9 14 7" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round"/><ellipse cx="14.5" cy="6.5" rx="2.5" ry="3.2" fill="none" stroke="#e5e7eb" stroke-width="1.1" transform="rotate(-20 14.5 6.5)"/><circle cx="6" cy="15.2" r="1.4" fill="#22c55e"/></svg>`;
+      }
+
+      const elSelect = $("#recordSelect");
+      const elCount = $("#count");
+      const elWeighted = $("#useWeighted");
+      const elHigh = $("#thHigh");
+      const elMed = $("#thMed");
+      const elList = $("#list");
+      const elPrior = $("#priority");
+      const elAdvice = $("#adviceDisplay");
+      const donutFill = $("#donutFill");
+      const donutText = $("#donutText");
+      const donutSub = $("#donutSub");
+      const donutBand = $("#donutBand");
+      const donutBall = $("#donutBall");
+
+      // Modal 元件
+      const modalWrap = $("#modalWrap");
+      const mdTitle = $("#mdTitle");
+      const mdSubtitle = $("#mdSubtitle");
+      const mdScoreBand = $("#mdScoreBand");
+      const mdPart = $("#mdPart");
+      const mdCode = $("#mdCode");
+      const mdCompare = $("#mdCompare");
+      const mdCategory = $("#mdCategory");
+      const mdFix = $("#mdFix");
+      const mdClose = $("#mdClose");
+      const mdGpt = $("#mdGpt");
+
+      function bandOf(score, thHigh, thMed) {
+        if (score >= thHigh) return "High";
+        if (score >= thMed) return "Medium";
+        return "Low";
+      }
+      function chipClass(band) {
+        if (band === "High") return "chip hi";
+        if (band === "Medium") return "chip med";
+        return "chip low";
+      }
+      function donutGradient(band) {
+        if (band === "High") return "url(#gradHi)";
+        if (band === "Medium") return "url(#gradMed)";
+        return "url(#gradLow)";
+      }
+      function computeOverall(rec, weighted) {
+        if (rec.overall && rec.overall > 0) return rec.overall;
+        if (!weighted) {
+          let sum = 0;
+          for (const p of PARTS) sum += rec[p.key] ?? 0;
+          return sum / PARTS.length;
+        }
+        let sw = 0;
+        let sx = 0;
+        for (const p of PARTS) {
+          const w = WEIGHTS[p.key] ?? 1;
+          sw += w;
+          sx += (rec[p.key] ?? 0) * w;
+        }
+        return sx / sw;
+      }
+
+      function setDonut(value, band, weighted) {
+        const radius = 90;
+        const circ = 2 * Math.PI * radius;
+        const clamped = Math.max(0, Math.min(10, value));
+        const ratio = clamped / 10;
+        const dash = circ * ratio;
+        donutFill.setAttribute("stroke-dasharray", dash + " " + (circ - dash));
+        donutFill.setAttribute("stroke", donutGradient(band));
+        donutText.textContent = clamped.toFixed(1);
+        donutBand.textContent = band.toUpperCase();
+        donutSub.textContent = weighted ? "Weighted Overall" : "Overall";
+
+        // 網球指針沿著外圓跑：-90° 起始，順時針
+        if (donutBall) {
+          if (ratio <= 0) {
+            donutBall.style.opacity = "0";
+          } else {
+            const angle = -Math.PI / 2 + ratio * 2 * Math.PI;
+            const rBall = radius;
+            const cx = 110 + Math.cos(angle) * rBall;
+            const cy = 110 + Math.sin(angle) * rBall;
+            donutBall.setAttribute("cx", cx.toFixed(2));
+            donutBall.setAttribute("cy", cy.toFixed(2));
+            donutBall.style.opacity = "1";
+          }
         }
       }
 
-      // 列表
-      elList.innerHTML = "";
-      const sorted = parts.slice().sort((a, b) => a.score - b.score);
-      for (const p of sorted) {
-        const b = bandOf(p.score, thHigh, thMed);
-        const row = document.createElement("div");
-        row.className = "row-item";
-        row.setAttribute("data-key", p.key);
-        row.setAttribute("data-score", String(p.score));
-        row.setAttribute("data-band", b);
-        row.innerHTML = `
+      function openDetail(partKey, score, band) {
+        const metaPart = PARTS.find((p) => p.key === partKey);
+        const fb = FEEDBACKS[partKey] || {};
+        const level = band || "Medium";
+
+        mdTitle.textContent = metaPart ? metaPart.label : partKey;
+        mdSubtitle.textContent = metaPart ? `代碼：${partKey}` : partKey;
+
+        mdScoreBand.textContent = `${score.toFixed(1)} / 10 · ${band}`;
+        mdPart.textContent = fb.part || "-";
+        mdCode.textContent = fb.code || partKey;
+        mdCompare.textContent = fb.compare || "-";
+
+        if (fb.levelText) {
+          mdCategory.textContent =
+            fb.levelText[level] || fb.levelText.Medium || "-";
+        } else {
+          mdCategory.textContent = "-";
+        }
+
+        if (typeof fb.fixText === "string") {
+          mdFix.textContent = fb.fixText;
+        } else if (fb.fixText && typeof fb.fixText === "object") {
+          mdFix.textContent =
+            fb.fixText[level] || fb.fixText.Medium || fb.fixText.High || "-";
+        } else {
+          mdFix.textContent = "-";
+        }
+
+        // 根據 BodyMap 設定
+        // 只有分數 Low 才標記熱區？ V5 是這麼做的。
+        // 但如果想 always show part, 可以改。目前照 V5 邏輯:
+        if (band === "Low") {
+          const zones = BODY_ZONES_BY_PART[partKey] || [];
+          setBodyZones(zones);
+        } else {
+          // 如果不是 Low，可以考慮是否要顯示該部位？
+          // V5 logic: `setBodyZones([])` for non-Low via single click.
+          // Let's modify to ALWAYS show the part dim/highlighted
+          const zones = BODY_ZONES_BY_PART[partKey] || [];
+          setBodyZones(zones); // Always highlight relevant part
+        }
+
+        // Update GPT text in modal if we have it
+        if (mdGpt) {
+          // We use global advice or specific? v3 uses global advice in `rec.advice`.
+          // Modal doesn't have specific per-part advice in v3, so just show generic or hide.
+          // Or show the full advice?
+          // Let's leave mdGpt text default.
+        }
+
+        modalWrap.style.display = "flex";
+        modalWrap.setAttribute("aria-hidden", "false");
+      }
+
+      function closeDetail() {
+        modalWrap.style.display = "none";
+        modalWrap.setAttribute("aria-hidden", "true");
+      }
+      if (mdClose) mdClose.addEventListener("click", closeDetail);
+      if (modalWrap) {
+        modalWrap.addEventListener("click", (e) => {
+          if (e.target === modalWrap) closeDetail();
+        });
+      }
+
+      function hookClickable() {
+        document.querySelectorAll("#priority .item").forEach((node) => {
+          const key = node.getAttribute("data-key");
+          const score = Number(node.getAttribute("data-score") || "0");
+          const band = node.getAttribute("data-band") || "-";
+          node.classList.add("clickable");
+          node.addEventListener("click", () => openDetail(key, score, band));
+        });
+        document.querySelectorAll("#list .row-item").forEach((node) => {
+          const key = node.getAttribute("data-key");
+          const score = Number(node.getAttribute("data-score") || "0");
+          const band = node.getAttribute("data-band") || "-";
+          node.classList.add("clickable");
+          node.addEventListener("click", () => openDetail(key, score, band));
+        });
+      }
+
+      // ===== CSV 匯入 =====
+      const elCsv = document.querySelector("#csvFile");
+      const btnPickFile = document.querySelector("#btnPickFile");
+      const elCsvName = document.querySelector("#csvFileName");
+      if (btnPickFile && elCsv) {
+        btnPickFile.addEventListener("click", () => elCsv.click());
+      }
+
+      function mapRawScore(v) {
+        var s = v === undefined || v === null ? "" : String(v).trim();
+        if (!s) return 0;
+        var n = Number(s);
+        if (!isFinite(n) || n <= 0) return 0;
+        if (n === 1) return 10;
+        if (n === 2) return 8;
+        if (n === 3) return 6;
+        return 0;
+      }
+
+      function avgScoreFrom(cols, idxMap, names) {
+        var sum = 0;
+        var cnt = 0;
+        names.forEach(function (name) {
+          if (!(name in idxMap)) return;
+          var val = cols[idxMap[name]];
+          var sc = mapRawScore(val);
+          if (sc > 0) {
+            sum += sc;
+            cnt++;
+          }
+        });
+        return cnt ? sum / cnt : 0;
+      }
+
+      function parseCsv(text) {
+        const lines = text.trim().split(/\r?\n/);
+        if (!lines.length) return [];
+        const headers = lines[0].split(",").map(function (h) {
+          return h.trim();
+        });
+        // ... same logic ...
+        const must = ["ID", "usehand", "Vedio#"];
+        const hasAll = must.every(function (h) {
+          return headers.indexOf(h) !== -1;
+        });
+        if (!hasAll) {
+          alert("CSV 欄位至少需包含: " + must.join(", "));
+          return [];
+        }
+        const idx = {};
+        headers.forEach(function (h, i) {
+          idx[h] = i;
+        });
+        const out = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i];
+          if (!row.trim()) continue;
+          const cols = [];
+          let cur = "";
+          let inQ = false;
+          for (let j = 0; j < row.length; j++) {
+            const ch = row[j];
+            if (ch === '"') {
+              inQ = !inQ;
+              continue;
+            }
+            if (ch === "," && !inQ) {
+              cols.push(cur);
+              cur = "";
+              continue;
+            }
+            cur += ch;
+          }
+          cols.push(cur);
+
+          const rec = {
+            id: (cols[idx["ID"]] || "").trim(),
+            hand: (cols[idx["usehand"]] || "").trim(),
+            video: Number((cols[idx["Vedio#"]] || "0").trim()),
+          };
+
+          if ("Head" in idx) rec.Head = mapRawScore(cols[idx["Head"]]);
+          else rec.Head = 0;
+
+          if ("Backswing" in idx)
+            rec.Backswing = Number((cols[idx["Backswing"]] || "0").trim());
+          else
+            rec.Backswing = avgScoreFrom(cols, idx, [
+              "BackswingA",
+              "BackswingB",
+              "BackswingC",
+              "BackswingD",
+            ]);
+
+          if ("ForwardSwing" in idx)
+            rec.ForwardSwing = Number(
+              (cols[idx["ForwardSwing"]] || "0").trim(),
+            );
+          else
+            rec.ForwardSwing = avgScoreFrom(cols, idx, [
+              "Forward-swingA",
+              "Forward-swingB",
+              "Forward-swingC",
+            ]);
+
+          if ("HitballSwing" in idx)
+            rec.HitballSwing = Number(
+              (cols[idx["HitballSwing"]] || "0").trim(),
+            );
+          else
+            rec.HitballSwing = avgScoreFrom(cols, idx, [
+              "Hitball-swingA",
+              "Hitball-swingB",
+            ]);
+
+          if ("FollowThrough" in idx)
+            rec.FollowThrough = Number(
+              (cols[idx["FollowThrough"]] || "0").trim(),
+            );
+          else if ("Follow-through" in idx)
+            rec.FollowThrough = avgScoreFrom(cols, idx, ["Follow-through"]);
+          else rec.FollowThrough = 0;
+
+          if ("BodyWeight" in idx)
+            rec.BodyWeight = Number((cols[idx["BodyWeight"]] || "0").trim());
+          else
+            rec.BodyWeight = avgScoreFrom(cols, idx, [
+              "body-weightA",
+              "body-weightB",
+            ]);
+
+          if ("HitTiming" in idx)
+            rec.HitTiming = Number((cols[idx["HitTiming"]] || "0").trim());
+          else if ("hit-timing" in idx)
+            rec.HitTiming = avgScoreFrom(cols, idx, ["hit-timing"]);
+          else rec.HitTiming = 0;
+
+          if ("RacketFace" in idx)
+            rec.RacketFace = Number((cols[idx["RacketFace"]] || "0").trim());
+          else if ("reacket-face" in idx)
+            rec.RacketFace = avgScoreFrom(cols, idx, ["reacket-face"]);
+          else rec.RacketFace = 0;
+
+          if ("overall" in idx)
+            rec.overall = Number((cols[idx["overall"]] || "0").trim());
+
+          out.push(rec);
+        }
+        return out;
+      }
+
+      if (elCsv) {
+        elCsv.addEventListener("change", (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file && elCsvName) elCsvName.textContent = file.name;
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const arr = parseCsv(String(reader.result || ""));
+            if (arr && arr.length) {
+              RECORDS = arr;
+              init();
+            } else {
+              alert("CSV 讀取失敗或無資料");
+            }
+          };
+          reader.readAsText(file, "utf-8");
+        });
+      }
+
+      function render() {
+        const thHigh = parseFloat(elHigh.value);
+        const thMed = parseFloat(elMed.value);
+        const weighted = elWeighted.checked;
+        const idx = elSelect.value;
+        const rec = RECORDS[parseInt(idx, 10)] || {
+          id: "-",
+          hand: "-",
+          video: 0,
+          Head: 0,
+          Backswing: 0,
+          ForwardSwing: 0,
+          HitballSwing: 0,
+          FollowThrough: 0,
+          BodyWeight: 0,
+          HitTiming: 0,
+          RacketFace: 0,
+          overall: 0,
+          advice: "請匯入數據或等待分析結果",
+        };
+
+        const parts = PARTS.map((p) => ({
+          key: p.key,
+          label: p.label,
+          score: Number(rec[p.key] || 0),
+        }));
+
+        const overall = computeOverall(rec, weighted);
+        const overallBand = bandOf(overall, thHigh, thMed);
+        setDonut(overall, overallBand, weighted);
+
+        // --- Data Source Indicator ---
+        const badge = document.getElementById("dataSourceBadge");
+        if (badge) {
+          if (rec.id === "ANALYSIS_RESULT") {
+            badge.style.display = "inline-flex";
+          } else {
+            badge.style.display = "none";
+          }
+        }
+
+        // 列表
+        elList.innerHTML = "";
+        const sorted = parts.slice().sort((a, b) => a.score - b.score);
+        for (const p of sorted) {
+          const b = bandOf(p.score, thHigh, thMed);
+          const row = document.createElement("div");
+          row.className = "row-item";
+          row.setAttribute("data-key", p.key);
+          row.setAttribute("data-score", String(p.score));
+          row.setAttribute("data-band", b);
+          row.innerHTML = `
         <div>
           <div class="name name-with-icon">
              <span class="icon">${getPartIconSvg(p.key)}</span>
@@ -1678,19 +2055,19 @@
           <div class="${chipClass(b)}" style="margin-top:4px; text-align:right">${b}</div>
         </div>
       `;
-        elList.appendChild(row);
-      }
+          elList.appendChild(row);
+        }
 
-      // 優先改善
-      elPrior.innerHTML = "";
-      for (const p of sorted.slice(0, 3)) {
-        const b = bandOf(p.score, thHigh, thMed);
-        const it = document.createElement("div");
-        it.className = "item";
-        it.setAttribute("data-key", p.key);
-        it.setAttribute("data-score", String(p.score));
-        it.setAttribute("data-band", b);
-        it.innerHTML = `
+        // 優先改善
+        elPrior.innerHTML = "";
+        for (const p of sorted.slice(0, 3)) {
+          const b = bandOf(p.score, thHigh, thMed);
+          const it = document.createElement("div");
+          it.className = "item";
+          it.setAttribute("data-key", p.key);
+          it.setAttribute("data-score", String(p.score));
+          it.setAttribute("data-band", b);
+          it.innerHTML = `
         <div class="name name-with-icon">
           <span class="icon-small">${getPartIconSvg(p.key)}</span>
           <div>
@@ -1700,124 +2077,157 @@
         </div>
         <div class="${chipClass(b)}">${b}</div>
       `;
-        elPrior.appendChild(it);
-      }
+          elPrior.appendChild(it);
+        }
 
-      // 將 A. B. C. D. 等段落標記換行，且不顯示 A/B/C 標籤，只顯示後面文字
-      function formatAdviceBreaks(text) {
-        if (!text || !String(text).trim()) return text;
-        return String(text)
-          .replace(/[A-Z]\./g, '\n\n')
-          .replace(/\n{3,}/g, '\n\n')
-          .trim();
-      }
+        // 將 A. B. C. D. 等段落標記換行，且不顯示 A/B/C 標籤，只顯示後面文字
+        function formatAdviceBreaks(text) {
+          if (!text || !String(text).trim()) return text;
+          return String(text)
+            .replace(/[A-Z]\./g, "\n\n")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+        }
 
-      // Update Advice and Raw Data
-      // Prioritize structured combined_advice for detail page, fallback to GPT advice
-      let displayAdvice = rec.advice || "尚無詳細建議";
-      if (rec.combined_advice && rec.combined_advice.trim()) {
-        displayAdvice = formatAdviceBreaks(rec.combined_advice);
-      }
-      if (elAdvice) elAdvice.textContent = displayAdvice;
-      const elRaw = document.getElementById("raw");
-      if (elRaw) elRaw.textContent = JSON.stringify(rec, null, 2);
+        // Update Advice and Raw Data
+        // Prioritize structured combined_advice for detail page, fallback to GPT advice
+        let displayAdvice = rec.advice || "尚無詳細建議";
+        if (rec.combined_advice && rec.combined_advice.trim()) {
+          displayAdvice = formatAdviceBreaks(rec.combined_advice);
+        }
+        if (elAdvice) elAdvice.textContent = displayAdvice;
+        const elRaw = document.getElementById("raw");
+        if (elRaw) elRaw.textContent = JSON.stringify(rec, null, 2);
 
-      // 更新動作識別摘要（參考 2D Action Recognition）
-      const handLabel = (rec.hand === "left" || rec.hand === "左手") ? "左手持拍" : (rec.hand === "right" || rec.hand === "右手") ? "右手持拍" : (rec.hand ? String(rec.hand) : "-");
-      const actionLabel = rec.action_type || "-";
-      const simLabel = rec.similarity || "-";
-      const elHand = document.getElementById("recHand");
-      const elAction = document.getElementById("recActionType");
-      const elSim = document.getElementById("recSimilarity");
-      if (elHand) elHand.textContent = handLabel;
-      if (elAction) elAction.textContent = actionLabel;
-      if (elSim) elSim.textContent = simLabel;
+        // 更新動作識別摘要（參考 2D Action Recognition）
+        const handLabel =
+          rec.hand === "left" || rec.hand === "左手"
+            ? "左手持拍"
+            : rec.hand === "right" || rec.hand === "右手"
+              ? "右手持拍"
+              : rec.hand
+                ? String(rec.hand)
+                : "-";
+        const actionLabel = rec.action_type || "-";
+        const simLabel = rec.similarity || "-";
+        const elHand = document.getElementById("recHand");
+        const elAction = document.getElementById("recActionType");
+        const elSim = document.getElementById("recSimilarity");
+        if (elHand) elHand.textContent = handLabel;
+        if (elAction) elAction.textContent = actionLabel;
+        if (elSim) elSim.textContent = simLabel;
 
-      // 更新各分析卡片的信心度與進度條（rec 的分數為 0–10  scale）
-      const confBarMap = [
-        { key: "Backswing", confId: "confBackswing", barId: "barBackswing" },
-        { key: "ForwardSwing", confId: "confForwardswing", barId: "barForwardswing" },
-        { key: "HitballSwing", confId: "confHitballswing", barId: "barHitballswing" },
-        { key: "FollowThrough", confId: "confFollowthrough", barId: "barFollowthrough" },
-        { key: "ContactZone", confId: "confContactzone", barId: "barContactzone" },
-        { key: "Head", confId: "confHead", barId: "barHead" }
-      ];
-      for (const { key, confId, barId } of confBarMap) {
-        let score = Number(rec[key] || 0);
-        if (key === "ContactZone") {
-          if (score === 0 && rec.statistics?.contact_zone?.flags) {
-            const f = rec.statistics.contact_zone.flags;
-            const ok = [f.lateral_in_range, f.height_in_range, f.depth_in_range].filter(Boolean).length;
-            score = (ok / 3) * 10;
+        // 更新各分析卡片的信心度與進度條（rec 的分數為 0–10  scale）
+        const confBarMap = [
+          { key: "Backswing", confId: "confBackswing", barId: "barBackswing" },
+          {
+            key: "ForwardSwing",
+            confId: "confForwardswing",
+            barId: "barForwardswing",
+          },
+          {
+            key: "HitballSwing",
+            confId: "confHitballswing",
+            barId: "barHitballswing",
+          },
+          {
+            key: "FollowThrough",
+            confId: "confFollowthrough",
+            barId: "barFollowthrough",
+          },
+          {
+            key: "ContactZone",
+            confId: "confContactzone",
+            barId: "barContactzone",
+          },
+          { key: "Head", confId: "confHead", barId: "barHead" },
+        ];
+        for (const { key, confId, barId } of confBarMap) {
+          let score = Number(rec[key] || 0);
+          if (key === "ContactZone") {
+            if (score === 0 && rec.statistics?.contact_zone?.flags) {
+              const f = rec.statistics.contact_zone.flags;
+              const ok = [
+                f.lateral_in_range,
+                f.height_in_range,
+                f.depth_in_range,
+              ].filter(Boolean).length;
+              score = (ok / 3) * 10;
+            }
+          }
+          const pct = Math.round((score / 10) * 100);
+          const elConf = document.getElementById(confId);
+          const elBar = document.getElementById(barId);
+          if (elConf)
+            elConf.textContent =
+              score > 0 ||
+              (key === "ContactZone" && rec.statistics?.contact_zone)
+                ? `${pct}%`
+                : "--";
+          if (elBar) elBar.style.width = `${pct}%`;
+        }
+
+        // 更新各階段詳細建議區塊（來自 integrated_analysis 的 analyses，A. B. C. 換行）
+        const analyses = rec.analyses || {};
+        const adviceMap = {
+          textBackswing: analyses.backswing_advice,
+          textForwardswing: analyses.forwardswing_advice,
+          textHitballswing: analyses.hitballswing_advice,
+          textFollowthrough: analyses.followthrough_advice,
+          textContactzone: analyses.contact_zone_advice,
+          textHead: analyses.head_stability_advice,
+        };
+        for (const [elId, text] of Object.entries(adviceMap)) {
+          const el = document.getElementById(elId);
+          if (el) {
+            const formatted =
+              text && String(text).trim()
+                ? formatAdviceBreaks(text)
+                : "尚無資料";
+            el.textContent = formatted;
           }
         }
-        const pct = Math.round((score / 10) * 100);
-        const elConf = document.getElementById(confId);
-        const elBar = document.getElementById(barId);
-        if (elConf) elConf.textContent = (score > 0 || (key === "ContactZone" && rec.statistics?.contact_zone)) ? `${pct}%` : "--";
-        if (elBar) elBar.style.width = `${pct}%`;
+
+        hookClickable();
+        setBodyZones([]); // Reset body map on main render
       }
 
-      // 更新各階段詳細建議區塊（來自 integrated_analysis 的 analyses，A. B. C. 換行）
-      const analyses = rec.analyses || {};
-      const adviceMap = {
-        textBackswing: analyses.backswing_advice,
-        textForwardswing: analyses.forwardswing_advice,
-        textHitballswing: analyses.hitballswing_advice,
-        textFollowthrough: analyses.followthrough_advice,
-        textContactzone: analyses.contact_zone_advice,
-        textHead: analyses.head_stability_advice
-      };
-      for (const [elId, text] of Object.entries(adviceMap)) {
-        const el = document.getElementById(elId);
-        if (el) {
-          const formatted = (text && String(text).trim()) ? formatAdviceBreaks(text) : "尚無資料";
-          el.textContent = formatted;
+      function init() {
+        try {
+          const stored = localStorage.getItem("tennisAnalysisData");
+          if (stored) {
+            const data = JSON.parse(stored);
+            RECORDS.unshift(data);
+          }
+        } catch (e) {
+          console.error("Failed to load stored analysis data", e);
         }
-      }
 
-      hookClickable();
-      setBodyZones([]); // Reset body map on main render
-    }
-
-    function init() {
-      try {
-        const stored = localStorage.getItem('tennisAnalysisData');
-        if (stored) {
-          const data = JSON.parse(stored);
-          RECORDS.unshift(data);
+        elCount.textContent = (RECORDS.length > 0 ? RECORDS.length : 0) + " 筆";
+        elSelect.innerHTML = "";
+        RECORDS.forEach((r, i) => {
+          const opt = document.createElement("option");
+          opt.value = i + "";
+          opt.textContent = `${r.id} / Video #${r.video} (${r.hand})`;
+          elSelect.appendChild(opt);
+        });
+        if (RECORDS.length > 0) elSelect.value = "0";
+        else {
+          const opt = document.createElement("option");
+          opt.textContent = "無資料";
+          elSelect.appendChild(opt);
         }
-      } catch (e) {
-        console.error("Failed to load stored analysis data", e);
+        render();
       }
 
-      elCount.textContent = (RECORDS.length > 0 ? RECORDS.length : 0) + " 筆";
-      elSelect.innerHTML = "";
-      RECORDS.forEach((r, i) => {
-        const opt = document.createElement("option");
-        opt.value = i + "";
-        opt.textContent = `${r.id} / Video #${r.video} (${r.hand})`;
-        elSelect.appendChild(opt);
+      ["change", "input"].forEach((evt) => {
+        elSelect.addEventListener(evt, render);
+        elWeighted.addEventListener(evt, render);
+        elHigh.addEventListener(evt, render);
+        elMed.addEventListener(evt, render);
       });
-      if (RECORDS.length > 0) elSelect.value = "0";
-      else {
-        const opt = document.createElement("option");
-        opt.textContent = "無資料";
-        elSelect.appendChild(opt);
-      }
-      render();
-    }
 
-    ["change", "input"].forEach((evt) => {
-      elSelect.addEventListener(evt, render);
-      elWeighted.addEventListener(evt, render);
-      elHigh.addEventListener(evt, render);
-      elMed.addEventListener(evt, render);
-    });
-
-    init();
-  </script>
-
-</body>
-
+      init();
+    </script>
+  </body>
 </html>
