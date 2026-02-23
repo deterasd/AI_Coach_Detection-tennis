@@ -1,0 +1,11 @@
+{
+  "segmentation": {
+    "next_ball_offset": 1.2,   
+    "exit_buffer_time": 0.2,
+    "preview_start_time": -0.2
+  },
+  "detection": {
+    "confidence_threshold": 0.5,
+    "exit_timeout": 1.5
+  }
+}

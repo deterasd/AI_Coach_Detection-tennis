@@ -64,13 +64,13 @@ def play_videos(video1_path, video2_path, base_output_folder='screenshots'):
         print(f"\r播放進度 - Video 1: {current_frame1}/{total_frames1}, Video 2: {current_frame2}/{total_frames2}", end="")
         
         # 檢查鍵盤輸入
-        key = cv2.waitKey(1) & 0xFF
+        key = cv2.waitKey(50) & 0xFF
         
         # 按下 's' 鍵截圖
         if key == ord('s'):
             # 儲存原始解析度的截圖
-            cv2.imwrite(os.path.join(folder_45, f'Indoor_{screenshot_counter}.JPG'), frame1_original)
-            cv2.imwrite(os.path.join(folder_side, f'Indoor_{screenshot_counter}.JPG'), frame2_original)
+            cv2.imwrite(os.path.join(folder_45, f'Indoor.1_{screenshot_counter}.JPG'), frame1_original)
+            cv2.imwrite(os.path.join(folder_side, f'Indoor.2_{screenshot_counter}.JPG'), frame2_original)
             print(f"\n已儲存截圖: Indoor_{screenshot_counter}.JPG")
             screenshot_counter += 1
         
@@ -114,6 +114,9 @@ def play_videos(video1_path, video2_path, base_output_folder='screenshots'):
 
 if __name__ == "__main__":
     # 設定影片路徑
-    video1_path = "synchronized_videos/0315_45_sync.mp4"
-    video2_path = "synchronized_videos/0315_side_sync.mp4"
+    #video1_path = "synchronized_videos/0315_45_sync.mp4"
+   # video2_path = "synchronized_videos/0315_side_sync.mp4"
+    video1_path = "C:/Users/chen/Desktop/pickleball-version1/test1113-side-temp.mp4"
+    video2_path = "C:/Users/chen/Desktop/pickleball-version1/test1113-side2-temp.mp4"
+    
     play_videos(video1_path, video2_path)

@@ -65,16 +65,18 @@ def process_single_frame(body_result, ball_result,paddle_result, keypoint_names,
 def process_single_frame(body_result, ball_result, paddle_result, keypoint_names, frame_number):
     """處理單一 frame 的結果，回傳 frame_data 字典 (包含信心值 conf)"""
     
-    # 1. 初始化結構 (您原本改的地方)
+    # 1. 初始化結構 - 7個球拍點
     frame_data = {
         "frame": frame_number,
         "tennis_ball": {"x": None, "y": None, "conf": None},
         "paddle": {
             "top": {"x": None, "y": None, "conf": None},
-            "right": {"x": None, "y": None, "conf": None},
             "bottom": {"x": None, "y": None, "conf": None},
+            "right": {"x": None, "y": None, "conf": None},
             "left": {"x": None, "y": None, "conf": None},
-            "center": {"x": None, "y": None, "conf": None} # 中心點通常是計算值，這裡預設 None
+            "center": {"x": None, "y": None, "conf": None},
+            "grip_top": {"x": None, "y": None, "conf": None},
+            "grip_bottom": {"x": None, "y": None, "conf": None},
         }
     }
     
@@ -116,25 +118,29 @@ def process_single_frame(body_result, ball_result, paddle_result, keypoint_names
             })
             break
 
-    # --- 球拍位置 ---
+    # --- 球拍位置（7點：Top, Bottom, Right, Left, Grip_Top, Grip_Bottom, Center） ---
     if paddle_result.keypoints is not None and len(paddle_result.keypoints.xy) > 0:
         kpts = paddle_result.keypoints.xy[0].cpu().numpy()
         # [新增] 取得球拍信心值
         p_confs = paddle_result.keypoints.conf[0].cpu().numpy() if paddle_result.keypoints.conf is not None else None
 
-        if kpts.shape[0] >= 4:
-            top, right, bottom, left = kpts[:4]
-            
-            # [新增] 讀取四點信心值
+        if kpts.shape[0] >= 6:
+            top, bottom, right, left, grip_top, grip_bottom = kpts[:6]
+
+            # [新增] 讀取六點信心值
             c_top = float(p_confs[0]) if p_confs is not None else 0.0
-            c_right = float(p_confs[1]) if p_confs is not None else 0.0
-            c_bottom = float(p_confs[2]) if p_confs is not None else 0.0
+            c_bottom = float(p_confs[1]) if p_confs is not None else 0.0
+            c_right = float(p_confs[2]) if p_confs is not None else 0.0
             c_left = float(p_confs[3]) if p_confs is not None else 0.0
+            c_grip_top = float(p_confs[4]) if p_confs is not None else 0.0
+            c_grip_bottom = float(p_confs[5]) if p_confs is not None else 0.0
 
             frame_data["paddle"]["top"] = {"x": int(top[0]), "y": int(top[1]), "conf": c_top}
-            frame_data["paddle"]["right"] = {"x": int(right[0]), "y": int(right[1]), "conf": c_right}
             frame_data["paddle"]["bottom"] = {"x": int(bottom[0]), "y": int(bottom[1]), "conf": c_bottom}
+            frame_data["paddle"]["right"] = {"x": int(right[0]), "y": int(right[1]), "conf": c_right}
             frame_data["paddle"]["left"] = {"x": int(left[0]), "y": int(left[1]), "conf": c_left}
+            frame_data["paddle"]["grip_top"] = {"x": int(grip_top[0]), "y": int(grip_top[1]), "conf": c_grip_top}
+            frame_data["paddle"]["grip_bottom"] = {"x": int(grip_bottom[0]), "y": int(grip_bottom[1]), "conf": c_grip_bottom}
             
             # 中心點計算 (不一定要 conf，這裡只算座標)
             cx = int((top[0] + right[0] + bottom[0] + left[0]) / 4)
@@ -154,11 +160,19 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
         "nose", "left_eye", "right_eye", "left_ear", "right_ear",
         "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
         "left_wrist", "right_wrist", "left_hip", "right_hip",
-        "left_knee", "right_knee", "left_ankle", "right_ankle"
+        "left_knee", "right_knee", "left_ankle", "right_ankle"  
     ]
     
     batch_frames = []
     batch_indices = []
+
+    # 決定設備：pose 模型因 Apple MPS 已知問題固定 CPU，其他模型用最快的可用設備
+    if torch.cuda.is_available():
+        fast_device = 'cuda'
+    elif torch.backends.mps.is_available():
+        fast_device = 'mps'
+    else:
+        fast_device = 'cpu'
 
     # 持續從 queue 讀取 frame 並累積成批次
     while not (stop_event.is_set() and frame_queue.empty()):
@@ -167,51 +181,37 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
             batch_frames.append(frame)
             batch_indices.append(frame_index)
             if len(batch_frames) == batch_size:
-                # 選擇最佳設備：MPS > CUDA > CPU
-                # 注意：Apple MPS 對姿態模型有已知問題，但這裡使用混合設備策略
-                if torch.backends.mps.is_available():
-                    device = 'cpu'  # 姿態模型使用 CPU 避免 MPS 問題
-                elif torch.cuda.is_available():
-                    device = 'cuda'
-                else:
-                    device = 'cpu'
-                with torch.no_grad(), torch.amp.autocast(device):
-                    body_results = pose_model(batch_frames, verbose=False)
-                    ball_results = ball_model(batch_frames, verbose=False)
-                    paddle_results = paddle_model(batch_frames, verbose=False)
+                with torch.no_grad():
+                    # pose 模型固定 CPU（Apple MPS 對 Pose 有已知 bug）
+                    body_results = pose_model(batch_frames, verbose=False, device='cpu')
+                    # ball/paddle 模型使用最快設備（MPS/CUDA/CPU）
+                    ball_results = ball_model(batch_frames, verbose=False, device=fast_device)
+                    paddle_results = paddle_model(batch_frames, verbose=False, device=fast_device)
                 for idx, (body_result, ball_result, paddle_result) in enumerate(zip(body_results, ball_results, paddle_results)):
-                    frame_data = process_single_frame(body_result, ball_result,paddle_result, keypoint_names, batch_indices[idx])
+                    frame_data = process_single_frame(body_result, ball_result, paddle_result, keypoint_names, batch_indices[idx])
                     frame_json.append(frame_data)
                 # 清除批次資料
                 del batch_frames, batch_indices, body_results, ball_results, paddle_results
                 batch_frames = []
                 batch_indices = []
                 gc.collect()
-                if torch.cuda.is_available():
+                if fast_device == 'cuda':
                     torch.cuda.empty_cache()
         except queue.Empty:
             continue
 
-    # 處理剩餘的 frame
+    # 處理剩餘的 frame（不足 batch_size 的尾巴）
     if batch_frames:
-        # 選擇最佳設備：MPS > CUDA > CPU
-        # 注意：Apple MPS 對姿態模型有已知問題，使用 CPU
-        if torch.backends.mps.is_available():
-            device = 'cpu'  # 姿態模型使用 CPU 避免 MPS 問題
-        elif torch.cuda.is_available():
-            device = 'cuda'
-        else:
-            device = 'cpu'
-        with torch.no_grad(), torch.amp.autocast(device):
-            body_results = pose_model(batch_frames, verbose=False)
-            ball_results = ball_model(batch_frames, verbose=False)
-            paddle_results = paddle_model(batch_frames, verbose=False)
+        with torch.no_grad():
+            body_results = pose_model(batch_frames, verbose=False, device='cpu')
+            ball_results = ball_model(batch_frames, verbose=False, device=fast_device)
+            paddle_results = paddle_model(batch_frames, verbose=False, device=fast_device)
         for idx, (body_result, ball_result, paddle_result) in enumerate(zip(body_results, ball_results, paddle_results)):
             frame_data = process_single_frame(body_result, ball_result, paddle_result, keypoint_names, batch_indices[idx])
             frame_json.append(frame_data)
         del batch_frames, batch_indices, body_results, ball_results, paddle_results
         gc.collect()
-        if torch.cuda.is_available():
+        if fast_device == 'cuda':
             torch.cuda.empty_cache()
 
     # 若最後一幀關鍵點缺失，使用前一幀補上

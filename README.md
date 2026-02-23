@@ -50,7 +50,7 @@ https://youtu.be/STiMlMEpwLY
 1. **Clone the repo**
 
    ```bash
-   git clone https://github.com/kailun1103/AI_Coach_Detection.git
+   git clone https://github.com/deterasd/AI_Coach_Detection-tennis.git
    cd AI_Coach_Detection
    ```
 

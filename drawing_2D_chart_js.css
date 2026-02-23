@@ -30,6 +30,7 @@ body {
   box-shadow:
     0 0 10px rgba(111, 0, 255, 0.377),
     0;
+  overflow: visible; /* 避免 select 下拉選單被裁切 */
 }
 
 /* 選擇資料夾 + 選擇影片 同一行不換行 */
@@ -48,7 +49,8 @@ body {
 .video-selection-row .file-input,
 .video-selection-row .video-input {
   flex: 1;
-  min-width: 0;
+  min-width: 180px; /* 確保資料夾名稱完整顯示 */
+  max-width: 280px;
 }
 
 .file-input,

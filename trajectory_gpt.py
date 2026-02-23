@@ -20,8 +20,6 @@ class AIFeedback ():
         # ---MODEL PROMPT---
         self.INSTRUCTIONS = prompt.INSTRUCTIONS 
         self.DATADESCIRBE = prompt.DATADESCIRBE
-        # 將 system 內容合併到 user 訊息中 (LM Studio 不支援 system 角色)
-        self.system_content = self.INSTRUCTIONS + "\n\n" + self.DATADESCIRBE
   
     def model_config(self,messages):
         completion = self.client.chat.completions.create(
@@ -36,8 +34,11 @@ class AIFeedback ():
         return completion
 
     def response(self, my_motion, knn_feedback):
-        # 初始化 messages 列表 (LM Studio 不支援 system 角色，將內容合併到第一個 user 訊息)
-        messages = []
+        # 初始化 messages 列表
+        messages = [
+            {"role": "system", "content": self.INSTRUCTIONS},
+            {"role": "system", "content": self.DATADESCIRBE},
+        ]
 
         # 若 knn_feedback 為特定正向回饋訊息
         if knn_feedback == "頭:沒問題!、肩膀:沒問題!、手碗:沒問題!、手肘:沒問題!、膝蓋:沒問題!、其他:沒問題!":
@@ -57,8 +58,7 @@ class AIFeedback ():
         else:
             messages.append({
                 "role": "user",
-                "content": self.system_content + f"""
-
+                "content": f"""
                     observe analysis results: {knn_feedback}, 
                     Rephrase the analysis results of each body part in 1 sentence
                 """
@@ -66,15 +66,12 @@ class AIFeedback ():
             knn_completion = self.model_config(messages)
             knn_response = knn_completion.choices[0].message.content
 
-            # 根據 KNN 回饋推測問題影格範圍（不需要完整的軌跡數據）
-            total_frames = len(my_motion)
             messages.append({
                 "role": "user",
                 "content": f"""
-                    The feedback describes issues in a tennis swing motion with {total_frames} total frames.
-                    Based on the feedback: "{knn_response}", 
-                    speculate in which frame section the issue most likely occurs.
-                    Answer will only be in format "number"-"number" and nothing more, for example:13-24
+                    Based on this {my_motion}, 
+                    Speculate in which frame section the issue described in the feedback occurs, 
+                    answer will only be in format "number"-"number" and nothing more, for example:13-24
                 """
             })
             frame_completion = self.model_config(messages)

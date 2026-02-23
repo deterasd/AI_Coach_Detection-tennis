@@ -121,15 +121,19 @@ def analyze_trajectory(knn_dataset, input_3d_json, n_neighbors=1):
         results.append(labels[idx])
 
     nearest_expert_filename = filenames[indices[0][0]] if filenames else "unknown"
-    return results, nearest_expert_filename
+    # KNN 距離（用於計算相似度）：取最近鄰的距離
+    expert_distance = float(distances[0][0]) if distances.size > 0 else 0.0
+    return results, nearest_expert_filename, expert_distance
+
 
 if __name__ == "__main__":
     knn_dataset = "knn_dataset.json"
     input_file = "trajectory__1(3D_trajectory_smoothed).json"
 
-    results, nearest = analyze_trajectory(knn_dataset, input_file, n_neighbors=3)
+    results, nearest, expert_dist = analyze_trajectory(knn_dataset, input_file, n_neighbors=3)
     print("KNN 比對結果:", results)
     print("最相似專家:", nearest)
+    print("專家距離 (expert_distance):", expert_dist)
 
 """
 import json

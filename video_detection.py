@@ -15,8 +15,8 @@ body_parts_list = [
     "left_knee", "right_knee", "left_ankle", "right_ankle"
 ]
 
-# 球拍四個標記點名稱
-paddle_labels = ["Top", "Right", "Left", "Bottom"]
+# 球拍標記點名稱（與B版本及模型輸出順序一致）
+paddle_labels = ["Top", "Right", "Left", "Bottom", "Center", "Grip_Top", "Grip_Bottom"]
 
 def resize_frame(frame, width=None, height=None, inter=cv2.INTER_AREA):
     if width is None and height is None:
@@ -44,34 +44,11 @@ def process_video(
     yolo_batch_size=4,
     ball_conf_threshold=0.8,
     paddle_conf_threshold=0.5,
-    json_path=None
+    json_path=None,
+    trace_length=60
 ):
-    # 選擇最佳設備：MPS > CUDA > CPU
-    if torch.backends.mps.is_available():
-        device_str = 'mps'
-        pose_device_str = 'cpu'  # Apple MPS 對姿態模型有已知問題，使用 CPU
-        print("使用設備: MPS (Apple GPU 加速) - 姿態模型使用 CPU")
-    elif torch.cuda.is_available():
-        device_str = 'cuda'
-        pose_device_str = 'cuda'
-        print("使用設備: CUDA (NVIDIA GPU 加速)")
-    else:
-        device_str = 'cpu'
-        pose_device_str = 'cpu'
-        print("使用設備: CPU")
-
-    # 只在此處載入模型一次，並移至指定裝置
-    ball_model = YOLO(ball_model_path)
-    pose_model = YOLO(pose_model_path)
-    ball_model.model.to(device_str)  # 網球檢測模型可以使用 GPU
-    pose_model.model.to(pose_device_str)  # 姿態模型使用 CPU（避免 Apple MPS 問題）
-
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        print(f"無法讀取影片: {video_path}")
-        return
-
-    original_fps = int(cap.get(cv2.CAP_PROP_FPS))
+    device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"[INFO] Using device: {device_str}")
 
     # 檢查是否使用 JSON
     use_json = False
@@ -105,7 +82,11 @@ def process_video(
     original_fps = cap.get(cv2.CAP_PROP_FPS)
     if original_fps <= 0:
         original_fps = 30
-    print(f"[INFO] FPS={original_fps:.2f}")
+    
+    # 取得原始影片解析度（用於 JSON 座標縮放）
+    orig_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    orig_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print(f"[INFO] FPS={original_fps:.2f}, 原始解析度={orig_w}x{orig_h}")
 
     frames_for_output = []
     frames_for_infer = []
@@ -130,6 +111,15 @@ def process_video(
         print("❌ 無法擷取任何影格。")
         return
 
+    # === 計算 JSON 座標縮放比例 ===
+    # trajectory_2D_output.py 使用原始解析度推論，但這裡顯示的是 resize 後的 frame
+    # 需要將 JSON 座標從原始解析度映射到輸出解析度
+    # resize_frame 使用 width 參數，按寬度等比縮放
+    scale_x = OUTPUT_WIDTH / orig_w if orig_w > 0 else 1.0
+    scale_y = scale_x  # 等比縮放，x 和 y 使用相同比例
+    if use_json:
+        print(f"[INFO] JSON 座標縮放比例: scale={scale_x:.4f} ({orig_w}x{orig_h} -> {OUTPUT_WIDTH}x{int(orig_h * scale_x)})")
+
     # === 初始化結果容器 ===
     ball_positions = [None] * total_frames
     ball_confidences = [None] * total_frames
@@ -144,20 +134,19 @@ def process_video(
             idx = frame_data.get("frame", 0)
             if idx >= total_frames: continue
             
-            # Ball
+            # Ball（套用座標縮放）
             ball = frame_data.get("tennis_ball", {})
             if ball and ball.get("x") is not None and ball.get("y") is not None:
-                ball_positions[idx] = (ball["x"], ball["y"])
+                ball_positions[idx] = (int(ball["x"] * scale_x), int(ball["y"] * scale_y))
                 ball_confidences[idx] = 1.0 
             
-            # Pose
+            # Pose（套用座標縮放）
             kpts = []
             has_pose = False
-            # body_parts_list is global
             for part in body_parts_list:
                 p_data = frame_data.get(part, {})
                 if p_data and p_data.get("x") is not None:
-                    kpts.append((p_data["x"], p_data["y"]))
+                    kpts.append((int(p_data["x"] * scale_x), int(p_data["y"] * scale_y)))
                     has_pose = True
                 else:
                     kpts.append((0, 0))
@@ -166,18 +155,22 @@ def process_video(
                 keypoints_per_frame[idx] = kpts
                 keypoints_conf_per_frame[idx] = [1.0]*17
             
-            # Paddle
+            # Paddle（套用座標縮放）- 動態讀取 JSON 中實際存在的 paddle 數據
             paddle = frame_data.get("paddle", {})
             if paddle:
-                if "top" in paddle and paddle["top"]["x"] is not None:
-                    pts = []
-                    for key in ["top", "right", "bottom", "left"]:
-                        pt = paddle.get(key, {})
-                        if pt and pt.get("x") is not None:
-                            pts.append((pt["x"], pt["y"]))
-                    if len(pts) == 4:
-                        paddle_keypoints[idx] = pts
-                        paddle_confidences[idx] = [1.0]*4
+                pts = []
+                confs = []
+                key_map = {"Top": "top", "Right": "right", "Left": "left", "Bottom": "bottom",
+                           "Center": "center", "Grip_Top": "grip_top", "Grip_Bottom": "grip_bottom"}
+                for label in paddle_labels:
+                    key = key_map.get(label, label.lower())
+                    pt = paddle.get(key, {})
+                    if pt and pt.get("x") is not None and pt.get("y") is not None:
+                        pts.append((int(pt["x"] * scale_x), int(pt["y"] * scale_y)))
+                        confs.append(pt.get("conf", 1.0) if pt.get("conf") is not None else 1.0)
+                if len(pts) >= 4:
+                    paddle_keypoints[idx] = pts
+                    paddle_confidences[idx] = confs
 
     else:
         print(f"[INFO] 共擷取 {total_frames} 幀，進行 YOLO 推論...")
@@ -216,14 +209,14 @@ def process_video(
                     ball_pos = (int((x1 + x2) / 2), int((y1 + y2) / 2))
                     ball_conf = float(best_box.conf[0])
 
-            # --- Paddle Keypoints ---
+            # --- Paddle Keypoints (與B版本一致，讀取所有偵測到的點) ---
             paddle_pts, paddle_conf = None, None
             if paddle_result.keypoints is not None and len(paddle_result.keypoints) > 0:
                 pts = paddle_result.keypoints.xy[0].cpu().numpy()
                 confs = paddle_result.keypoints.conf[0].cpu().numpy()
-                if pts.shape[0] >= 4:
-                    paddle_pts = [(int(x), int(y)) for x, y in pts[:4]]
-                    paddle_conf = [float(c) for c in confs[:4]]
+                if pts.shape[0] >= 0:
+                    paddle_pts = [(int(x), int(y)) for x, y in pts]
+                    paddle_conf = [float(c) for c in confs]
 
             idx_in_list = fidx - 1
             ball_positions[idx_in_list] = ball_pos
@@ -237,17 +230,7 @@ def process_video(
     output_path = video_path.replace('.mp4', '_processed.mp4')
     info_panel_width = 400
     out_w, out_h = OUTPUT_WIDTH + info_panel_width, OUTPUT_HEIGHT
-    
-    # 使用 safe_video_writer 替代硬編碼
-    from video_writer_utils import safe_video_writer
-    out, actual_path = safe_video_writer(output_path, original_fps, (out_w, out_h), 'avc1')
-    
-    if out is None:
-        print(f"❌ 無法建立 VideoWriter，跳過影片輸出")
-        return None
-    
-    # Update output_path in case it fell back to .avi
-    output_path = actual_path
+    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), original_fps, (out_w, out_h))
 
     # === 畫圖主迴圈 ===
     for i in range(total_frames):
@@ -260,6 +243,38 @@ def process_video(
         paddle_pts = paddle_keypoints[i]
         paddle_conf = paddle_confidences[i]
 
+        # === 軌跡繪製 ===
+        start_idx = max(0, i - trace_length)
+        
+        # --- A. 網球軌跡 (綠 -> 紅) ---
+        ball_trail_points = []
+        for j in range(start_idx, i + 1):
+            if ball_positions[j] is not None:
+                ball_trail_points.append(ball_positions[j])
+        
+        if len(ball_trail_points) > 1:
+            for j in range(1, len(ball_trail_points)):
+                progress = j / len(ball_trail_points)
+                color = (0, int(255 * (1 - progress)), int(255 * progress))  # Green->Red
+                thickness = int(4 * progress) + 1
+                cv2.line(frame, ball_trail_points[j-1], ball_trail_points[j], color, thickness)
+
+        # --- B. 手腕軌跡 (藍 -> 綠) ---
+        wrist_trail_points = []
+        for j in range(start_idx, i + 1):
+            k = keypoints_per_frame[j]
+            if k is not None and len(k) > 10:
+                rw = k[10]  # Right Wrist
+                if rw[0] > 0 and rw[1] > 0:
+                    wrist_trail_points.append(rw)
+        
+        if len(wrist_trail_points) > 1:
+            for j in range(1, len(wrist_trail_points)):
+                progress = j / len(wrist_trail_points)
+                color = (int(255 * (1 - progress)), int(255 * progress), 0)  # Blue->Green
+                thickness = int(4 * progress) + 1
+                cv2.line(frame, wrist_trail_points[j-1], wrist_trail_points[j], color, thickness)
+
         # --- 畫球與人體 ---
         if ball_pos:
             cv2.circle(frame, ball_pos, 6, (0, 255, 255), -1)
@@ -268,28 +283,28 @@ def process_video(
                 color = (0, 0, 255) if idx == 10 else (0, 255, 0)
                 cv2.circle(frame, (x, y), 5, color, -1)
 
-        # --- 畫球拍：四點 + 外框 + 對角十字 (X) ---
-        if paddle_pts and len(paddle_pts) >= 4:
-            for (x, y) in paddle_pts:
-                cv2.circle(frame, (x, y), 6, (255, 0, 0), -1)
+        # --- 畫球拍 (簡化版本，直接繪製原始點) ---
+        if paddle_pts and len(paddle_pts) > 0:
+            for idx, (px, py) in enumerate(paddle_pts):
+                # 過濾掉座標為 (0,0) 或負值的無效點
+                if px <= 0 or py <= 0:
+                    continue
 
-            # 中心點
-            cx, cy = int(np.mean([p[0] for p in paddle_pts])), int(np.mean([p[1] for p in paddle_pts]))
-            cv2.circle(frame, (cx, cy), 6, (0, 0, 255), -1)
-
-            # 依中心排序四點，確保對角連線正確
-            pts_with_ang = []
-            for (x, y) in paddle_pts:
-                ang = np.arctan2(y - cy, x - cx)
-                pts_with_ang.append(((x, y), ang))
-            pts_sorted = [p for (p, _) in sorted(pts_with_ang, key=lambda t: t[1])]
-
-            # 外框
-            cv2.polylines(frame, [np.array(pts_sorted, np.int32)], True, (255, 0, 0), 2)
-
-            # 對角線形成十字 (X)
-            cv2.line(frame, pts_sorted[0], pts_sorted[2], (0, 255, 255), 2)
-            cv2.line(frame, pts_sorted[1], pts_sorted[3], (0, 255, 255), 2)
+                # 根據實際 label 設定顏色
+                if paddle_conf and idx < len(paddle_conf):
+                    label = paddle_labels[idx] if idx < len(paddle_labels) else ""
+                else:
+                    label = paddle_labels[idx] if idx < len(paddle_labels) else ""
+                
+                if label == "Center":
+                    color = (0, 0, 255)  # 紅色 - 中心
+                elif label in ("Grip_Top", "Grip_Bottom"):
+                    color = (0, 255, 0)  # 綠色 - 握把
+                else:
+                    color = (255, 0, 0)  # 藍色 - 邊框 (Top/Right/Left/Bottom)
+                
+                # 只畫實心圓點
+                cv2.circle(frame, (px, py), 6, color, -1)
 
         # --- 資訊面板 ---
         info_panel = np.ones((out_h, info_panel_width, 3), dtype=np.uint8) * 40
@@ -322,19 +337,20 @@ def process_video(
         y_text += 10
         cv2.putText(info_panel, "Paddle Detection", (10, y_text),
                     cv2.FONT_HERSHEY_DUPLEX, 0.7, (255, 255, 0), 2)
-        y_text += 30
+        y_text += 25
         if paddle_pts is not None:
-            for j, label in enumerate(paddle_labels):
-                if j < len(paddle_pts):
-                    pt = paddle_pts[j]
-                    conf = paddle_conf[j] if paddle_conf else 0
-                    cv2.putText(info_panel, f"{label:<6}: {pt}  Conf={conf:.2f}",
-                                (10, y_text), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1)
-                    y_text += 25
+            for j in range(len(paddle_pts)):
+                pt = paddle_pts[j]
+                label = paddle_labels[j] if j < len(paddle_labels) else f"Point_{j}"
+                # 安全地獲取 conf 值，避免索引越界
+                conf = paddle_conf[j] if (paddle_conf and j < len(paddle_conf)) else 0.0
+                cv2.putText(info_panel, f"{label:<12}: {pt}  Conf={conf:.2f}",
+                            (10, y_text), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+                y_text += 20
         else:
             cv2.putText(info_panel, "Paddle Status: Not Detected", (10, y_text),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-            y_text += 30
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+            y_text += 25
 
         # --- 姿勢估計 ---
         pose_header_top = y_text + 10

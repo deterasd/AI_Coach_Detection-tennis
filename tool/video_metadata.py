@@ -18,7 +18,8 @@ def get_timecode_info(video_path):
     return None
 
 # 使用示例
-video_path = "GX010240.MP4"
+#video_path = "GX010240.MP4"
+video_path = "781072707.237647.mp4"
 timecode_info = get_timecode_info(video_path)
 
 if timecode_info:

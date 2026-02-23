@@ -66,14 +66,14 @@ def detect_chessboard(image, pattern_size=(10, 7)):
         return False, None, "無法檢測"
 
 # 讀取並處理每一張標定圖片
-for i in range(59):
+for i in range(50):
     t = str(i)
     stats['total_images'] += 1
 
     # 讀取圖像
-    lf_path = f'binocular_correction/outdoor_1126/forehand/45/Outdoor_{i}.JPG'
-    l_path = f'binocular_correction/outdoor_1126/forehand/side/Outdoor_{i}.JPG'
-    
+    lf_path = f'C:/Users/chen/Desktop/pickleball-version1/screenshots/45/Indoor.1_{i}.JPG'
+    l_path  = f'C:/Users/chen/Desktop/pickleball-version1/screenshots/side/Indoor.2_{i}.JPG'
+
     # 檢查文件是否存在
     if not os.path.exists(lf_path) or not os.path.exists(l_path):
         print(f"警告: 圖像 {i} 不存在，跳過")
@@ -176,15 +176,8 @@ def project_matrix(camera_matrix, RT):
     P = np.zeros((3, 4))
     P[:3, :3] = camera_matrix
     
-    # 計算原始投影矩陣
-    P_result = np.dot(camera_matrix, RT[:3, :])
-    
-    # === 修正倒立問題 ===
-    # 將投影矩陣的第二行 (Column 1, 對應 Y 軸) 乘以 -1
-    # 這會將世界座標系的 Y 軸反轉，解決 3D 重建時人物倒立的問題
-    P_result[:, 1] *= -1
-    
-    return P_result
+    # 計算投影矩陣
+    return np.dot(camera_matrix, RT[:3, :])
 
 # 建立左相機的RT矩陣（單位矩陣）
 RT_left = np.array([

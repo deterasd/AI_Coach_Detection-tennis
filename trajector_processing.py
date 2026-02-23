@@ -19,6 +19,8 @@
 """
 
 import time
+import os
+import json
 import numpy as np
 from ultralytics import YOLO
 import concurrent.futures  # 新增多執行緒支援
@@ -40,6 +42,17 @@ from trajectory_integrated_analysis import analyze_integrated_trajectory
 from trajectory_gpt_single_feedback import generate_feedback
 
 def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, paddle_model, video_side, video_45, knn_dataset):
+    #print("processing_trajectory called!")
+    #print("P1:", type(P1))
+    #print("P2:", type(P2))
+    #print("yolo_pose_model:", type(yolo_pose_model))
+    #print("yolo_tennis_ball_model:", type(yolo_tennis_ball_model))
+    #print("paddle_model:", type(paddle_model))
+    #print("video_side:", video_side)
+    #print("video_45:", video_45)
+    #print("knn_dataset:", knn_dataset)
+    #def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, video_side, video_45, knn_dataset,yolo_pickleball_paddle_model):
+    #0920新增球拍
     # 用於紀錄各步驟執行時間
     timing_results = {}
     start_total = time.perf_counter()  # 總執行時間計時
@@ -47,8 +60,8 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, paddl
     # ------------------------------
     # print("\n步驟1：分析2D軌跡中...")
     start = time.perf_counter()
-    trajectory_side = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model, paddle_model, video_side, 28)
-    trajectory_45  = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model, paddle_model, video_45, 28)
+    trajectory_side = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model,paddle_model, video_side, 28)
+    trajectory_45  = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model,paddle_model, video_45, 28)
     #trajectory_side = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_side, 28)#0920新增球拍
     #trajectory_45  = analyze_trajectory(yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_45, 28)#0920新增球拍
     timing_results['2D軌跡分析'] = time.perf_counter() - start
@@ -141,12 +154,11 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, paddl
     # ------------------------------
     # print("\n步驟10：KNN 分析中...")
     start = time.perf_counter()
-    knn_results, nearest_expert_filename = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing)
-    # analyze_trajectory_knn 返回 (results列表, nearest_expert_filename字串)
+    knn_results, nearest_expert_filename, expert_distance = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing)
+    # analyze_trajectory_knn 返回 (results列表, nearest_expert_filename字串, expert_distance數值)
     trajectory_knn_suggestion = knn_results[0] if knn_results else "unknown"
     
     # 寫入 KNN feedback 檔案
-    import os
     knn_feedback_path = trajectory_3d_smoothing.replace('(3D_trajectory_smoothed).json', '_knn_feedback.txt')
     try:
         with open(knn_feedback_path, 'w', encoding='utf-8') as f:
@@ -155,9 +167,23 @@ def processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model, paddl
     except Exception as e:
         print(f"寫入 KNN feedback 失敗: {e}")
     
-    # 整合分析所有分析點
-    integrated_analysis_path = analyze_integrated_trajectory(trajectory_3d_smoothing, knn_dataset, nearest_expert_filename, trajectory_knn_suggestion)
+    # 整合分析所有分析點（傳入 KNN 距離以計算相似度）
+    integrated_analysis_path = analyze_integrated_trajectory(trajectory_3d_smoothing, knn_dataset, nearest_expert_filename, trajectory_knn_suggestion, expert_distance=expert_distance)
     timing_results['KNN 分析'] = time.perf_counter() - start
+
+    # 若 trajectory 根資料夾尚無 user_info.json，建立預設（供 Dashboard 讀取持拍手等）
+    try:
+        traj_dir = os.path.dirname(os.path.abspath(trajectory_3d_smoothing))
+        traj_root = os.path.dirname(traj_dir)
+        user_info_path = os.path.join(traj_root, "user_info.json")
+        if not os.path.exists(user_info_path):
+            default_user_info = {"hand": "right", "dominant_hand": 1}
+            os.makedirs(traj_root, exist_ok=True)
+            with open(user_info_path, "w", encoding="utf-8") as f:
+                json.dump(default_user_info, f, ensure_ascii=False, indent=2)
+            print(f"已建立預設 user_info.json: {user_info_path}")
+    except Exception as e:
+        print(f"建立 user_info.json 時發生錯誤（不影響分析）: {e}")
     # print(f"-- KNN 分析完成，耗時：{timing_results['KNN 分析']:.4f} 秒")
 
     # ------------------------------
@@ -269,8 +295,8 @@ if __name__ == "__main__":
     # 球拍模型跟隨主設備（MPS/CUDA/CPU）
     paddle_model.model.to(device)  # 0920新增球拍
 
-    video_side = f'trajectory/newtest_123/outdoor10__1_side_segment.mp4'
-    video_45 = f'trajectory/newtest_123/outdoor10__1_45_segment.mp4'
+    video_side = f'trajectory/Cindy__trajectory/player6_1_2/outdoor6__1_side_segment.mp4'
+    video_45 = f'trajectory/Cindy__trajectory/player6_1_2/outdoor6__1_45_segment.mp4'
     process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle_model, video_side, video_45, knn_dataset)
     #process_status = processing_trajectory(P1, P2, yolo_pose_model, yolo_tennis_ball_model,yolo_pickleball_paddle_model, video_side, video_45, knn_dataset)
     print(process_status)

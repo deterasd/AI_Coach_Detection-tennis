@@ -59,9 +59,9 @@ async def lifespan(app: FastAPI):
     global yolo_pose_model, yolo_tennis_ball_model, paddle_model
     print("正在載入 YOLO 模型...")
     try:
-        yolo_pose_model = YOLO('model/yolov8n-pose.pt')
+        yolo_pose_model = YOLO('model/yolo11l-pose.pt')  # 身體模型
         yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
-        paddle_model = YOLO('model/tennispaddle.pt')
+        paddle_model = YOLO('model/yolov11x.pt')  # 球拍7點模型
         print("YOLO 模型載入完成!")
     except Exception as e:
         print(f"模型載入失敗: {str(e)}")
@@ -316,9 +316,19 @@ async def input_user_data(
             "name": name,
             "height": height,
             "hand": hand,
+            "dominant_hand": dominant_hand,
             "timestamp": time.strftime("%Y_%m_%d_%H_%M_%S"),
             "file_path": str(current_user_folder)
         }
+
+        # 寫入 trajectory 資料夾的 user_info.json（供 Dashboard 讀取持拍手）
+        user_info_path = current_user_folder / "user_info.json"
+        user_info_data = {"name": name, "height": height, "dominant_hand": dominant_hand, "hand": hand}
+        try:
+            with open(user_info_path, "w", encoding="utf-8") as f:
+                json.dump(user_info_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Warning: could not write user_info.json: {e}")
 
         file_path = f"play_records/{name}_{str(height).replace('.0','')}.json"
         with open(file_path, 'w', encoding='utf-8') as f:

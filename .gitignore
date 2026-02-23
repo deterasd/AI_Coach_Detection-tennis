@@ -10,7 +10,10 @@ trajectory/
 __pycache__/
 *.pyc
 *.mp4
+*.MP4
 *.avi
+*.AVI
+*.mov
 *.MOV
 *.JPG
 *.jpg
@@ -30,41 +33,39 @@ binocular_correction/output/
 .DS_Store
 Thumbs.db
 
+# 新增：更多工具與臨時檔案
+*.log          # 日誌檔案
+*.tmp          # 臨時檔案
+*.bak          # 備份檔案
+*.swp          # Vim 交換檔案
+*.swo          # Vim 交換檔案
+
+# 新增：Python 相關
+*.egg-info/    # Python 套件資訊
+dist/          # 發佈目錄
+build/         # 建置目錄
+
+# 新增：IDE 與編輯器
+.idea/         # PyCharm
+*.sublime-*    # Sublime Text
+
+# 新增：作業系統檔案
+desktop.ini    # Windows 桌面設定
+
 # Test Scripts (Optional, can be ignored)
 test_*.py
 !test_pipeline.py  # Keep main pipeline test if needed
 !trajector_processing_simple_test_fast.py # Keep this important test file
 !trajector_processing_simple_test.py # Keep this important test file
 
-# Test Output Folders
+# Test Output Folders - Universal pattern to exclude all test_* folders
+test_*/
+test*/
+
+# Specific test folders (legacy list - now covered by test_* pattern above)
 compare_entry_to_exit_output/
 compare_hit_event_output/
 compare_trajectory_output/
-test_dedup/
-test_edge_bounce_test_video/
-test_enhanced_output/
-test_entry_exit/
-test_entry_to_exit/
-test_fixed_output/
-test_hit_event/
-test_hit_events/
-test_improved_segmentation/
-test_integrated_hit_event/
-test_integrated_output/
-test_method_edge/
-test_method_hit_event/
-test_method_trajectory/
-test_no_overlap/
-test_output/
-test_output_*/
-test_output_with_viz/
-test_pose_output/
-test_segmentation_output/
-test_segmentation_timing_fix/
-test_segments_output/
-test_trajectory_bounce_test_video/
-test_trajectory_tracking/
-test_video_segmentation/
 video cut/
 video_segments_output/
 測試影片存放/
@@ -80,5 +81,14 @@ tennis_analysis_sessions/
 !output/**
 !input_videos/
 !input_videos/**
+# ============================================
+# 本地備份資料夾（不上傳到 GitHub）
+# ============================================
+_local_backup/
+_backup/
+.backup/
+
+!play_records/
+!play_records/**
 !binocular_correction/
 !binocular_correction/**

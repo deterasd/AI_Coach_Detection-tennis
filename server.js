@@ -5,11 +5,26 @@ const fs = require("fs");
 const app = express();
 const port = parseInt(process.env.PORT || "3001", 10);
 
+// 新增：簡單的 CORS 中間件
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept",
+  );
+  next();
+});
+
 app.use(express.static(path.join(__dirname)));
+
+// 靜音 favicon.ico 404 錯誤 (開發環境常用)
+app.get("/favicon.ico", (req, res) => res.status(204).end());
 
 app.listen(port, () => {
   console.log(`伺服器運行於 http://localhost:${port}`);
-  console.log(`  2D 前端: http://localhost:${port}/ 或 http://localhost:${port}/drawing_2D_chart_js.html`);
+  console.log(
+    `  2D 前端: http://localhost:${port}/ 或 http://localhost:${port}/drawing_2D_chart_js.html`,
+  );
   console.log(`  3D 前端: http://localhost:${port}/3d`);
 });
 
@@ -23,17 +38,27 @@ app.get("/3d", (req, res) => {
 
 app.get("/getFolders", (req, res) => {
   const assetsDir = path.join(__dirname, "trajectory");
+  // console.log(`[API] 正在讀取資料夾列表: ${assetsDir}`);
   fs.readdir(assetsDir, (err, files) => {
     if (err) {
       // console.error("讀取資料夾失敗：", err);
       return res.status(500).json({ error: "無法讀取資料夾" });
     }
-    // 只保留目錄（資料夾）
-    const folders = files.filter((file) => {
-      const filePath = path.join(assetsDir, file);
-      return fs.statSync(filePath).isDirectory();
-    });
-    res.json(folders);
+    // 只保留目錄（資料夾），並取得修改時間
+    const folderInfos = files
+      .filter((file) => {
+        const filePath = path.join(assetsDir, file);
+        return fs.statSync(filePath).isDirectory();
+      })
+      .map((file) => {
+        const filePath = path.join(assetsDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          mtime: stats.mtime.getTime(), // 毫秒為單位的時間戳
+        };
+      });
+    res.json(folderInfos);
   });
 });
 
@@ -43,199 +68,35 @@ app.get("/getVideos", (req, res) => {
     return res.status(400).json({ error: "請提供 folder 參數" });
   }
   const videoDir = path.join(__dirname, "trajectory", folder);
+
+  // 先檢查目錄是否存在
+  if (!fs.existsSync(videoDir)) {
+    return res.json([]); // 目錄不存在，回傳空列表而不是報錯 500
+  }
+
   fs.readdir(videoDir, (err, files) => {
     if (err) {
       return res.status(500).json({ error: `無法讀取 ${folder} 資料夾` });
     }
-    const mp4Files = files.filter((file) =>
-      file.toLowerCase().endsWith(".mp4"),
+    // 過濾出副檔名為 .mp4 的檔案，或標記檔案 ready.txt
+    const resultFiles = files.filter(
+      (file) => file.toLowerCase().endsWith(".mp4") || file === "ready.txt",
     );
-    res.json(mp4Files);
+    res.json(resultFiles);
   });
 });
 
-/** 列出某資料夾內可選的「軌跡」選項，支援兩種結構：
- *  1) 巢狀：trajectory_1, trajectory_2, ... 子資料夾，內有 *_(45|side)*(2D_trajectory_smoothed).json
- *  2) 扁平：資料夾內直接有 *_(45|side)*(2D_trajectory_smoothed).json
- * 回傳 [{ label, folderName, fileName, prefix, videoPath?, json45, jsonSide }]
- */
-app.get("/getTrajectoryOptions", (req, res) => {
+// 列出指定資料夾的子目錄（用於動態掃描 player6_N、trajectory_N 等不同命名）
+app.get("/getSubfolders", (req, res) => {
   const folder = req.query.folder;
-  if (!folder) {
-    return res.status(400).json({ error: "請提供 folder 參數" });
-  }
-  const baseDir = path.join(__dirname, "trajectory", folder);
-  if (!fs.existsSync(baseDir) || !fs.statSync(baseDir).isDirectory()) {
-    return res.status(404).json({ error: "資料夾不存在" });
-  }
-
-  const options = [];
-  const smoothed = (f) =>
-    /(2D_trajectory_smoothed)\.json$/i.test(f) ||
-    /_segment\(2D_trajectory_smoothed\)\.json$/i.test(f);
-
-  function findPrefixAndPair(files) {
-    const j45 = files.find(
-      (f) =>
-        smoothed(f) &&
-        (f.includes("_45") || f.includes("45(")) &&
-        !f.includes("_side"),
-    );
-    const jSide = files.find(
-      (f) =>
-        smoothed(f) &&
-        (f.includes("_side") || (f.includes("side") && !f.includes("45"))),
-    );
-    if (!j45 && !jSide) return null;
-    const base = (j45 || jSide)
-      .replace(/_45.*$|_side.*$|\(2D.*$|_segment.*$/i, "")
-      .replace(/_+$/, "");
-    return {
-      json45: j45 || null,
-      jsonSide: jSide || null,
-      prefix: base,
-    };
-  }
-
-  /** 優先使用 _full_video.mp4，其次 _processed_full_video.mp4 */
-  function pickMp4(files, prefix, json45FileName) {
-    if (!prefix) {
-      const full = files.find((f) => f.toLowerCase().endsWith("_full_video.mp4"));
-      if (full) return full;
-      return files.find((f) => f.toLowerCase().endsWith("_processed_full_video.mp4")) || null;
-    }
-
-    const cleanPrefix = prefix.replace(/_segment$/, "");
-    const lowerPrefix = cleanPrefix.toLowerCase();
-
-    let angleType = null;
-    if (json45FileName) {
-      const jsonLower = json45FileName.toLowerCase();
-      if (jsonLower.includes("_45") || jsonLower.includes("45(")) angleType = "_45";
-      else if (jsonLower.includes("_side") || jsonLower.includes("side")) angleType = "_side";
-    }
-
-    // 優先 _full_video.mp4（用戶指定使用此檔）
-    const fullVideoMatch = files.find((f) => {
-      const lf = f.toLowerCase();
-      if (!lf.endsWith("_full_video.mp4")) return false;
-      if (!lf.includes(lowerPrefix)) return false;
-      if (angleType && !lf.includes(angleType.toLowerCase())) return false;
-      return true;
-    });
-    if (fullVideoMatch) return fullVideoMatch;
-
-    const fullVideoFallback = files.find((f) => {
-      const lf = f.toLowerCase();
-      return lf.endsWith("_full_video.mp4") && lf.includes(lowerPrefix);
-    });
-    if (fullVideoFallback) return fullVideoFallback;
-
-    // 其次 _processed_full_video.mp4
-    const processedMatch = files.find((f) => {
-      const lf = f.toLowerCase();
-      return lf.endsWith("_processed_full_video.mp4") && lf.includes(lowerPrefix);
-    });
-    if (processedMatch) return processedMatch;
-
-    const v = files.find(
-      (f) =>
-        f.toLowerCase().endsWith(".mp4") &&
-        (f.includes(prefix) || f.toLowerCase().includes("full_video") || f.includes(cleanPrefix)),
-    );
-    return v || files.find((f) => f.toLowerCase().endsWith(".mp4")) || null;
-  }
-
-  const topFiles = fs.readdirSync(baseDir);
-  const subdirs = topFiles
-    .filter((f) => {
-      const p = path.join(baseDir, f);
-      return fs.statSync(p).isDirectory() && /^trajectory_\d+$/.test(f);
-    })
-    .sort((a, b) => {
-      const n = (x) => parseInt(x.replace("trajectory_", ""), 10);
-      return n(a) - n(b);
-    });
-
-  if (subdirs.length > 0) {
-    for (const sub of subdirs) {
-      const subPath = path.join(baseDir, sub);
-      const files = fs.readdirSync(subPath);
-      const pair = findPrefixAndPair(files);
-      if (!pair) continue;
-      // 傳遞 json45 檔名給 pickMp4，以便正確匹配角度（_45 或 _side）
-      const videoPath = pickMp4(files, pair.prefix, pair.json45);
-      options.push({
-        label: pair.prefix || sub,
-        folderName: folder,
-        fileName: sub,
-        prefix: pair.prefix,
-        videoPath: videoPath
-          ? `trajectory/${folder}/${sub}/${videoPath}`
-          : null,
-        json45: pair.json45
-          ? `trajectory/${folder}/${sub}/${pair.json45}`
-          : null,
-        jsonSide: pair.jsonSide
-          ? `trajectory/${folder}/${sub}/${pair.jsonSide}`
-          : null,
-      });
-    }
-  } else {
-    const pair = findPrefixAndPair(topFiles);
-    if (pair) {
-      // 傳遞 json45 檔名給 pickMp4，以便正確匹配角度（_45 或 _side）
-      const videoPath = pickMp4(topFiles, pair.prefix, pair.json45);
-      options.push({
-        label: pair.prefix,
-        folderName: folder,
-        fileName: "",
-        prefix: pair.prefix,
-        videoPath: videoPath
-          ? `trajectory/${folder}/${videoPath}`
-          : null,
-        json45: pair.json45
-          ? `trajectory/${folder}/${pair.json45}`
-          : null,
-        jsonSide: pair.jsonSide
-          ? `trajectory/${folder}/${pair.jsonSide}`
-          : null,
-      });
-    }
-    if (options.length === 0) {
-      const json45List = topFiles.filter(
-        (f) =>
-          smoothed(f) &&
-          (f.includes("_45") || f.includes("45(")) &&
-          !f.includes("_side"),
-      );
-      for (const j45 of json45List) {
-        const base = j45
-          .replace(/_45.*$|\(2D.*$|_segment.*$/i, "")
-          .replace(/_+$/, "");
-        const jSide = topFiles.find(
-          (f) =>
-            smoothed(f) &&
-            (f.includes("_side") || f.includes("side")) &&
-            !f.includes("45") &&
-            (f.startsWith(base) || f.includes(base)),
-        );
-        // 傳遞 json45 檔名給 pickMp4，以便正確匹配角度（_45 或 _side）
-        const v = pickMp4(topFiles, base, j45);
-        options.push({
-          label: base || j45,
-          folderName: folder,
-          fileName: "",
-          prefix: base,
-          videoPath: v ? `trajectory/${folder}/${v}` : null,
-          json45: `trajectory/${folder}/${j45}`,
-          jsonSide: jSide ? `trajectory/${folder}/${jSide}` : null,
-        });
-      }
-    }
-  }
-
-  res.json(options);
+  if (!folder) return res.status(400).json({ error: "請提供 folder 參數" });
+  const dir = path.join(__dirname, "trajectory", folder);
+  if (!fs.existsSync(dir)) return res.json([]);
+  const entries = fs.readdirSync(dir);
+  const subfolders = entries.filter((e) =>
+    fs.statSync(path.join(dir, e)).isDirectory()
+  );
+  res.json(subfolders);
 });
 
 app.get("/getjson", (req, res) => {
@@ -259,49 +120,21 @@ app.get("/getjson", (req, res) => {
   });
 });
 
-// 獲取分析結果的 API 端點
-app.get("/getAnalysisResults", (req, res) => {
-  const { folder, fileName, prefix } = req.query;
-
-  if (!folder || !fileName || !prefix) {
-    return res
-      .status(400)
-      .json({ error: "請提供 folder, fileName, 和 prefix 參數" });
+// 取得 trajectory 資料夾的 user_info.json（用於持拍手等）
+app.get("/getUserInfo", (req, res) => {
+  const folder = req.query.folder;
+  if (!folder) {
+    return res.status(400).json({ error: "請提供 folder 參數" });
   }
-
-  const trajectoryDir = path.join(__dirname, "trajectory", folder, fileName);
-
-  // 檢查分析結果檔案是否存在
-  const knnFile = path.join(trajectoryDir, `${prefix}_knn_feedback.txt`);
-  const gptFile = path.join(trajectoryDir, `${prefix}_gpt_feedback.json`);
-
-  const results = {
-    knn: null,
-    gpt: null,
-    files: {
-      knn_exists: fs.existsSync(knnFile),
-      gpt_exists: fs.existsSync(gptFile),
-    },
-  };
-
-  // 讀取 KNN 分析結果
-  if (results.files.knn_exists) {
-    try {
-      results.knn = fs.readFileSync(knnFile, "utf8");
-    } catch (error) {
-      console.error("Error reading KNN file:", error);
-    }
+  const userInfoPath = path.join(__dirname, "trajectory", folder, "user_info.json");
+  if (!fs.existsSync(userInfoPath)) {
+    return res.json(null);
   }
-
-  // 讀取 GPT 分析結果
-  if (results.files.gpt_exists) {
-    try {
-      const gptData = fs.readFileSync(gptFile, "utf8");
-      results.gpt = JSON.parse(gptData);
-    } catch (error) {
-      console.error("Error reading GPT file:", error);
-    }
+  try {
+    const content = fs.readFileSync(userInfoPath, "utf-8");
+    const data = JSON.parse(content);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: "無法讀取 user_info", details: e.message });
   }
-
-  res.json(results);
 });

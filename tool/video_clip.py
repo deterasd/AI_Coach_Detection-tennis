@@ -82,7 +82,9 @@ def process_video_fast(input_path, output_path, speed_factor=1.0):
         print(f"\n只完成了 {frames_processed}/{frames_to_process} 幀的處理")
 
 # 使用範例
-input_video = '謝老師__3_side.mp4'
-output_video = "謝老師__3_side_temp.mp4"  # 改用不同的輸出檔名
+#input_video = '謝老師__3_side.mp4'
+#output_video = "謝老師__3_side_temp.mp4"  # 改用不同的輸出檔名
+input_video = "C:/Users/chen/Desktop/pickleball-version1/Pickleball_Project/video/side/784719301.215584.mp4"
+output_video = "test1113-side2-temp.mp4"  # 改用不同的輸出檔名
 speed_factor = 1.0  # 保持原速
 process_video_fast(input_video, output_video, speed_factor)

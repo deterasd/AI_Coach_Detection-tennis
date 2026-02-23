@@ -22,7 +22,10 @@ from datetime import datetime
 if 'trajector_processing_unified' in sys.modules:
     del sys.modules['trajector_processing_unified']
 
-# 匯入整合處理函數
+# 匯入整合處理函數 (從父目錄)
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from trajector_processing_unified import processing_trajectory_unified
 
 def get_user_info():
@@ -54,11 +57,17 @@ def get_user_info():
         except ValueError:
             print("❌ 請輸入有效的數字")
     
+    # 輸入持拍手
+    hand_input = input("持拍手 (0=左手, 1=右手，預設1): ").strip() or "1"
+    dominant_hand = 1 if hand_input == "1" else 0
+    hand = "right" if dominant_hand == 1 else "left"
+
     print(f"\n✅ 使用者資訊:")
     print(f"   姓名: {name}")
     print(f"   身高: {height} cm")
+    print(f"   持拍手: {hand}")
     
-    return name, height
+    return name, height, dominant_hand, hand
 
 def check_and_install_ffmpeg():
     """檢查並安裝 FFmpeg"""
@@ -107,7 +116,7 @@ def check_and_install_ffmpeg():
     choice = input("\n是否跳過影片分割功能繼續執行？(y/n)1: ").lower().strip()
     return choice == 'y'
 
-def create_trajectory_folders(name, height):
+def create_trajectory_folders(name, height, dominant_hand=1, hand="right"):
     """創建符合正常流程的資料夾結構"""
     # 主要軌跡資料夾
     base_trajectory_folder = Path("trajectory")
@@ -132,10 +141,12 @@ def create_trajectory_folders(name, height):
     user_folder.mkdir(parents=True, exist_ok=True)
     folders["logs"].mkdir(parents=True, exist_ok=True)
     
-    # 創建使用者資訊檔案
+    # 創建使用者資訊檔案（含持拍手，供 Dashboard 動作識別摘要使用）
     user_info = {
         "name": name,
         "height": height,
+        "dominant_hand": dominant_hand,
+        "hand": hand,
         "created_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
@@ -270,9 +281,70 @@ def create_readme_file(user_folder, name, height, side_video, deg45_video, ball_
     
     print(f"📄 說明檔案已創建: README.md")
 
+def load_yolo_models():
+    """集中載入 YOLO 模型並設定 GPU/CPU"""
+    print("\n🤖 正在載入 AI 模型 (此步驟僅執行一次)...")
+    
+    # ⚡ 先檢查 GPU（在載入模型之前）
+    print("🔍 檢查 GPU 平臺可用性...")
+    try:
+        import torch
+        
+        device = 'cpu'
+        
+        # 檢查 CUDA 可用性（不需要強制初始化）
+        if torch.cuda.is_available():
+            # 檢查設備數量
+            device_count = torch.cuda.device_count()
+            print(f"   ✅ 發現 {device_count} 個 CUDA 設備")
+            
+            if device_count > 0:
+                device_name = torch.cuda.get_device_name(0)
+                total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                print(f"   GPU 名稱: {device_name}")
+                print(f"   GPU 記憶體: {total_memory:.2f} GB")
+                
+                if total_memory >= 2.0:  # 門檻設為 2GB
+                    device = 'cuda:0'
+                    # 啟用 cuDNN benchmark 優化
+                    torch.backends.cudnn.benchmark = True
+                    torch.cuda.empty_cache()
+                    print(f"⚡ 已啟用 CUDA 加速模式: {device}")
+                else:
+                    print(f"⚠️ GPU 記憶體不足 ({total_memory:.2f} GB < 2GB)，切換至 CPU 模式")
+        else:
+            print("💻 未發現 NVIDIA GPU 或 CUDA 不可用，使用 CPU 運算模式")
+            
+    except Exception as e:
+        print(f"⚠️ GPU 檢測失敗: {e}，使用 CPU 模式")
+        import traceback
+        traceback.print_exc()
+        device = 'cpu'
+    
+    # 載入 YOLO 模型並立即移至正確設備
+    print(f"📦 載入 YOLO 模型檔案到 {device}...")
+    try:
+        models = {
+            'pose': YOLO('model/yolo11l-pose.pt'),      # 升級的身體姿態模型
+            'ball': YOLO('model/tennisball_OD_v1.pt'),
+            'paddle': YOLO('model/yolov11x.pt')         # 7點球拍模型
+        }
+        
+        # 立即將所有模型移至目標設備
+        for model_name, m in models.items():
+            m.to(device)
+            print(f"   ✅ {model_name} 模型已載入到 {device}")
+            
+    except Exception as e:
+        print(f"❌ 模型載入失敗: {e}")
+        raise
+            
+    return models
+
 def simple_test_pipeline(input_folder="input_videos", 
                          ball_direction="right", 
-                         confidence_threshold=0.5):
+                         confidence_threshold=0.5,
+                         models=None):
     """模擬正常流程的測試流程"""
     
     print("🎾 AI網球教練 - 正常流程模擬版本")
@@ -280,7 +352,7 @@ def simple_test_pipeline(input_folder="input_videos",
     
     # 步驟1: 獲取使用者資訊
     print("\n👤 步驟1: 輸入使用者資訊...")
-    name, height = get_user_info()
+    name, height, dominant_hand, hand = get_user_info()
     
     # 步驟2: 檢查輸入影片
     print("\n📹 步驟2: 檢查輸入影片...")
@@ -289,13 +361,11 @@ def simple_test_pipeline(input_folder="input_videos",
     if not side_video or not deg45_video:
         print("\n❌ 測試終止：請先準備影片檔案")
         print(f"📁 將影片放入: {Path(input_folder).absolute()}")
-        print("🔄 然後重新執行此程式")
-        input("\n按 Enter 結束...")
         return False
     
     # 步驟3: 創建使用者資料夾
     print(f"\n📁 步驟3: 創建 {name} 的軌跡資料夾...")
-    user_folder, folders = create_trajectory_folders(name, height)
+    user_folder, folders = create_trajectory_folders(name, height, dominant_hand, hand)
     print(f"📂 使用者資料夾: {user_folder}")
     
     # 步驟4: 複製並重命名輸入影片
@@ -320,65 +390,26 @@ def simple_test_pipeline(input_folder="input_videos",
     print(f"   輸出資料夾: trajectory/{name}__trajectory")
     
     try:
-        # 步驟7: 載入AI模型
-        print("\n🤖 步驟7: 載入AI模型...")
+        # 步驟7: 載入AI模型 (如果外部沒傳入則在此載入)
+        if models is None:
+            models = load_yolo_models()
         
+        yolo_pose_model = models['pose']
+        yolo_tennis_ball_model = models['ball']
+        yolo_paddle_model = models['paddle']
+
         # 投影矩陣設定
         P1 = np.array([
-            [561.931485,   -0.000000, 634.629254, 0.000000],
-            [  0.000000, -563.923586, 357.486958, 0.000000], # 563.92 -> -563.92
-            [  0.000000,   -0.000000,   1.000000, 0.000000],
+             [  916.626242,     0.000000,   960.250417,     0.000000],
+             [    0.000000,   921.951283,   523.154606,     0.000000],
+             [    0.000000,     0.000000,     1.000000,     0.000000],
         ])
 
         P2 = np.array([
-            [581.241035,     7.153492, 620.323375, -232685.879094], # -7.15 -> +7.15
-            [ 32.022279,  -545.041329, 348.856280,   -3177.680506], # 545.04 -> -545.04
-            [  0.062094,    -0.004748,   0.998059,     -30.674398], # 0.0047 -> -0.0047
+            [  782.909772,   -18.152980,  1066.677600, -255341.954492],
+            [  -25.104948,   925.678666,   514.730223, 46851.486878],
+            [   -0.122625,     0.020539,     0.992241,    90.876653], 
         ])
-        
-        # 載入YOLO模型
-        print("📦 載入 YOLO 模型...")
-        yolo_pose_model = YOLO('model/yolov8n-pose.pt')
-        yolo_tennis_ball_model = YOLO('model/tennisball_OD_v1.pt')
-        
-        # GPU加速（安全檢查）
-        print("🔍 檢查 GPU 可用性...")
-        try:
-            import torch
-            if torch.cuda.is_available():
-                # 檢查 GPU 記憶體
-                total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                print(f"   GPU: {torch.cuda.get_device_name(0)}")
-                print(f"   總記憶體: {total_memory:.2f} GB")
-                
-                # 清理現有的 GPU 記憶體
-                torch.cuda.empty_cache()
-                
-                # 謹慎地移動模型到 GPU
-                if total_memory >= 4.0:  # 至少需要 4GB
-                    try:
-                        yolo_pose_model.model.to('cuda')
-                        yolo_tennis_ball_model.model.to('cuda')
-                        print("⚡ GPU 加速已啟用")
-                    except Exception as gpu_error:
-                        print(f"⚠️ GPU 設置失敗: {gpu_error}")
-                        print("💻 回退到 CPU 模式")
-                        yolo_pose_model.model.to('cpu')
-                        yolo_tennis_ball_model.model.to('cpu')
-                else:
-                    print("⚠️ GPU 記憶體不足 (需要至少 4GB)")
-                    print("💻 使用 CPU 模式")
-                    yolo_pose_model.model.to('cpu')
-                    yolo_tennis_ball_model.model.to('cpu')
-            else:
-                print("💻 GPU 不可用，使用 CPU 模式")
-                yolo_pose_model.model.to('cpu')
-                yolo_tennis_ball_model.model.to('cpu')
-        except Exception as e:
-            print(f"⚠️ GPU 檢查失敗: {e}")
-            print("💻 使用 CPU 模式")
-            yolo_pose_model.model.to('cpu')
-            yolo_tennis_ball_model.model.to('cpu')
         
         # KNN資料集
         knn_dataset = 'knn_dataset.json'
@@ -387,16 +418,6 @@ def simple_test_pipeline(input_folder="input_videos",
         print("\n🚀 步驟8: 開始完整分析流程...")
         print("⏳ 這可能需要幾分鐘時間，請耐心等待...")
         print(f"📁 所有結果將保存到: {user_folder}")
-        
-        # 根據 FFmpeg 可用性決定是否分割影片
-        segment_videos = ffmpeg_available
-        
-        # 強制啟用分割功能，根據您的要求
-        print(f"\n📹 影片分割設定:")
-        print(f"   球進入偵測範圍: 右邊上方2/3區域")
-        print(f"   啟用球出場偵測: 是")
-        print(f"   動態分割模式: 啟用")
-        print(f"   出場等待時間: 1.5秒")
         
         # 確保分割功能啟用
         segment_videos = True  # 強制啟用
@@ -412,14 +433,15 @@ def simple_test_pipeline(input_folder="input_videos",
             P2=P2, 
             yolo_pose_model=yolo_pose_model, 
             yolo_tennis_ball_model=yolo_tennis_ball_model,
+            yolo_paddle_model=yolo_paddle_model,
             video_side=side_video_copy, 
             video_45=deg45_video_copy, 
             knn_dataset=knn_dataset,
-            name=name,  # 傳入使用者姓名
+            name=name, 
             ball_entry_direction=ball_direction,
             confidence_threshold=confidence_threshold,
-            output_folder=str(user_folder),  # 使用使用者資料夾
-            segment_videos=segment_videos   # 根據 FFmpeg 可用性決定
+            output_folder=str(user_folder),
+            segment_videos=segment_videos
         )
         
         if success:
@@ -534,31 +556,35 @@ if __name__ == "__main__":
     print("🎾 AI網球教練 - 正常流程模擬啟動")
     print("=" * 50)
     
-    # 互動式設定
-    ball_direction, confidence_threshold = interactive_setup()
+    # 1. 預先載入模型 (避免重複載入耗時)
+    models = load_yolo_models()
     
-    print("\n🚀 開始測試流程...")
-    input("按 Enter 繼續...")
-    
-    # 執行測試
-    success = simple_test_pipeline(
-        input_folder="input_videos",
-        ball_direction=ball_direction,
-        confidence_threshold=confidence_threshold
-    )
-    
-    if success:
-        print("\n✨ 恭喜！正常流程模擬成功！")
-        print("📊 現在可以在 trajectory/ 資料夾中查看結果")
-        print("🔍 特別注意分割的影片片段和最終的AI建議")
-        print("🌐 可以在 drawing_3D_three_js.html 中載入並查看3D軌跡")
-    else:
-        print("\n😔 處理過程中遇到問題")
-        print("🔧 請檢查:")
-        print("   1. 影片檔案格式是否正確")
-        print("   2. 模型檔案是否存在")
-        print("   3. 網路連接是否正常（GPT功能需要）")
-    
-    print(f"\n📁 結果資料夾位置: trajectory/(姓名)__trajectory/")
-    input("\n按 Enter 結束程式...")
+    # 2. 進入主迴圈
+    while True:
+        # 互動式設定
+        ball_direction, confidence_threshold = interactive_setup()
+        
+        print("\n🚀 開始分析流程...")
+        
+        # 執行分析
+        success = simple_test_pipeline(
+            input_folder="input_videos",
+            ball_direction=ball_direction,
+            confidence_threshold=confidence_threshold,
+            models=models
+        )
+        
+        if success:
+            print("\n✨ 處理成功！")
+        else:
+            print("\n😔 處理失敗，請檢查錯誤日誌")
+        
+        # 詢問是否繼續
+        print("\n" + "="*40)
+        choice = input("❓ 是否要處理下一位使用者？ (y/n): ").strip().lower()
+        if choice != 'y':
+            print("\n👋 感謝使用，程式結束。")
+            break
+        
+        print("\n" + "🔄 準備下一輪處理..." + "\n")
     
