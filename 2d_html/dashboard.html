@@ -30,10 +30,11 @@
             font-family: var(--font-family);
             background-color: var(--bg-color);
             color: var(--text-primary);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         /* App Container */
@@ -67,6 +68,8 @@
             display: flex;
             gap: 12px;
             align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         /* File Input Wrapper for Button Styling */
@@ -117,6 +120,30 @@
 
         .btn i {
             font-size: 1rem;
+        }
+
+        .import-select {
+            background: #111827;
+            border: 1px solid var(--ring-color);
+            color: white;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            max-width: 260px;
+        }
+        .import-select:disabled {
+            opacity: 0.6;
+        }
+        .import-select.hidden,
+        .hidden {
+            display: none !important;
+        }
+
+        .import-hint {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-left: 6px;
+            white-space: nowrap;
         }
 
         /* Dashboard Grid */
@@ -584,14 +611,21 @@
                 </button>
 
                 <div class="file-input-wrapper">
-                    <button class="btn"><i class="fas fa-file-upload"></i> 載入數據 / 開始分析 (.json)</button>
-                    <input type="file" id="jsonInput" accept=".json">
+                    <button class="btn"><i class="fas fa-folder-open"></i> 匯入揮拍資料夾</button>
+                    <input type="file" id="dirInput" webkitdirectory directory multiple>
                 </div>
-
-                <div class="file-input-wrapper">
-                    <button class="btn"><i class="fas fa-video"></i> 載入影片</button>
-                    <input type="file" id="videoInput" accept="video/*">
-                </div>
+                <select id="sessionSelect" class="import-select" title="選擇揮拍紀錄資料夾" disabled>
+                    <option value="">選擇揮拍紀錄（資料夾）</option>
+                </select>
+                <select id="mp4Select" class="import-select hidden" title="選擇影片（mp4）" disabled>
+                    <option value="">選擇影片（mp4）</option>
+                </select>
+                <select id="jsonSelect" class="import-select hidden" title="選擇分析結果（json）" disabled>
+                    <option value="">選擇分析結果（json）</option>
+                </select>
+                <button class="btn" id="clearImportBtn" disabled>
+                    <i class="fas fa-eraser"></i> 清除匯入
+                </button>
             </div>
         </header>
 
@@ -623,7 +657,7 @@
 
             <!-- Video Section -->
             <div class="video-container">
-                <video id="videoPlayer" playsinline></video>
+                <video id="videoPlayer" playsinline loop></video>
 
                 <!-- Upload Placeholder -->
                 <div class="upload-overlay" id="uploadOverlay">
@@ -921,7 +955,6 @@
         };
 
         // --- Video Logic ---
-        const videoInput = document.getElementById('videoInput');
         const videoPlayer = document.getElementById('videoPlayer');
         const uploadOverlay = document.getElementById('uploadOverlay');
         const playBtn = document.getElementById('playBtn');
@@ -931,15 +964,8 @@
         const currentTimeEl = document.getElementById('currentTime');
         const totalTimeEl = document.getElementById('totalTime');
 
-        videoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                videoPlayer.src = url;
-                videoPlayer.load();
-                uploadOverlay.style.display = 'none';
-            }
-        });
+        // Always loop (repeat playback)
+        videoPlayer.loop = true;
 
         function togglePlay() {
             if (videoPlayer.paused) {
@@ -983,46 +1009,214 @@
         }
 
         // --- Analysis & Data Loading Logic ---
-        const jsonInput = document.getElementById('jsonInput');
         const loadingOverlay = document.getElementById('loadingOverlay');
 
-        // Handle File Selection (Upload & Analyze)
-        jsonInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        // Initialize state from session storage or empty (must be before any import helpers use it)
+        let currentDashboardState = {};
+        try {
+            const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
+            if (cached) currentDashboardState = JSON.parse(cached);
+        } catch (e) { console.error("Cache parse error", e); }
 
+        // --- NEW: Local Multi-Folder Import (like 3D page) ---
+        const dirInput = document.getElementById('dirInput');
+        const sessionSelect = document.getElementById('sessionSelect');
+        const mp4Select = document.getElementById('mp4Select');
+        const jsonSelect = document.getElementById('jsonSelect');
+        const clearImportBtn = document.getElementById('clearImportBtn');
+        const importHint = document.getElementById('importHint');
+
+        // sessionPath -> { mp4: File[], json: File[] }
+        let importedSessions = new Map();
+        let currentSessionPath = "";
+        // 從 3D 帶入的多筆揮拍路徑（伺服器模式）
+        let serverSessionsList = [];
+
+        function resetImportUI() {
+            if (currentVideoBlobUrl) {
+                URL.revokeObjectURL(currentVideoBlobUrl);
+                currentVideoBlobUrl = null;
+            }
+            importedSessions = new Map();
+            serverSessionsList = [];
+            currentSessionPath = "";
+            sessionSelect.innerHTML = `<option value="">選擇揮拍紀錄（資料夾）</option>`;
+            mp4Select.innerHTML = `<option value="">選擇影片（mp4）</option>`;
+            jsonSelect.innerHTML = `<option value="">選擇分析結果（json）</option>`;
+            sessionSelect.disabled = true;
+            mp4Select.disabled = true;
+            jsonSelect.disabled = true;
+            clearImportBtn.disabled = true;
+            mp4Select.classList.add('hidden');
+            jsonSelect.classList.add('hidden');
+            if (importHint) importHint.style.display = 'none';
+        }
+
+        function getDirPathFromRelativePath(relPath) {
+            // e.g. "playerA/session1/video.mp4" -> "playerA/session1"
+            const parts = String(relPath || "").split('/');
+            if (parts.length <= 1) return "";
+            parts.pop();
+            return parts.join('/');
+        }
+
+        function isPreferredVideoName(name) {
+            const n = String(name || "").toLowerCase();
+            return n.endsWith("_full_video.mp4") && !n.endsWith("_processed_full_video.mp4");
+        }
+        function isPreferredIntegratedJsonName(name) {
+            const n = String(name || "").toLowerCase();
+            // 你的資料夾實際檔名是 *_integrated_analysis.json（例如 outdoor6__1_45_segment_integrated_analysis.json）
+            // 因此用這個結尾做自動帶入
+            return n.endsWith("_integrated_analysis.json");
+        }
+
+        function rebuildSessionsFromFiles(files) {
+            const next = new Map();
+            const sessionCandidates = new Set();
+            for (const f of files) {
+                const rel = f.webkitRelativePath || f.name;
+                let dirPath = getDirPathFromRelativePath(rel);
+
+                // 若使用者直接選到「只有一筆揮拍」的資料夾，某些瀏覽器的 webkitRelativePath
+                // 可能只有檔名（沒有前綴資料夾），這時 getDirPathFromRelativePath 會回傳空字串。
+                // 為了滿足「只選一次資料夾就能直接帶入」的需求，我們在這裡修正：
+                if (!dirPath) {
+                    const parts = String(rel || "").split("/");
+                    if (parts.length > 1) {
+                        // 例如 "player6_1/outdoor6__1_45_segment_integrated_analysis.json"
+                        // -> 使用最上層的資料夾名稱當作揮拍紀錄 ID
+                        dirPath = parts[0];
+                    } else {
+                        // 沒有任何子資料夾，就把這個匯入視為單一 session
+                        dirPath = "session_1";
+                    }
+                }
+                const ext = f.name.toLowerCase().split('.').pop();
+                if (ext !== 'mp4' && ext !== 'json') continue;
+                if (!next.has(dirPath)) next.set(dirPath, { mp4: [], json: [] });
+                if (ext === 'mp4') next.get(dirPath).mp4.push(f);
+                if (ext === 'json') next.get(dirPath).json.push(f);
+
+                // 若該資料夾內出現「預設帶入檔名」，把該資料夾視為揮拍紀錄候選
+                if (ext === 'mp4' && isPreferredVideoName(f.name)) sessionCandidates.add(dirPath);
+                if (ext === 'json' && isPreferredIntegratedJsonName(f.name)) sessionCandidates.add(dirPath);
+            }
+            // 優先只保留「真正的揮拍紀錄資料夾」（包含預設 mp4/json 之一）
+            if (sessionCandidates.size) {
+                const filtered = new Map();
+                for (const k of sessionCandidates) {
+                    if (next.has(k)) filtered.set(k, next.get(k));
+                }
+                importedSessions = filtered;
+            } else {
+                // fallback：保留有 mp4/json 的資料夾
+                const filtered = new Map();
+                for (const [k, v] of next.entries()) {
+                    if (v.mp4.length || v.json.length) filtered.set(k, v);
+                }
+                importedSessions = filtered;
+            }
+        }
+
+        function sortFilesByName(arr) {
+            return [...arr].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
+        }
+
+        function populateSessionSelect() {
+            const keys = [...importedSessions.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+            sessionSelect.innerHTML = `<option value="">選擇揮拍紀錄（資料夾）</option>` + keys.map(k => {
+                const info = importedSessions.get(k);
+                return `<option value="${encodeURIComponent(k)}">${k}（mp4:${info.mp4.length}, json:${info.json.length}）</option>`;
+            }).join('');
+            sessionSelect.disabled = keys.length === 0;
+            clearImportBtn.disabled = keys.length === 0;
+            if (importHint) importHint.style.display = keys.length ? 'inline' : 'none';
+        }
+
+        function pickDefaultFiles(info) {
+            const mp4s = sortFilesByName(info?.mp4 || []);
+            const jsons = sortFilesByName(info?.json || []);
+
+            const mp4Default = mp4s.find(f => isPreferredVideoName(f.name)) || mp4s.find(f => String(f.name || "").toLowerCase().endsWith("_full_video.mp4")) || mp4s[0] || null;
+
+            const jsonDefault =
+                jsons.find(f => String(f.name || "").toLowerCase().endsWith("_integrated_analysis.json")) ||
+                null;
+
+            // 對應的 GPT feedback：*_gpt_feedback.json（通常與 integrated_analysis 同前綴）
+            const gptFeedbackDefault =
+                jsons.find(f => String(f.name || "").toLowerCase().endsWith("_gpt_feedback.json")) ||
+                null;
+
+            return { mp4Default, jsonDefault, gptFeedbackDefault };
+        }
+
+        function populateFileSelects(sessionPath) {
+            const info = importedSessions.get(sessionPath);
+            mp4Select.innerHTML = `<option value="">選擇影片（mp4）</option>`;
+            jsonSelect.innerHTML = `<option value="">選擇分析結果（json）</option>`;
+
+            if (!info) {
+                mp4Select.disabled = true;
+                jsonSelect.disabled = true;
+                return;
+            }
+
+            const mp4s = sortFilesByName(info.mp4);
+            const jsons = sortFilesByName(info.json);
+
+            mp4Select.innerHTML += mp4s.map((f, idx) => `<option value="${idx}">${f.name}</option>`).join('');
+            jsonSelect.innerHTML += jsons.map((f, idx) => `<option value="${idx}">${f.name}</option>`).join('');
+
+            mp4Select.disabled = mp4s.length === 0;
+            jsonSelect.disabled = jsons.length === 0;
+
+            // 自動帶入預設檔案（即使下拉被隱藏，也同步 value 以便除錯）
+            const { mp4Default, jsonDefault } = pickDefaultFiles(info);
+            if (mp4Default) mp4Select.value = String(mp4s.indexOf(mp4Default));
+            else mp4Select.value = "";
+            if (jsonDefault) jsonSelect.value = String(jsons.indexOf(jsonDefault));
+            else jsonSelect.value = "";
+        }
+
+        async function fetchHandFromUserInfo(sessionPath) {
+            const root = sessionPath ? String(sessionPath).split('/')[0] : '';
+            if (!root) return null;
+            try {
+                const res = await fetch(`/getUserInfo?folder=${encodeURIComponent(root)}`);
+                const ui = await res.json();
+                if (ui && (ui.dominant_hand !== undefined || ui.hand)) {
+                    if (ui.dominant_hand === 0 || ui.hand === 'left') return 'left';
+                    if (ui.dominant_hand === 1 || ui.hand === 'right') return 'right';
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        async function loadSelectedJsonFile(file) {
             // Show Loading
             loadingOverlay.style.display = 'flex';
-
             try {
-                // Determine if we should parse locally or upload
-                // If the file name suggests it's already an output (integrated_analysis), parse locally
-                // Otherwise (raw 3D json), upload to analyze
+                const text = await file.text();
+                const data = JSON.parse(text);
 
-                if (file.name.includes("_integrated_analysis") || file.name.includes("_gpt_feedback")) {
-                    // Local Parse Mode
-                    const reader = new FileReader();
-                    reader.onload = function (event) {
-                        try {
-                            const data = JSON.parse(event.target.result);
-                            updateDashboard(data);
-                            loadingOverlay.style.display = 'none';
-                        } catch (err) {
-                            alert("JSON 解析失敗: " + err);
-                            loadingOverlay.style.display = 'none';
-                        }
-                    };
-                    reader.readAsText(file);
+                // If it looks like integrated analysis -> updateDashboard
+                if (data && data.analyses && data.statistics) {
+                    const hand = await fetchHandFromUserInfo(currentSessionPath);
+                    if (hand) data.hand = hand;
+                    updateDashboard(data);
+                } else if (data && typeof data.suggestion === 'string') {
+                    // Allow loading GPT feedback only (no integrated analysis)
+                    currentDashboardState.suggestion = data.suggestion;
+                    sessionStorage.setItem('TENNIS_DASHBOARD_CACHE', JSON.stringify(currentDashboardState));
+                    const elSimpleAdvice = document.getElementById('gptAdviceSimple');
+                    if (elSimpleAdvice) elSimpleAdvice.innerText = data.suggestion.trim();
                 } else {
-                    // Upload Analysis Mode to Local Server
+                    // Fallback: send to analyzer if user picked raw trajectory
                     const formData = new FormData();
                     formData.append('file', file);
-
-                    const response = await fetch('http://localhost:8001/analyze', {
-                        method: 'POST',
-                        body: formData
-                    });
-
+                    const response = await fetch('http://localhost:8001/analyze', { method: 'POST', body: formData });
                     if (!response.ok) {
                         let errorMsg = `Server Error: ${response.statusText}`;
                         try {
@@ -1032,43 +1226,115 @@
                         } catch (e) { }
                         throw new Error(errorMsg);
                     }
-
                     const result = await response.json();
-
-                    // Merge integrated data with GPT feedback
                     if (result.integrated && Object.keys(result.integrated).length > 0) {
                         const mergedData = { ...result.integrated };
-
-                        // Add GPT feedback to merged data if available
                         if (result.gpt_feedback && result.gpt_feedback.suggestion) {
                             mergedData.suggestion = result.gpt_feedback.suggestion;
                         }
-
-                        // Call updateDashboard once with complete data
+                        const hand = await fetchHandFromUserInfo(currentSessionPath);
+                        if (hand) mergedData.hand = hand;
                         updateDashboard(mergedData);
                     }
-
-                    loadingOverlay.style.display = 'none';
                 }
-
-            } catch (err) {
-                console.error(err);
-                alert("分析失敗或無法連接伺服器。\n請確認已啟動 'python app_analysis.py'\n錯誤: " + err.message);
+            } finally {
                 loadingOverlay.style.display = 'none';
+            }
+        }
+
+        let currentVideoBlobUrl = null;
+        function loadSelectedMp4File(file) {
+            if (currentVideoBlobUrl) {
+                URL.revokeObjectURL(currentVideoBlobUrl);
+                currentVideoBlobUrl = null;
+            }
+            videoPlayer.pause();
+            videoPlayer.src = '';
+            videoPlayer.load();
+            if (file) {
+                currentVideoBlobUrl = URL.createObjectURL(file);
+                videoPlayer.src = currentVideoBlobUrl;
+                videoPlayer.load();
+                uploadOverlay.style.display = 'none';
+            } else {
+                uploadOverlay.style.display = 'flex';
+            }
+        }
+
+        dirInput?.addEventListener('change', async (e) => {
+            serverSessionsList = [];
+            mp4Select.classList.add('hidden');
+            jsonSelect.classList.add('hidden');
+            const files = Array.from(e.target.files || []);
+            rebuildSessionsFromFiles(files);
+            populateSessionSelect();
+            // Auto pick first session 並直接載入
+            const first = [...importedSessions.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant'))[0];
+            if (first) {
+                currentSessionPath = first;
+                sessionSelect.value = encodeURIComponent(first);
+                populateFileSelects(first);
+                await handleLoadSelected();
             }
         });
 
-        // Initialize state from local storage or empty
-        let currentDashboardState = {};
-        try {
-            const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
-            if (cached) {
-                currentDashboardState = JSON.parse(cached);
-                // We will trigger restore in window.onload or explicitly call it here if DOM is ready
-                // But script is at bottom, so safe to call immediately? 
-                // Better to wait for DOMContentLoaded just in case, or call it at the end of script.
+        sessionSelect?.addEventListener('change', async () => {
+            const v = sessionSelect.value;
+            const decoded = v ? decodeURIComponent(v) : "";
+            currentSessionPath = decoded;
+            if (serverSessionsList.length > 0 && serverSessionsList.includes(decoded)) {
+                await loadFromServerSession(decoded);
+            } else {
+                populateFileSelects(decoded);
+                // 直接載入，不需再按「載入」按鈕
+                await handleLoadSelected();
             }
-        } catch (e) { console.error("Cache parse error", e); }
+        });
+
+        async function handleLoadSelected() {
+            if (!currentSessionPath) return;
+            const info = importedSessions.get(currentSessionPath);
+            if (!info) return;
+
+            // 自動選檔：
+            // 1) mp4：*_full_video.mp4
+            // 2) json：*_integrated_analysis.json
+            // 3) GPT：*_gpt_feedback.json（用於「整體評價與建議」）
+            const { mp4Default, jsonDefault, gptFeedbackDefault } = pickDefaultFiles(info);
+
+            if (mp4Default) {
+                loadSelectedMp4File(mp4Default);
+            } else {
+                console.warn("找不到 _full_video.mp4：", currentSessionPath);
+            }
+
+            if (jsonDefault) {
+                try {
+                    // 先載入整合分析 JSON（更新分數、雷達圖等等）
+                    await loadSelectedJsonFile(jsonDefault);
+                    // 再載入 GPT feedback JSON，只更新 suggestion 區塊
+                    if (gptFeedbackDefault) {
+                        await loadSelectedJsonFile(gptFeedbackDefault);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("載入 JSON 失敗：" + (err?.message || String(err)));
+                }
+            } else {
+                alert("找不到整合分析 JSON（*_integrated_analysis.json）。\n請確認揮拍資料夾內有對應檔案。");
+            }
+        }
+
+        clearImportBtn?.addEventListener('click', () => {
+            // Clear input so selecting same folder again triggers change
+            if (dirInput) dirInput.value = "";
+            resetImportUI();
+        });
+
+        // init
+        resetImportUI();
+
+        // 已移除舊的「載入數據 / 載入影片」按鈕，因此也移除對應的 input 事件綁定
 
         function updateDashboard(data) {
             console.log("Updating Data:", data);
@@ -1208,22 +1474,33 @@
 
             // Construct a record object matching tennis_rating_ui_feedback_v3 structure
             // Detail page expects 0-10 scale, so convert from 0-1 by multiplying by 10
+            const similarity = data.expert_distance !== undefined
+                ? ((1 / (1 + data.expert_distance)) * 100).toFixed(1) + "%"
+                : null;
+            const cz = stats.contact_zone?.flags || {};
+            const czOk = [cz.lateral_in_range, cz.height_in_range, cz.depth_in_range].filter(Boolean).length;
+            const ContactZone = (czOk / 3) * 10;
             const syncRecord = {
                 id: "ANALYSIS_RESULT",
-                hand: "right",
+                hand: data.hand || "right",
                 video: 1,
                 Head: (stats.head_stability_confidence || 0) * 10,
                 Backswing: (stats.backswing_confidence || 0) * 10,
                 ForwardSwing: (stats.forwardswing_confidence || 0) * 10,
                 HitballSwing: (stats.hitballswing_confidence || 0) * 10,
                 FollowThrough: (stats.followthrough_confidence || 0) * 10,
-                // Use overall score for metrics we don't analyze
+                ContactZone: ContactZone,
                 BodyWeight: overall / 10,
                 HitTiming: overall / 10,
                 RacketFace: overall / 10,
                 overall: overall / 10,
-                advice: fullAdvice,  // GPT conversational for dashboard
-                combined_advice: data.combined_advice || ""  // Structured advice for detail page
+                advice: fullAdvice,
+                combined_advice: data.combined_advice || "",
+                analyses: data.analyses || {},
+                statistics: data.statistics || {},
+                // 動作識別（參考 2D Action Recognition）
+                action_type: data.action_type || null,
+                similarity: similarity
             };
 
             localStorage.setItem('tennisAnalysisData', JSON.stringify(syncRecord));
@@ -1324,67 +1601,230 @@
             }
         };
 
-        // --- Radar Chart ---
-        const ctx = document.getElementById('radarChart').getContext('2d');
-        let radarChart = new Chart(ctx, {
-            type: 'radar',
-            data: {
-                labels: ['拉拍', '向前出拍', '擊球轉身', '完整收拍', '頭部穩定'],
-                datasets: [{
-                    label: '動作評分',
-                    data: [0, 0, 0, 0, 0],
-                    backgroundColor: 'rgba(255, 170, 0, 0.2)',
-                    borderColor: '#ffaa00',
-                    pointBackgroundColor: '#ffaa00',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#ffaa00'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        pointLabels: {
-                            font: { size: 12 },
-                            color: '#9ca3af'
-                        },
-                        suggestedMin: 0,
-                        suggestedMax: 100,
-                        ticks: { display: false, backdropColor: 'transparent' }
-                    }
+        // --- Radar Chart (use var to eliminate TDZ entirely) ---
+        var radarChart = null;
+
+        function ensureRadarChart() {
+            if (radarChart) return;
+            const canvas = document.getElementById('radarChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['拉拍', '向前出拍', '擊球轉身', '完整收拍', '頭部穩定'],
+                    datasets: [{
+                        label: '動作評分',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(255, 170, 0, 0.2)',
+                        borderColor: '#ffaa00',
+                        pointBackgroundColor: '#ffaa00',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#ffaa00'
+                    }]
                 },
-                plugins: {
-                    legend: { display: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: {
+                                font: { size: 12 },
+                                color: '#9ca3af'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: { display: false, backdropColor: 'transparent' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
                 }
-            }
-        });
+            });
+        }
 
         function updateRadar(dataArray) {
+            ensureRadarChart();
+            if (!radarChart) return;
             radarChart.data.datasets[0].data = dataArray;
             radarChart.update();
         }
 
-        // --- Restore State on Load (Session Persistence Only) ---
-        window.addEventListener('DOMContentLoaded', () => {
+        // 從伺服器載入指定 session 的影片與 JSON
+        async function loadFromServerSession(sessionPath) {
+            if (!sessionPath) return false;
             try {
-                const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
-                if (cached) {
-                    const cachedData = JSON.parse(cached);
-                    console.log("🔄 Restoring session dashboard state...", cachedData);
+                const videoRes = await fetch(
+                    `/getVideos?folder=${encodeURIComponent(sessionPath)}`
+                );
+                if (videoRes.ok) {
+                    const files = await videoRes.json();
+                    const mp4Name =
+                        files.find((f) => {
+                            const n = f.toLowerCase();
+                            return n.endsWith("_full_video.mp4") && !n.endsWith("_processed_full_video.mp4");
+                        }) ||
+                        files.find((f) => f.toLowerCase().endsWith("_processed_full_video.mp4")) ||
+                        files.find((f) => f.toLowerCase().endsWith(".mp4"));
+                    if (currentVideoBlobUrl) {
+                        URL.revokeObjectURL(currentVideoBlobUrl);
+                        currentVideoBlobUrl = null;
+                    }
+                    videoPlayer.pause();
+                    videoPlayer.src = '';
+                    videoPlayer.load();
+                    if (mp4Name) {
+                        const pathEnc = sessionPath.split('/').map(p => encodeURIComponent(p)).join('/');
+                        const videoUrl = `/trajectory/${pathEnc}/${encodeURIComponent(mp4Name)}?t=${Date.now()}`;
+                        videoPlayer.src = videoUrl;
+                        videoPlayer.load();
+                        uploadOverlay.style.display = 'none';
+                    } else {
+                        uploadOverlay.style.display = 'flex';
+                    }
+                }
+                const jsonDir = `trajectory/${sessionPath}`;
+                const jsonRes = await fetch(
+                    `/getjson?dir=${encodeURIComponent(jsonDir)}`
+                );
+                if (!jsonRes.ok) return false;
+                const jsonFiles = await jsonRes.json();
+                if (!Array.isArray(jsonFiles) || !jsonFiles.length) return false;
+                const integratedName = jsonFiles.find((n) =>
+                    n.toLowerCase().endsWith("_integrated_analysis.json")
+                );
+                const gptName = jsonFiles.find((n) =>
+                    n.toLowerCase().endsWith("_gpt_feedback.json")
+                );
+                let loaded = false;
+                if (integratedName) {
+                    await loadJsonFromServer(`/${jsonDir}/${integratedName}`, false, sessionPath);
+                    loaded = true;
+                }
+                if (gptName) {
+                    await loadJsonFromServer(`/${jsonDir}/${gptName}`, true);
+                }
+                return loaded;
+            } catch (e) {
+                console.warn("[2D] loadFromServerSession failed:", e);
+                return false;
+            }
+        }
 
-                    // Restore the data
-                    if (cachedData.statistics) {
-                        updateDashboard(cachedData);
-                        // Note: updateDashboard handles UI updates and Detail button visibility
-                        console.log("✅ Dashboard session restored successfully");
+        // --- 從 3D 頁面共享的 session 嘗試自動載入伺服器端資料 ---
+        // 回傳 true 表示成功載入，false 表示未載入（可再嘗試還原快取）
+        async function tryAutoImportFromServerSession() {
+            let sessionPath = null;
+            let sessionsList = [];
+            try {
+                sessionPath = localStorage.getItem('LATEST_TRAJECTORY_SESSION');
+                const raw = localStorage.getItem('LATEST_TRAJECTORY_SESSIONS');
+                if (raw) {
+                    try {
+                        sessionsList = JSON.parse(raw);
+                        if (!Array.isArray(sessionsList)) sessionsList = [];
+                    } catch (e) {}
+                }
+            } catch (e) {
+                console.warn("讀取 LATEST_TRAJECTORY_SESSION 失敗:", e);
+            }
+            if (!sessionPath && !sessionsList.length) return false;
+            if (sessionsList.length === 0 && sessionPath) sessionsList = [sessionPath];
+
+            // 若有 SESSIONS 陣列，用其填入下拉；否則用單一 sessionPath
+            if (sessionsList.length > 0) {
+                serverSessionsList = sessionsList;
+                sessionSelect.innerHTML =
+                    `<option value="">選擇揮拍紀錄（資料夾）</option>` +
+                    serverSessionsList.map((p) =>
+                        `<option value="${encodeURIComponent(p)}">${p}</option>`
+                    ).join('');
+                sessionSelect.disabled = false;
+                clearImportBtn.disabled = false;
+                mp4Select.classList.add('hidden');
+                jsonSelect.classList.add('hidden');
+            }
+            const toLoad = sessionPath || serverSessionsList[0];
+            if (!toLoad) return false;
+
+            console.log("[2D] Detected from 3D:", toLoad, "sessions:", serverSessionsList.length);
+            const loaded = await loadFromServerSession(toLoad);
+            if (loaded && serverSessionsList.length > 0) {
+                currentSessionPath = toLoad;
+                sessionSelect.value = encodeURIComponent(toLoad);
+                console.log("[2D] Auto import from 3D session OK, dropdown has", serverSessionsList.length, "options");
+            }
+            return loaded;
+        }
+
+        // 從指定 URL 載入 JSON（sessionPath 用於取得 user_info 持拍手）
+        async function loadJsonFromServer(url, onlySuggestion = false, sessionPath = null) {
+            loadingOverlay.style.display = 'flex';
+            try {
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status} ${res.statusText}`);
+                }
+                const data = await res.json();
+
+                if (onlySuggestion) {
+                    if (data && typeof data.suggestion === 'string') {
+                        currentDashboardState.suggestion = data.suggestion;
+                        sessionStorage.setItem(
+                            'TENNIS_DASHBOARD_CACHE',
+                            JSON.stringify(currentDashboardState)
+                        );
+                        const elSimpleAdvice = document.getElementById('gptAdviceSimple');
+                        if (elSimpleAdvice) elSimpleAdvice.innerText = data.suggestion.trim();
+                    }
+                    return;
+                }
+
+                // 完整整合分析
+                if (data && data.analyses && data.statistics) {
+                    const hand = await fetchHandFromUserInfo(sessionPath || currentSessionPath);
+                    if (hand) data.hand = hand;
+                    updateDashboard(data);
+                } else {
+                    console.warn(
+                        "[2D] Server JSON does not look like integrated_analysis:",
+                        url
+                    );
+                }
+            } catch (err) {
+                console.error("[2D] loadJsonFromServer error:", err);
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        // --- Restore State on Load (Session Persistence + 3D Session Auto-Import) ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 先嘗試從 3D 頁面共享的 session 自動載入
+                const autoImported = await tryAutoImportFromServerSession();
+
+                // 僅在「未」從 3D 自動載入成功時，才還原本頁面的快取（避免覆蓋 3D 帶入的資料）
+                if (!autoImported) {
+                    const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
+                    if (cached) {
+                        const cachedData = JSON.parse(cached);
+                        console.log("🔄 Restoring session dashboard state...", cachedData);
+
+                        if (cachedData.statistics) {
+                            updateDashboard(cachedData);
+                            console.log("✅ Dashboard session restored successfully");
+                        }
                     }
                 }
             } catch (e) {
-                console.warn("⚠️ Failed to restore session state:", e);
+                console.warn("⚠️ Failed to restore session state or auto-import:", e);
             }
         });
 

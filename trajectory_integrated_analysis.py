@@ -45,25 +45,26 @@ def combine_all_advice(analyses_dict):
     return "\n\n".join(combined_parts)
 
 
-def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_suggestion=None):
+def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_suggestion=None, expert_distance=None):
     """
     執行所有分析點的整合分析
     參數:
     - trajectory_data: 3D 軌跡資料路徑
     - knn_dataset: KNN 資料庫路徑
     - expert_filename: 最相近的專家檔案名稱
+    - expert_distance: KNN 距離（用於計算相似度），若提供則寫入 result
     返回: 整合分析結果字典
     """
     if expert_filename is None:
         expert_filename = "unknown"
     print(f"開始整合分析，使用專家: {expert_filename}")
     
-    # 初始化整合結果結構
+    # 初始化整合結果結構（expert_distance 由 KNN 模組計算後傳入）
     result = {
         "analysis_timestamp": datetime.now().isoformat(),
         "trajectory_file": trajectory_data,
         "nearest_expert": expert_filename,
-        "expert_distance": 0.0,
+        "expert_distance": float(expert_distance) if expert_distance is not None else 0.0,
         "analyses": {},
         "combined_advice": "",
         "statistics": {}
@@ -241,7 +242,7 @@ def save_integrated_analysis(integrated_result, trajectory_data_path):
         return backup_path
 
 
-def analyze_integrated_trajectory(trajectory_data, knn_dataset, expert_filename, knn_suggestion=None):
+def analyze_integrated_trajectory(trajectory_data, knn_dataset, expert_filename, knn_suggestion=None, expert_distance=None):
     """
     主要的整合分析函式
     執行所有分析點並保存結果
@@ -249,10 +250,11 @@ def analyze_integrated_trajectory(trajectory_data, knn_dataset, expert_filename,
     - trajectory_data: 3D 軌跡資料路徑
     - knn_dataset: KNN 資料庫路徑  
     - expert_filename: 最相近的專家檔案名稱
+    - expert_distance: KNN 距離（用於計算相似度）
     返回: 輸出檔案路徑
     """
     # 執行整合分析
-    integrated_result = analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_suggestion)
+    integrated_result = analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_suggestion, expert_distance=expert_distance)
     
     # 保存結果
     output_path = save_integrated_analysis(integrated_result, trajectory_data)

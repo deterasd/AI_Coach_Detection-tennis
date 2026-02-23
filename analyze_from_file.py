@@ -76,7 +76,7 @@ def run_analysis(
     print("\n[步驟 10] KNN 分析...")
     t = time.perf_counter()
     try:
-        results, nearest_expert = analyze_trajectory_knn(
+        results, nearest_expert, expert_distance = analyze_trajectory_knn(
             knn_dataset_path,
             str(trajectory_path),
             n_neighbors=n_neighbors,
@@ -102,6 +102,7 @@ def run_analysis(
             knn_dataset_path,
             nearest_expert,
             str(knn_path),
+            expert_distance=expert_distance,
         )
         timing["整合分析"] = time.perf_counter() - t
         print(f"  完成，耗時 {timing['整合分析']:.2f}s")

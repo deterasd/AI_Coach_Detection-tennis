@@ -687,7 +687,8 @@ def processing_trajectory_with_segmentation(P1, P2, yolo_pose_model, yolo_tennis
     # ------------------------------
     print("\n步驟11：KNN 分析中...")
     start = time.perf_counter()
-    trajectory_knn_suggestion = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing)
+    knn_results, _, _ = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing)
+    trajectory_knn_suggestion = knn_results[0] if knn_results else "unknown"
     timing_results['KNN 分析'] = time.perf_counter() - start
     print(f"-- KNN 分析完成，耗時：{timing_results['KNN 分析']:.4f} 秒")
 
