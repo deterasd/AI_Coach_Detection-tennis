@@ -354,10 +354,25 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
     print(f"   影片資訊: {total_frames} 幀, {fps:.2f} FPS")
-    print(f"   🎯 球追蹤距離: {max(200, fps * 8):.0f}像素 (根據{fps:.1f}FPS調整)")
     
-    # 邊緣檢測參數
-    edge_ratio = 0.15
+    # 使用配置的乘数计算追踪距离
+    config = load_segmentation_config()
+    seg_cfg = config.get("segmentation", {})
+    frame_opt = seg_cfg.get("frame_optimization", {})
+    fps_multiplier = frame_opt.get("fps_tracking_multiplier", 8)
+    max_tracking_distance = max(200, fps * fps_multiplier)
+    
+    print(f"   🎯 球追蹤距離: {max_tracking_distance:.0f}像素 (根據{fps:.1f}FPS調整)")
+    
+    # 邊緣檢測參數 - 從配置讀取
+    config = load_segmentation_config()
+    seg_cfg = config.get("segmentation", {})
+    ball_det = seg_cfg.get("ball_detection", {})
+    
+    edge_ratio = ball_det.get("edge_ratio", 0.15)
+    max_tracking_distance = ball_det.get("max_tracking_distance", 200)
+    exit_timeout_config = ball_det.get("exit_timeout", 1.5)
+    
     edges = {
         'left': frame_width * edge_ratio,
         'right': frame_width * (1 - edge_ratio),
@@ -376,10 +391,17 @@ def detect_ball_entries_optimized(video_path, model, confidence_threshold=0.5,
     active_balls = {}
     next_ball_id = 0
     
-    # 優化參數
-    SKIP_FRAMES_AFTER_FOUND = 60
+    # 優化參數 - 從配置文件讀取
+    config = load_segmentation_config()
+    seg_cfg = config.get("segmentation", {})
+    frame_opt = seg_cfg.get("frame_optimization", {})
+    
+    SKIP_FRAMES_AFTER_FOUND = frame_opt.get("skip_frames_after_found", 60)
+    batch_size = frame_opt.get("batch_size", 32)
+    sparse_scan_step = frame_opt.get("sparse_scan_step", 4)
+    fps_multiplier = frame_opt.get("fps_tracking_multiplier", 8)
+    
     frames_to_skip = 0
-    batch_size = 32
     frames_batch = []
     
     # 啟動多執行緒讀取

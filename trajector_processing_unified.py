@@ -18,6 +18,7 @@
 
 import time
 import os
+import json
 from pathlib import Path
 
 # 前置設施（日誌、GPU、輸出資料夾包裝函數等）
@@ -44,7 +45,8 @@ from trajectory_3D_output import process_trajectories
 from trajector_3D_smoothing import smooth_3D_trajectory
 from trajector_3D_capture_swing_range import extract_frames
 from trajectory_knn import analyze_trajectory as analyze_trajectory_knn
-from trajectory_gpt_single_feedback import generate_feedback_data_only
+from trajectory_integrated_analysis import analyze_integrated_trajectory
+from trajectory_gpt_single_feedback import generate_feedback
 
 # 分割模組
 from trajectory_video_segmentation import (
@@ -296,17 +298,34 @@ def process_single_video_set(P1, P2, yolo_pose_model, yolo_tennis_ball_model,
         # 步驟10：KNN分析
         # ------------------------------
         start = time.perf_counter()
-        knn_results, _, _ = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing_path)
+        knn_results, nearest_expert_filename, expert_distance = analyze_trajectory_knn(knn_dataset, trajectory_3d_smoothing_path)
         trajectory_knn_suggestion = knn_results[0] if knn_results else "unknown"
         knn_feedback_path = save_knn_feedback_with_output_folder(trajectory_knn_suggestion, output_folder, segment_name)
+        
+        # 整合分析（新增步驟：生成 *_integrated_analysis.json）
+        integrated_analysis_path = analyze_integrated_trajectory(
+            trajectory_3d_smoothing_path, knn_dataset, nearest_expert_filename, 
+            trajectory_knn_suggestion, expert_distance=expert_distance
+        )
+        integrated_analysis_path = move_to_output_folder(
+            integrated_analysis_path, output_folder, f"{segment_name}_integrated_analysis.json"
+        )
         timing_results['KNN 分析'] = time.perf_counter() - start
 
         # ------------------------------
         # 步驟11：GPT反饋生成
         # ------------------------------
         start = time.perf_counter()
-        trajectory_gpt_suggestion = generate_feedback_data_only(trajectory_3d_swing_range, knn_feedback_path)
-        save_gpt_feedback_with_output_folder(trajectory_gpt_suggestion, output_folder, segment_name)
+        gpt_feedback_path = Path(output_folder) / f"{segment_name}_segment_gpt_feedback.json"
+        # generate_feedback 已自動保存文件，但也支持 output_path 參數
+        generate_feedback(
+            trajectory_3d_swing_range, 
+            trajectory_knn_suggestion, 
+            integrated_analysis_path,
+            output_path=str(gpt_feedback_path)
+        )
+        logger.info(f"✅ GPT 反饋已保存: {gpt_feedback_path}")
+        
         timing_results['GPT 反饋生成'] = time.perf_counter() - start
 
         # 建立完成標記
@@ -357,12 +376,33 @@ if __name__ == "__main__":
         yolo_tennis_ball_model.to(GPU_DEVICE)
         yolo_paddle_model.to(GPU_DEVICE)
     
-    # 載入相機校正參數
+    # 載入相機校正參數（使用預先計算的投影矩陣，避免重新標定）
     try:
-        from binocular_correction.binocular_correction import compute_projection_matrix
-        P1, P2 = compute_projection_matrix()
+        import numpy as np
+        P1 = np.array([
+             [  916.626242,     0.000000,   960.250417,     0.000000],
+             [    0.000000,   921.951283,   523.154606,     0.000000],
+             [    0.000000,     0.000000,     1.000000,     0.000000],
+        ])
+        P2 = np.array([
+            [  782.909772,   -18.152980,  1066.677600, -255341.954492],
+            [  -25.104948,   925.678666,   514.730223, 46851.486878],
+            [   -0.122625,     0.020539,     0.992241,    90.876653], 
+        ])
+    # 2025/12/9 在室外網球場計算的矩陣數值
+    #P1 = np.array([
+    #    [  916.626242,     0.000000,   960.250417,     0.000000],
+    #    [    0.000000,   921.951283,   523.154606,     0.000000],
+    #    [    0.000000,     0.000000,     1.000000,     0.000000],
+    #])
+    #P2 = np.array([
+    #    [  782.909772,   -18.152980,  1066.677600, -255341.954492],
+    #    [  -25.104948,   925.678666,   514.730223, 46851.486878],
+    #    [   -0.122625,     0.020539,     0.992241,    90.876653], 
+    #])
+        print("✅ 投影矩陣已載入")
     except Exception as e:
-        print(f"❌ 相機校正參數載入失敗: {e}")
+        print(f"❌ 投影矩陣載入失敗: {e}")
         P1, P2 = None, None
     
     # 執行處理

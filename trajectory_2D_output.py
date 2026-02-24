@@ -166,12 +166,18 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
     batch_frames = []
     batch_indices = []
 
-    # 決定設備：pose 模型因 Apple MPS 已知問題固定 CPU，其他模型用最快的可用設備
+    # 決定設備：優先 NVIDIA GPU (CUDA)，其次 Apple MPS，最後 CPU
+    # 當有 NVIDIA GPU 時，所有模型都用 CUDA
+    # 當只有 Apple MPS 時，Pose 模型用 CPU（已知 MPS bug），其他用 MPS
+    # 當都沒有時，全部用 CPU
     if torch.cuda.is_available():
+        pose_device = 'cuda'
         fast_device = 'cuda'
     elif torch.backends.mps.is_available():
+        pose_device = 'cpu'  # Pose 模型因 Apple MPS 已知問題固定 CPU
         fast_device = 'mps'
     else:
+        pose_device = 'cpu'
         fast_device = 'cpu'
 
     # 持續從 queue 讀取 frame 並累積成批次
@@ -182,9 +188,8 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
             batch_indices.append(frame_index)
             if len(batch_frames) == batch_size:
                 with torch.no_grad():
-                    # pose 模型固定 CPU（Apple MPS 對 Pose 有已知 bug）
-                    body_results = pose_model(batch_frames, verbose=False, device='cpu')
-                    # ball/paddle 模型使用最快設備（MPS/CUDA/CPU）
+                    # 使用決定好的設備進行推論
+                    body_results = pose_model(batch_frames, verbose=False, device=pose_device)
                     ball_results = ball_model(batch_frames, verbose=False, device=fast_device)
                     paddle_results = paddle_model(batch_frames, verbose=False, device=fast_device)
                 for idx, (body_result, ball_result, paddle_result) in enumerate(zip(body_results, ball_results, paddle_results)):
@@ -203,7 +208,7 @@ def process_video_batch(pose_model, ball_model,paddle_model, video_path, batch_s
     # 處理剩餘的 frame（不足 batch_size 的尾巴）
     if batch_frames:
         with torch.no_grad():
-            body_results = pose_model(batch_frames, verbose=False, device='cpu')
+            body_results = pose_model(batch_frames, verbose=False, device=pose_device)
             ball_results = ball_model(batch_frames, verbose=False, device=fast_device)
             paddle_results = paddle_model(batch_frames, verbose=False, device=fast_device)
         for idx, (body_result, ball_result, paddle_result) in enumerate(zip(body_results, ball_results, paddle_results)):
@@ -240,27 +245,25 @@ if __name__ == "__main__":
     ball_model = YOLO('model/tennisball_OD_v1.pt')
     paddle_model = YOLO('model/tennispaddle.pt')
     
-    # 將模型移至最佳設備：混合策略避免 Apple MPS 姿態模型問題
-    if torch.backends.mps.is_available():
-        pose_device = 'cpu'  # 姿態模型使用 CPU
-        ball_device = 'mps'  # 網球檢測模型使用 MPS
-        paddle_device = 'mps'  # 球拍檢測模型使用 MPS
-        pose_device_name = 'CPU (避免 MPS 姿態模型問題)'
-        ball_device_name = 'MPS (Apple GPU)'
-        print(f"Pose model: {pose_device_name}")
-        print(f"Ball model: {ball_device_name}")
-        print(f"Paddle model: {ball_device_name}")
-    elif torch.cuda.is_available():
+    # 將模型移至最佳設備：優先 NVIDIA GPU，其次 Apple MPS，最後 CPU
+    if torch.cuda.is_available():
         pose_device = 'cuda'
         ball_device = 'cuda'
         paddle_device = 'cuda'
-        device_name = 'CUDA (NVIDIA GPU)'
-        print(f"Models moved to {device_name}.")
+        device_name = '✅ NVIDIA GPU (CUDA)'
+        print(f"🚀 Models moved to {device_name} for maximum speed!")
+    elif torch.backends.mps.is_available():
+        pose_device = 'cpu'  # 姿態模型使用 CPU（避免 MPS 已知問題）
+        ball_device = 'mps'  # 網球檢測模型使用 MPS
+        paddle_device = 'mps'  # 球拍檢測模型使用 MPS
+        print(f"⚠️ Using Apple MPS with Pose on CPU (to avoid MPS bug)")
+        print(f"   Pose: CPU")
+        print(f"   Ball & Paddle: Apple MPS (Metal GPU)")
     else:
         pose_device = 'cpu'
         ball_device = 'cpu'
         paddle_device = 'cpu'
-        device_name = 'CPU'
+        device_name = '💻 CPU'
         print(f"Models moved to {device_name}.")
     
     pose_model.model.to(pose_device)

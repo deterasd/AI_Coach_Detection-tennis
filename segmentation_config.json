@@ -1,11 +1,69 @@
 {
   "segmentation": {
-    "next_ball_offset": 1.2,   
-    "exit_buffer_time": 0.2,
-    "preview_start_time": -0.2
-  },
-  "detection": {
-    "confidence_threshold": 0.5,
-    "exit_timeout": 1.5
+    "comment": "影片分割配置 - 控制球进入/出场检测和动态分割参数",
+    
+    "segment_timing": {
+      "comment": "片段時間相關配置",
+      "preview_start_time": -0.2,
+      "next_ball_offset": 1.2,
+      "exit_buffer_time": 0.2,
+      "default_segment_duration": 2.0
+    },
+    
+    "frame_optimization": {
+      "comment": "幀優化參數 - 加快處理速度",
+      "skip_frames_after_found": 70,
+      "batch_size": 32,
+      "sparse_scan_step": 4,
+      "fps_tracking_multiplier": 8
+    },
+    
+    "ball_detection": {
+      "comment": "球檢測相關參數",
+      "confidence_threshold": 0.5,
+      "detection_area": "right_upper_two_thirds",
+      "edge_ratio": 0.15,
+      "max_tracking_distance": 200,
+      "exit_timeout": 1.5
+    },
+    
+    "segment_merging": {
+      "comment": "短暫離開又回到畫面的球片段合併參數",
+      "enable_merge": true,
+      "gap_threshold": 0.4,
+      "max_combined_duration": 3.5
+    },
+    
+    "segment_validation": {
+      "comment": "片段時長驗證參數",
+      "min_segment_duration": 0.5,
+      "max_segment_duration": 4.0,
+      "warn_threshold": 3.5
+    },
+    
+    "ffmpeg": {
+      "comment": "FFmpeg編碼參數",
+      "timeout": 60,
+      "soft_encoding_timeout": 90,
+      "min_file_size": 10240,
+      "quality_crf": 23,
+      "gpu_preset": "fast",
+      "fallback_codec": "libx264"
+    },
+    
+    "detection_settings": {
+      "comment": "球進入檢測設置",
+      "enable_exit_detection": true,
+      "ball_entry_direction": "right",
+      "detection_top_ratio": 0.667,
+      "right_top_band_ratio": 0.667,
+      "left_top_band_ratio": 0.333
+    },
+    
+    "logging": {
+      "comment": "日誌輸出設置",
+      "verbose": true,
+      "progress_interval_seconds": 10
+    }
   }
 }
