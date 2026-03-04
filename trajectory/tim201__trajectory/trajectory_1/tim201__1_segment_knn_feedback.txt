@@ -1,1 +1,0 @@
-trajectory\tim201__trajectory\trajectory_1\tim201__1_segment_knn_feedback.txt

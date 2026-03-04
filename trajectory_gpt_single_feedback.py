@@ -144,7 +144,7 @@ def generate_feedback(json_filepath, txt_filepath, integrated_analysis_path=None
             
         except Exception as e:
             print(f"GPT 重寫失敗，改用整合建議原文：{e}")
-            knn_response = combined_advice
+            knn_response = f"{combined_advice}\n\n(註: GPT暫時無法使用，顯示原始分析結果原文)"
             frame_response = "90-112"
         
         messages.append({"role": "assistant", "content": frame_response})

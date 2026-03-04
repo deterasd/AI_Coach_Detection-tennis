@@ -131,9 +131,11 @@
             font-size: 0.9rem;
             max-width: 260px;
         }
+
         .import-select:disabled {
             opacity: 0.6;
         }
+
         .import-select.hidden,
         .hidden {
             display: none !important;
@@ -606,6 +608,11 @@
         <header>
             <div class="logo">網球動作分析報告</div>
             <div class="actions">
+                <!-- Comprehensive Report Button -->
+                <button class="btn" id="btnComprehensiveReport"
+                    onclick="window.open('../tennis_comprehensive_report.html', '_blank')">
+                    <i class="fas fa-clipboard-check"></i> 三球綜合報告
+                </button>
                 <button class="btn" id="btnDetailReport" onclick="goToDetail()">
                     <i class="fas fa-file-alt"></i> 詳細報告
                 </button>
@@ -657,7 +664,7 @@
 
             <!-- Video Section -->
             <div class="video-container">
-                <video id="videoPlayer" playsinline loop></video>
+                <video id="videoPlayer" playsinline loop controls muted autoplay></video>
 
                 <!-- Upload Placeholder -->
                 <div class="upload-overlay" id="uploadOverlay">
@@ -667,16 +674,7 @@
                     </div>
                 </div>
 
-                <!-- Custom Video Controls -->
-                <div class="video-controls" id="videoControls">
-                    <button class="play-btn" id="playBtn" title="播放/暫停" aria-label="播放/暫停"><i class="fas fa-play"></i></button>
-                    <div class="progress-container" id="progressContainer">
-                        <div class="progress-bar" id="progressBar"></div>
-                    </div>
-                    <div class="time-display">
-                        <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
-                    </div>
-                </div>
+
             </div>
 
             <!-- Metrics Column -->
@@ -958,50 +956,8 @@
         // --- Video Logic ---
         const videoPlayer = document.getElementById('videoPlayer');
         const uploadOverlay = document.getElementById('uploadOverlay');
-        const playBtn = document.getElementById('playBtn');
-        const playIcon = playBtn.querySelector('i');
-        const progressBar = document.getElementById('progressBar');
-        const progressContainer = document.getElementById('progressContainer');
-        const currentTimeEl = document.getElementById('currentTime');
-        const totalTimeEl = document.getElementById('totalTime');
-
         // Always loop (repeat playback)
         videoPlayer.loop = true;
-
-        function togglePlay() {
-            if (videoPlayer.paused) {
-                videoPlayer.play();
-                playIcon.className = 'fas fa-pause';
-            } else {
-                videoPlayer.pause();
-                playIcon.className = 'fas fa-play';
-            }
-        }
-
-        playBtn.addEventListener('click', togglePlay);
-        videoPlayer.addEventListener('click', togglePlay);
-
-        videoPlayer.addEventListener('timeupdate', () => {
-            const current = videoPlayer.currentTime;
-            const duration = videoPlayer.duration;
-            if (duration) {
-                const percent = (current / duration) * 100;
-                progressBar.style.width = `${percent}%`;
-                currentTimeEl.textContent = formatTime(current);
-            }
-        });
-
-        videoPlayer.addEventListener('loadedmetadata', () => {
-            totalTimeEl.textContent = formatTime(videoPlayer.duration);
-        });
-
-        progressContainer.addEventListener('click', (e) => {
-            const rect = progressContainer.getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            if (videoPlayer.duration) {
-                videoPlayer.currentTime = pos * videoPlayer.duration;
-            }
-        });
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
@@ -1191,7 +1147,7 @@
                     if (ui.dominant_hand === 0 || ui.hand === 'left') return 'left';
                     if (ui.dominant_hand === 1 || ui.hand === 'right') return 'right';
                 }
-            } catch (_) {}
+            } catch (_) { }
             return null;
         }
 
@@ -1452,11 +1408,62 @@
                 // GPT conversational feedback (preferred)
                 fullAdvice = data.suggestion;
                 console.log("✅ Using GPT suggestion:", fullAdvice);
-            } else if (data.combined_advice) {
+            }
+
+            // Sync structured data to localStorage so other pages can read it
+            try {
+                const syncData = {
+                    id: currentSessionPath ? currentSessionPath.split('/').pop() : "ANALYSIS_RESULT",
+                    video: 0,
+                    hand: data.hand || "right",
+                    overall: overall,
+                    Backswing: toScore(stats.backswing_confidence),
+                    ForwardSwing: toScore(stats.forwardswing_confidence),
+                    HitballSwing: toScore(stats.hitballswing_confidence),
+                    FollowThrough: toScore(stats.followthrough_confidence),
+                    Head: toScore(stats.head_stability_confidence),
+                    advice: fullAdvice,
+                    combined_advice: fullAdvice,
+                    timestamp: Date.now()
+                };
+
+                // Write to classic v3 format
+                localStorage.setItem("tennisAnalysisData", JSON.stringify(syncData));
+
+                // Write to multi-record comprehensive format
+                let syncQueue = [];
+                const maxHistory = 10;
+                try {
+                    const rawQueue = localStorage.getItem("TENNIS_ANALYSIS_SYNC");
+                    if (rawQueue) {
+                        syncQueue = JSON.parse(rawQueue);
+                        if (!Array.isArray(syncQueue)) syncQueue = [];
+                    }
+                } catch (e) { }
+
+                // Prevent duplicate consecutive entries based on ID & overall score to avoid spam
+                if (syncQueue.length === 0 ||
+                    syncQueue[0].id !== syncData.id ||
+                    syncQueue[0].overall !== syncData.overall) {
+                    syncQueue.unshift(syncData);
+                    if (syncQueue.length > maxHistory) {
+                        syncQueue.pop();
+                    }
+                    localStorage.setItem("TENNIS_ANALYSIS_SYNC", JSON.stringify(syncQueue));
+                    console.log("[2D] Updated TENNIS_ANALYSIS_SYNC queue:", syncQueue.length, "items");
+                }
+            } catch (err) {
+                console.warn("[2D] Failed to sync to localStorage:", err);
+            }
+
+            // end of sync block
+
+            if (!data.suggestion && data.combined_advice) {
                 // Structured fallback
                 fullAdvice = data.combined_advice.replace(/A\.|B\.|C\./g, '\n• ');
                 console.log("Using combined_advice:", fullAdvice);
             }
+            console.log("Using combined_advice:", fullAdvice);
 
             // --- Display Full GPT Advice ---
             let simpleAdvice = "尚無建議";
@@ -1657,6 +1664,94 @@
             radarChart.update();
         }
 
+        async function loadSelectedJsonFile(file) {
+            // Show Loading
+            loadingOverlay.style.display = 'flex';
+            try {
+                let text = await file.text();
+                text = text.replace(/:\s*NaN/g, ": null"); // Fix python NaN JSON issues
+                const data = JSON.parse(text);
+
+                // If it looks like integrated analysis -> updateDashboard
+                if (data && data.analyses && data.statistics) {
+                    const hand = await fetchHandFromUserInfo(currentSessionPath);
+                    if (hand) data.hand = hand;
+                    updateDashboard(data);
+                } else if (data && typeof data.suggestion === 'string') {
+                    // Allow loading GPT feedback only (no integrated analysis)
+                    currentDashboardState.suggestion = data.suggestion;
+                    sessionStorage.setItem('TENNIS_DASHBOARD_CACHE', JSON.stringify(currentDashboardState));
+                    const elSimpleAdvice = document.getElementById('gptAdviceSimple');
+                    if (elSimpleAdvice) elSimpleAdvice.innerText = data.suggestion.trim();
+
+                    // --- SYNC UPDATE ---
+                    // Update the locally cached analysis to reflect the newly retrieved GPT comment
+                    try {
+                        let syncRecord = localStorage.getItem('tennisAnalysisData');
+                        if (syncRecord) {
+                            let parsedRecord = JSON.parse(syncRecord);
+                            parsedRecord.advice = data.suggestion;
+                            parsedRecord.combined_advice = data.suggestion;
+                            localStorage.setItem('tennisAnalysisData', JSON.stringify(parsedRecord));
+                        }
+                        let syncQueue = localStorage.getItem('TENNIS_ANALYSIS_SYNC');
+                        if (syncQueue) {
+                            let parsedQueue = JSON.parse(syncQueue);
+                            if (Array.isArray(parsedQueue) && parsedQueue.length > 0) {
+                                parsedQueue[0].advice = data.suggestion;
+                                parsedQueue[0].combined_advice = data.suggestion;
+                                localStorage.setItem('TENNIS_ANALYSIS_SYNC', JSON.stringify(parsedQueue));
+                            }
+                        }
+                    } catch (err) { console.warn("[2D] Failed to update GPT suggestion to sync storage", err); }
+                } else {
+                    // Fallback: send to analyzer if user picked raw trajectory
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const response = await fetch('http://localhost:8001/analyze', { method: 'POST', body: formData });
+                    if (!response.ok) {
+                        let errorMsg = `Server Error: ${response.statusText}`;
+                        try {
+                            const errData = await response.json();
+                            if (errData.detail) errorMsg = errData.detail;
+                            else if (errData.error) errorMsg = errData.error;
+                        } catch (e) { }
+                        throw new Error(errorMsg);
+                    }
+                    const result = await response.json();
+                    if (result.integrated && Object.keys(result.integrated).length > 0) {
+                        const mergedData = { ...result.integrated };
+                        if (result.gpt_feedback && result.gpt_feedback.suggestion) {
+                            mergedData.suggestion = result.gpt_feedback.suggestion;
+                        }
+                        const hand = await fetchHandFromUserInfo(currentSessionPath);
+                        if (hand) mergedData.hand = hand;
+                        updateDashboard(mergedData);
+                    }
+                }
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        // Helper to fetch user_info.json and find the hand info
+        async function fetchHandFromUserInfo(sessionPath) {
+            if (!sessionPath) return null;
+            try {
+                const userInfoUrl = `/trajectory/${encodeURIComponent(sessionPath)}/user_info.json`;
+                const res = await fetch(userInfoUrl);
+                if (res.ok) {
+                    let text = await res.text();
+                    text = text.replace(/:\s*NaN/g, ": null"); // Fix python NaN JSON issues
+                    const userInfo = JSON.parse(text);
+                    return userInfo.hand;
+                }
+            } catch (e) {
+                console.warn("[2D] Could not fetch user_info.json:", e);
+            }
+            return null;
+        }
+
         // 從伺服器載入指定 session 的影片與 JSON
         async function loadFromServerSession(sessionPath) {
             if (!sessionPath) return false;
@@ -1682,7 +1777,7 @@
                     videoPlayer.load();
                     if (mp4Name) {
                         const pathEnc = sessionPath.split('/').map(p => encodeURIComponent(p)).join('/');
-                        const videoUrl = `/trajectory/${pathEnc}/${encodeURIComponent(mp4Name)}?t=${Date.now()}`;
+                        const videoUrl = `/trajectory/${pathEnc}/${encodeURIComponent(mp4Name)}`;
                         videoPlayer.src = videoUrl;
                         videoPlayer.load();
                         uploadOverlay.style.display = 'none';
@@ -1730,12 +1825,43 @@
                     try {
                         sessionsList = JSON.parse(raw);
                         if (!Array.isArray(sessionsList)) sessionsList = [];
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             } catch (e) {
                 console.warn("讀取 LATEST_TRAJECTORY_SESSION 失敗:", e);
             }
-            if (!sessionPath && !sessionsList.length) return false;
+            if (!sessionPath && !sessionsList.length) {
+                // 如果 localStorage 沒有資料，主動去向伺服器要資料夾列表
+                try {
+                    const res = await fetch('/getFolders');
+                    if (res.ok) {
+                        const folders = await res.json();
+                        if (folders && folders.length > 0) {
+                            const firstFolder = folders.find(f => f.name.includes('陳孝宗__trajectory')) || folders[0];
+                            try {
+                                const subRes = await fetch('/getSubfolders?folder=' + encodeURIComponent(firstFolder.name));
+                                if (subRes.ok) {
+                                    const subfolders = await subRes.json();
+                                    if (subfolders && subfolders.length > 0) {
+                                        sessionsList = subfolders.map(sub => firstFolder.name + '/' + sub);
+                                    } else {
+                                        sessionsList = [firstFolder.name];
+                                    }
+                                } else {
+                                    sessionsList = [firstFolder.name];
+                                }
+                            } catch (e) {
+                                sessionsList = [firstFolder.name];
+                            }
+                            sessionPath = sessionsList[0];
+                        }
+                    }
+                } catch (e) {
+                    console.warn("無法取得伺服器資料夾:", e);
+                }
+
+                if (!sessionPath && !sessionsList.length) return false;
+            }
             if (sessionsList.length === 0 && sessionPath) sessionsList = [sessionPath];
 
             // 若有 SESSIONS 陣列，用其填入下拉；否則用單一 sessionPath
@@ -1772,7 +1898,9 @@
                 if (!res.ok) {
                     throw new Error(`HTTP ${res.status} ${res.statusText}`);
                 }
-                const data = await res.json();
+                let text = await res.text();
+                text = text.replace(/:\s*NaN/g, ": null"); // Fix python NaN JSON issues
+                const data = JSON.parse(text);
 
                 if (onlySuggestion) {
                     if (data && typeof data.suggestion === 'string') {
@@ -1783,6 +1911,27 @@
                         );
                         const elSimpleAdvice = document.getElementById('gptAdviceSimple');
                         if (elSimpleAdvice) elSimpleAdvice.innerText = data.suggestion.trim();
+
+                        // --- SYNC UPDATE ---
+                        // Update the locally cached analysis to reflect the newly retrieved GPT comment
+                        try {
+                            let syncRecord = localStorage.getItem('tennisAnalysisData');
+                            if (syncRecord) {
+                                let parsedRecord = JSON.parse(syncRecord);
+                                parsedRecord.advice = data.suggestion;
+                                parsedRecord.combined_advice = data.suggestion;
+                                localStorage.setItem('tennisAnalysisData', JSON.stringify(parsedRecord));
+                            }
+                            let syncQueue = localStorage.getItem('TENNIS_ANALYSIS_SYNC');
+                            if (syncQueue) {
+                                let parsedQueue = JSON.parse(syncQueue);
+                                if (Array.isArray(parsedQueue) && parsedQueue.length > 0) {
+                                    parsedQueue[0].advice = data.suggestion;
+                                    parsedQueue[0].combined_advice = data.suggestion;
+                                    localStorage.setItem('TENNIS_ANALYSIS_SYNC', JSON.stringify(parsedQueue));
+                                }
+                            }
+                        } catch (err) { console.warn("[2D] Failed to update GPT suggestion to sync storage", err); }
                     }
                     return;
                 }

@@ -1,5 +1,5 @@
 ﻿rich
-open_gopro==0.17.1
+open_gopro>=0.18.0
 uvicorn
 fastapi
 asyncio

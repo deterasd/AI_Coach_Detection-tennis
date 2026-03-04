@@ -64,6 +64,12 @@ async function fetchFolderList() {
         .map((info) => `<option value="${info.name}">${info.name}</option>`)
         .join("");
     console.log("文件夾下拉菜單已更新");
+
+    // 自動選擇第一個文件夾
+    if (folderInfos.length > 0) {
+      folderSelect.value = folderInfos[0].name;
+      fetchVideoList(folderInfos[0].name, true);
+    }
   } catch (error) {
     console.error("Unable to fetch folder list:", error);
   }
@@ -171,7 +177,7 @@ folderSelect.addEventListener("change", (e) => {
   const selectedFolder = e.target.value;
   console.log("folderSelect 變化，選擇的文件夾:", selectedFolder);
   if (selectedFolder) {
-    fetchVideoList(selectedFolder);
+    fetchVideoList(selectedFolder, true); // 自動跳轉選擇第一支影片
   } else {
     videoSelect.innerHTML = '<option value="">Choose Video</option>';
   }
@@ -652,7 +658,7 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
       try {
         // 讀取現有 localStorage，保留 CSV 分數欄位（如有）
         let stored = {};
-        try { stored = JSON.parse(localStorage.getItem('tennisAnalysisData') || '{}'); } catch(e) { stored = {}; }
+        try { stored = JSON.parse(localStorage.getItem('tennisAnalysisData') || '{}'); } catch (e) { stored = {}; }
 
         const similarity = integratedData.expert_distance !== undefined
           ? ((1 / (1 + integratedData.expert_distance)) * 100).toFixed(1) + "%"
@@ -689,7 +695,7 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
 
         localStorage.setItem('tennisAnalysisData', JSON.stringify(toSave));
         console.log('[localStorage] 已將 integrated_analysis 存入 tennisAnalysisData');
-      } catch(e) {
+      } catch (e) {
         console.warn('將分析資料存入 localStorage 失敗:', e);
       }
     } else {
