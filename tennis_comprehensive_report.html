@@ -1,884 +1,1212 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
+<!doctype html>
+<html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI 網球教練 - 綜合評分與評論表</title>
-    <!-- 引入 Google Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap"
-        rel="stylesheet">
-    <style>
-        :root {
-            /* Premium Tennis Dark Theme */
-            --bg: #0b1120;
-            /* Deep navy blue */
-            --card: #141e33;
-            /* Court blue */
-            --muted: #8b92a5;
-            --text: #f0f0f0;
-            --ring: #2a3d5e;
-            --accent: #ccff00;
-            /* Optic yellow - Tennis ball */
-            --accent-glow: rgba(204, 255, 0, 0.4);
-            --border: rgba(255, 255, 255, 0.1);
-
-            /* Gradient accents */
-            --gradient-primary: linear-gradient(135deg, #ccff00 0%, #a3cc00 100%);
-            --gradient-card: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-
-            --hi: #00d2ff;
-            /* Neon cyan for excellent */
-            --med: #ffaa00;
-            /* Warning orange */
-            --low: #ff2a55;
-            /* Neon red */
-
-            --card-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            --font-main: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --font-num: 'Outfit', sans-serif;
-        }
-
-        body.light-mode {
-            /* Premium Tennis Light Theme */
-            --bg: #ffffff;
-            /* Pure white background to match printed paper */
-            --card: #ffffff;
-            --muted: #64748b;
-            --text: #0f172a;
-            --ring: #cbd5e1;
-            --accent: #65a30d;
-            /* Darker optic yellow/green for contrast on light */
-            --accent-glow: rgba(101, 163, 13, 0.2);
-            --border: transparent;
-            /* Remove all default borders for print layout */
-
-            --gradient-primary: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
-            --gradient-card: transparent;
-            /* Pure transparent/white rather than gray gradients */
-
-            --hi: #059669;
-            --med: #d97706;
-            --low: #dc2626;
-            --card-shadow: none;
-            /* Eliminate box shadows for a flatter, print-friendly look */
-        }
-
-        body.light-mode .summary-bar {
-            border: none;
-            border-bottom: 2px solid rgba(0, 0, 0, 0.05);
-            border-radius: 0;
-            padding-left: 0;
-            padding-right: 0;
-            box-shadow: none;
-            background: transparent;
-        }
-
-        body.light-mode .ball-card {
-            border: none;
-            border-top: 2px solid rgba(0, 0, 0, 0.05);
-            border-radius: 0;
-            padding-left: 0;
-            padding-right: 0;
-            background: transparent;
-        }
-
-        body.light-mode .ball-card::before {
-            display: none;
-        }
-
-        body.light-mode .advice-box {
-            border: none;
-            border-left: 4px solid var(--accent);
-            border-radius: 0;
-            padding: 10px 15px;
-            background: transparent;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            font-family: var(--font-main);
-            transition: background-color 0.3s ease, color 0.3s ease;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 24px;
-            padding-bottom: 24px;
-        }
-
-        .toolbar {
-            width: 210mm;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .btn {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            color: var(--text);
-            border: 1px solid var(--border);
-            padding: 10px 20px;
-            border-radius: 99px;
-            /* Pill shape */
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: #000;
-            border: none;
-            font-weight: 700;
-        }
-
-        body.light-mode .btn-primary {
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background: var(--gradient-primary);
-            box-shadow: 0 8px 20px var(--accent-glow);
-        }
-
-        .a4-page {
-            width: 210mm;
-            height: 297mm;
-            /* Strict A4 height */
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            box-shadow: var(--card-shadow);
-            padding: 15mm 15mm;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Premium Background Effect inside A4 */
-        .a4-page::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--card);
-            background-image:
-                url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' viewBox='0 0 400 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='rgba(255,255,255,0.03)' stroke-width='4' fill='none'%3E%3Crect x='50' y='50' width='300' height='500' /%3E%3Crect x='100' y='50' width='200' height='500' /%3E%3Cline x1='50' y1='300' x2='350' y2='300' stroke-width='6' /%3E%3Cline x1='200' y1='150' x2='200' y2='450' /%3E%3Cline x1='100' y1='150' x2='300' y2='150' /%3E%3Cline x1='100' y1='450' x2='300' y2='450' /%3E%3C/g%3E%3C/svg%3E"),
-                radial-gradient(circle at top right, var(--accent-glow) 0%, transparent 40%),
-                radial-gradient(circle at bottom left, rgba(0, 210, 255, 0.1) 0%, transparent 40%);
-            background-size: cover, 100% 100%, 100% 100%;
-            background-position: center;
-            opacity: 0.8;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Premium glowing line */
-        header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 150px;
-            height: 3px;
-            background: var(--gradient-primary);
-            border-radius: 3px;
-            box-shadow: 0 0 10px var(--accent-glow);
-        }
-
-        h1 {
-            margin: 0 0 5px 0;
-            font-size: 32px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            color: transparent;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            background-clip: text;
-            text-transform: uppercase;
-        }
-
-        .sub-brand {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 15px;
-            letter-spacing: 4px;
-            opacity: 0.9;
-        }
-
-        p.subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        #reportContent {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            z-index: 1;
-            gap: 15px;
-            /* Control vertical rhythm tightly */
-        }
-
-        .summary-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            padding: 12px 25px;
-            background: var(--gradient-card);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            margin-bottom: 5px;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .summary-label {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: 1.5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .summary-label i {
-            font-size: 16px;
-        }
-
-        .summary-score {
-            font-family: var(--font-num);
-            font-size: 32px;
-            font-weight: 900;
-            color: var(--accent);
-            text-shadow: 0 0 15px var(--accent-glow);
-            line-height: 1;
-        }
-
-        .metrics-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-
-        .ball-card {
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 15px;
-            background: var(--gradient-card);
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s;
-        }
-
-        .ball-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--ring);
-            opacity: 0.5;
-        }
-
-        .pill-score {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 4px;
-            padding: 4px 12px;
-            border-radius: 99px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 12px;
-        }
-
-        body.light-mode .pill-score {
-            background: rgba(0, 0, 0, 0.03);
-            border-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .pill-val {
-            font-family: var(--font-num);
-            font-size: 20px;
-            font-weight: 800;
-        }
-
-        .pill-label {
-            font-size: 10px;
-            font-weight: 700;
-            opacity: 0.8;
-            letter-spacing: 0.5px;
-        }
-
-        .pill-score.hi {
-            color: var(--hi);
-            border-color: rgba(0, 210, 255, 0.3);
-            background: rgba(0, 210, 255, 0.05);
-        }
-
-        .pill-score.med {
-            color: var(--med);
-            border-color: rgba(255, 170, 0, 0.3);
-            background: rgba(255, 170, 0, 0.05);
-        }
-
-        .pill-score.low {
-            color: var(--low);
-            border-color: rgba(255, 42, 85, 0.3);
-            background: rgba(255, 42, 85, 0.05);
-        }
-
-        .ball-card h3 {
-            margin: 0 0 10px 0;
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text);
-            opacity: 0.8;
-            letter-spacing: 1px;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            margin-bottom: 5px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        body.light-mode .stat-row {
-            border-bottom-color: rgba(0, 0, 0, 0.05);
-        }
-
-        .stat-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .stat-label {
-            color: var(--muted);
-            font-weight: 500;
-        }
-
-        .stat-val {
-            font-family: var(--font-num);
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .advice-section {
-            flex: 1;
-            /* Allow sections to share remaining height */
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            /* Important for flex-shrink */
-        }
-
-        .advice-section h2 {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text);
-            margin: 0 0 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .advice-section h2 i {
-            color: var(--accent);
-        }
-
-        .advice-box {
-            background: var(--gradient-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 18px;
-            font-size: 13.5px;
-            line-height: 1.5;
-            color: var(--text);
-            white-space: pre-wrap;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Scrollbar styling for boxes just in case */
-        .advice-box::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .advice-box::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .advice-box::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
-
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 0;
-                /* Remove default margins to use our strict sizing */
-            }
-
-            body {
-                background: white !important;
-                /* Force white background for print */
-                padding: 0;
-                display: block;
-            }
-
-            .toolbar {
-                display: none;
-            }
-
-            .a4-page {
-                box-shadow: none !important;
-                border: none !important;
-                margin: 0;
-                padding: 10mm !important;
-                /* Reduced from 15mm to fit more content safely */
-                width: 210mm;
-                height: auto !important;
-                page-break-after: auto;
-                /* Prevent scaling issues */
-                border-radius: 0;
-                overflow: visible !important;
-                display: block !important;
-            }
-
-            header {
-                margin-bottom: 15px !important;
-                padding-bottom: 15px !important;
-            }
-
-            #reportContent {
-                gap: 10px !important;
-                /* tighter vertical rhythm */
-            }
-
-            .metrics-container {
-                gap: 10px !important;
-                /* tighter horizontal rhythm */
-            }
-
-            .advice-section h2 {
-                margin-bottom: 8px !important;
-                font-size: 14px !important;
-            }
-
-            .advice-box {
-                font-size: 12.5px !important;
-                line-height: 1.4 !important;
-            }
-
-            /* Enable Light mode variables for print explicitly to fix Safari WebKit bug */
-            body,
-            .a4-page {
-                --bg: white !important;
-                --card: white !important;
-                --text: black !important;
-                --muted: #4b5563 !important;
-                --border: #e5e7eb !important;
-                --gradient-card: white !important;
-                color: black !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            .summary-label,
-            .stat-label,
-            .stat-val,
-            .advice-box,
-            .sub-brand,
-            p.subtitle,
-            .ball-card h3,
-            .advice-section h2,
-            .pill-label {
-                color: black !important;
-            }
-
-            .stat-label,
-            p.subtitle,
-            .pill-label {
-                color: #4b5563 !important;
-                /* muted */
-            }
-
-            .a4-page::before {
-                display: none;
-            }
-
-            .summary-bar {
-                background: white !important;
-                box-shadow: none !important;
-                border: none !important;
-                border-bottom: 2px solid #e5e7eb !important;
-                border-radius: 0 !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-            }
-
-            .ball-card {
-                background: white !important;
-                box-shadow: none !important;
-                border: none !important;
-                border-top: 2px solid #e5e7eb !important;
-                border-radius: 0 !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-            }
-
-            .ball-card::before {
-                display: none;
-            }
-
-            .advice-box {
-                background: white !important;
-                box-shadow: none !important;
-                border: none !important;
-                border-left: 4px solid #ccff00 !important;
-                /* Optic yellow accent line */
-                border-radius: 0 !important;
-                padding: 10px 15px !important;
-            }
-
-            h1 {
-                background: none !important;
-                color: black !important;
-                -webkit-text-fill-color: black !important;
-            }
-
-            header::after {
-                background: #e5e7eb !important;
-                box-shadow: none !important;
-            }
-
-            #reportContent {
-                display: block !important;
-                flex: none !important;
-            }
-
-            .advice-box,
-            .ball-card {
-                page-break-inside: avoid;
-            }
-        }
-
-        #noDataMsg {
-            text-align: center;
-            padding: 50px;
-            color: var(--muted);
-            font-style: italic;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Highlight specific styling */
-        strong,
-        b {
-            font-weight: 700;
-            color: var(--accent);
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="pageTitle">AI Tennis Coach - Comprehensive Report</title>
+  <!-- 引入 Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      /* Premium Tennis Dark Theme */
+      --bg: #0b1120;
+      /* Deep navy blue */
+      --card: #141e33;
+      /* Court blue */
+      --muted: #8b92a5;
+      --text: #f0f0f0;
+      --ring: #2a3d5e;
+      --accent: #ccff00;
+      /* Optic yellow - Tennis ball */
+      --accent-glow: rgba(204, 255, 0, 0.4);
+      --border: rgba(255, 255, 255, 0.1);
+
+      /* Gradient accents */
+      --gradient-primary: linear-gradient(135deg, #ccff00 0%, #a3cc00 100%);
+      --gradient-card: linear-gradient(180deg,
+          rgba(30, 41, 59, 0.8) 0%,
+          rgba(15, 23, 42, 0.9) 100%);
+
+      --hi: #00d2ff;
+      /* Neon cyan for excellent */
+      --med: #ffaa00;
+      /* Warning orange */
+      --low: #ff2a55;
+      /* Neon red */
+
+      --card-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      --font-main:
+        "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        sans-serif;
+      --font-num: "Outfit", sans-serif;
+    }
+
+    body.light-mode {
+      /* Premium Tennis Light Theme */
+      --bg: #ffffff;
+      /* Pure white background to match printed paper */
+      --card: #ffffff;
+      --muted: #64748b;
+      --text: #0f172a;
+      --ring: #cbd5e1;
+      --accent: #65a30d;
+      /* Darker optic yellow/green for contrast on light */
+      --accent-glow: rgba(101, 163, 13, 0.2);
+      --border: transparent;
+      /* Remove all default borders for print layout */
+
+      --gradient-primary: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
+      --gradient-card: transparent;
+      /* Pure transparent/white rather than gray gradients */
+
+      --hi: #059669;
+      --med: #d97706;
+      --low: #dc2626;
+      --card-shadow: none;
+      /* Eliminate box shadows for a flatter, print-friendly look */
+    }
+
+    body.light-mode .summary-bar {
+      border: none;
+      border-bottom: 1px solid var(--accent);
+      border-radius: 0;
+      padding-left: 0;
+      padding-right: 0;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    body.light-mode .ball-card {
+      border: none;
+      border-top: 1px solid var(--accent);
+      border-radius: 0;
+      padding-left: 10px;
+      padding-right: 14px;
+      background: transparent;
+      overflow: visible;
+    }
+
+    body.light-mode .ball-card:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 15px;
+      bottom: 15px;
+      right: -8px;
+      width: 1px;
+      background-color: var(--accent);
+    }
+
+    body.light-mode .ball-card::before {
+      display: none;
+    }
+
+    body.light-mode .advice-box {
+      border: none;
+      border-left: 4px solid var(--accent);
+      border-radius: 0;
+      padding: 10px 15px;
+      background: transparent;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      font-family: var(--font-main);
+      transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 24px;
+      padding-bottom: 24px;
+    }
+
+    .toolbar {
+      width: 210mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 20px;
+      border-radius: 99px;
+      /* Pill shape */
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: #000;
+      border: none;
+      font-weight: 700;
+    }
+
+    body.light-mode .btn-primary {
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--gradient-primary);
+      box-shadow: 0 8px 20px var(--accent-glow);
+    }
+
+    .a4-page {
+      width: 210mm;
+      height: 297mm;
+      /* Strict A4 height */
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--card-shadow);
+      padding: 15mm 15mm;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Premium Background Effect inside A4 */
+    .a4-page::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--card);
+      background-image:
+        url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' viewBox='0 0 400 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='rgba(255,255,255,0.03)' stroke-width='4' fill='none'%3E%3Crect x='50' y='50' width='300' height='500' /%3E%3Crect x='100' y='50' width='200' height='500' /%3E%3Cline x1='50' y1='300' x2='350' y2='300' stroke-width='6' /%3E%3Cline x1='200' y1='150' x2='200' y2='450' /%3E%3Cline x1='100' y1='150' x2='300' y2='150' /%3E%3Cline x1='100' y1='450' x2='300' y2='450' /%3E%3C/g%3E%3C/svg%3E"),
+        radial-gradient(circle at top right,
+          var(--accent-glow) 0%,
+          transparent 40%),
+        radial-gradient(circle at bottom left,
+          rgba(0, 210, 255, 0.1) 0%,
+          transparent 40%);
+      background-size:
+        cover,
+        100% 100%,
+        100% 100%;
+      background-position: center;
+      opacity: 0.8;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Premium glowing line */
+    header::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 150px;
+      height: 3px;
+      background: var(--gradient-primary);
+      border-radius: 3px;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    h1 {
+      margin: 0 0 5px 0;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: transparent;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-transform: uppercase;
+    }
+
+    .sub-brand {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 15px;
+      letter-spacing: 4px;
+      opacity: 0.9;
+    }
+
+    p.subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    #reportContent {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+      gap: 15px;
+      /* Control vertical rhythm tightly */
+    }
+
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 12px 25px;
+      background: var(--gradient-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 5px;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 1.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-label i {
+      font-size: 16px;
+    }
+
+    .summary-score {
+      font-family: var(--font-num);
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--accent);
+      text-shadow: 0 0 15px var(--accent-glow);
+      line-height: 1;
+    }
+
+    body.light-mode .summary-score {
+      text-shadow: none !important;
+    }
+
+    .metrics-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .ball-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 15px;
+      background: var(--gradient-card);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s;
+    }
+
+    .ball-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--ring);
+      opacity: 0.5;
+    }
+
+    .pill-score {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 12px;
+    }
+
+    body.light-mode .pill-score {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .pill-val {
+      font-family: var(--font-num);
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .pill-label {
+      font-size: 10px;
+      font-weight: 700;
+      opacity: 0.8;
+      letter-spacing: 0.5px;
+    }
+
+    .pill-score.hi {
+      color: var(--hi);
+      border-color: rgba(0, 210, 255, 0.3);
+      background: rgba(0, 210, 255, 0.05);
+    }
+
+    .pill-score.med {
+      color: var(--med);
+      border-color: rgba(255, 170, 0, 0.3);
+      background: rgba(255, 170, 0, 0.05);
+    }
+
+    .pill-score.low {
+      color: var(--low);
+      border-color: rgba(255, 42, 85, 0.3);
+      background: rgba(255, 42, 85, 0.05);
+    }
+
+    .ball-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      opacity: 0.8;
+      letter-spacing: 1px;
+    }
+
+    .stat-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      align-items: baseline;
+    }
+
+    body.light-mode .stat-row {
+      border-bottom-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .stat-val {
+      font-family: var(--font-num);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .stat-bar-bg {
+      height: 4px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 99px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    body.light-mode .stat-bar-bg {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.5s ease-out;
+    }
+
+    .stat-bar-fill.hi {
+      background: var(--hi);
+    }
+
+    .stat-bar-fill.med {
+      background: var(--med);
+    }
+
+    .stat-bar-fill.low {
+      background: var(--low);
+    }
+
+    .advice-section {
+      flex: 1;
+      /* Allow sections to share remaining height */
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      /* Important for flex-shrink */
+    }
+
+    .advice-section h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .advice-section h2 i {
+      color: var(--accent);
+    }
+
+    .advice-box {
+      background: var(--gradient-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Scrollbar styling for boxes just in case */
+    .advice-box::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .advice-box::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .advice-box::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+        /* Remove default margins to use our strict sizing */
+      }
+
+      body {
+        background: white !important;
+        /* Force white background for print */
+        padding: 0;
+        display: block;
+      }
+
+      .toolbar {
+        display: none;
+      }
+
+      .a4-page {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0;
+        padding: 5mm !important;
+        /* Reduced from 10mm to fit more English content */
+        width: 210mm;
+        height: auto !important;
+        page-break-after: auto;
+        /* Prevent scaling issues */
+        border-radius: 0;
+        overflow: visible !important;
+        display: block !important;
+      }
+
+      header {
+        margin-bottom: 12px !important;
+        padding-bottom: 8px !important;
+      }
+
+      header h1 {
+        font-size: 24px !important;
+        margin-bottom: 4px !important;
+      }
+
+      header .sub-brand {
+        font-size: 13px !important;
+        margin-bottom: 8px !important;
+      }
+
+      #reportContent {
+        gap: 12px !important;
+        /* tighter vertical rhythm */
+      }
+
+      .metrics-container {
+        gap: 10px !important;
+        /* tighter horizontal rhythm */
+      }
+
+      .advice-section h2 {
+        margin-bottom: 4px !important;
+        font-size: 14px !important;
+      }
+
+      .advice-box {
+        font-size: 11.5px !important;
+        line-height: 1.4 !important;
+        padding: 8px 12px !important;
+      }
+
+      .pill-val {
+        font-size: 18px !important;
+      }
+
+      .pill-score {
+        padding: 4px 10px !important;
+        margin-bottom: 8px !important;
+      }
+
+      .stat-row {
+        margin-bottom: 6px !important;
+        padding-bottom: 6px !important;
+      }
+
+      /* Enable Light mode variables for print explicitly to fix Safari WebKit bug */
+      body,
+      .a4-page {
+        --bg: white !important;
+        --card: white !important;
+        --text: black !important;
+        --muted: #4b5563 !important;
+        --border: #e5e7eb !important;
+        --gradient-card: white !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .summary-label,
+      .stat-label,
+      .stat-val,
+      .advice-box,
+      .sub-brand,
+      p.subtitle,
+      .ball-card h3,
+      .advice-section h2,
+      .pill-label {
+        color: black !important;
+      }
+
+      .stat-label,
+      p.subtitle,
+      .pill-label {
+        color: #4b5563 !important;
+        /* muted */
+      }
+
+      .a4-page::before {
+        display: none;
+      }
+
+      .summary-bar {
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-bottom: 1px solid #ccff00 !important;
+        border-radius: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .summary-score {
+        text-shadow: none !important;
+      }
+
+      .ball-card {
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-top: 1px solid #ccff00 !important;
+        border-radius: 0 !important;
+        padding-left: 8px !important;
+        padding-right: 12px !important;
+        overflow: visible !important;
+      }
+
+      .ball-card:not(:last-child) {
+        border-right: none !important;
+        padding-right: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      .ball-card:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        top: 15px;
+        bottom: 15px;
+        right: -5px;
+        width: 1px;
+        background-color: #ccff00 !important;
+      }
+
+      .ball-card::before {
+        display: none;
+      }
+
+      .advice-box {
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-left: 4px solid #ccff00 !important;
+        /* Optic yellow accent line */
+        border-radius: 0 !important;
+        padding: 10px 15px !important;
+      }
+
+      h1 {
+        background: none !important;
+        color: black !important;
+        -webkit-text-fill-color: black !important;
+      }
+
+      header::after {
+        background: #e5e7eb !important;
+        box-shadow: none !important;
+      }
+
+      #reportContent {
+        display: block !important;
+        flex: none !important;
+      }
+
+      .advice-box,
+      .ball-card {
+        page-break-inside: avoid;
+      }
+    }
+
+    #noDataMsg {
+      text-align: center;
+      padding: 50px;
+      color: var(--muted);
+      font-style: italic;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Highlight specific styling */
+    strong,
+    b {
+      font-weight: 700;
+      color: var(--accent);
+    }
+  </style>
 </head>
 
 <body>
+  <div class="toolbar">
+    <button class="btn" onclick="window.close()" data-i18n="close">關閉</button>
+    <button class="btn" id="langToggle">English</button>
+    <button class="btn" id="themeToggle" data-i18n="theme">切換亮暗色</button>
+    <button class="btn btn-primary" onclick="window.print()" data-i18n="print">
+      列印 A4 報告
+    </button>
+  </div>
 
-    <div class="toolbar">
-        <button class="btn" onclick="window.close()">關閉</button>
-        <button class="btn" id="themeToggle">切換亮暗色</button>
-        <button class="btn btn-primary" onclick="window.print()">列印 A4 報告</button>
+  <div class="a4-page">
+    <header>
+      <h1 data-i18n="title">AI 網球教練</h1>
+      <div class="sub-brand">TENNIS AI COACHING SYSTEM</div>
+      <p class="subtitle" id="reportDate">分析報告產出時間：--</p>
+    </header>
+
+    <div id="noDataMsg" style="display: none" data-i18n="noData">
+      找不到最近的分析數據，請先在主畫面匯入資料或進行影片分析。
     </div>
 
-    <div class="a4-page">
-        <header>
-            <h1>AI 網球教練</h1>
-            <div class="sub-brand">TENNIS AI COACHING SYSTEM</div>
-            <p class="subtitle" id="reportDate">分析報告產出時間：--</p>
-        </header>
-
-        <div id="noDataMsg" style="display: none;">
-            找不到最近的分析數據，請先在主畫面匯入資料或進行影片分析。
+    <div id="reportContent" style="display: none">
+      <div class="summary-bar">
+        <div class="summary-label">
+          <i class="fas fa-robot"></i> <span data-i18n="overallScore">綜合能力評分</span>
         </div>
+        <div class="summary-score" id="avgScore">0.0</div>
+      </div>
 
-        <div id="reportContent" style="display: none;">
-            <div class="summary-bar">
-                <div class="summary-label"><i class="fas fa-robot"></i> 綜合能力評分</div>
-                <div class="summary-score" id="avgScore">0.0</div>
-            </div>
+      <div class="metrics-container" id="cardsContainer">
+        <!-- Cards will be injected here -->
+      </div>
 
-            <div class="metrics-container" id="cardsContainer">
-                <!-- Cards will be injected here -->
-            </div>
+      <div class="advice-section">
+        <h2><span data-i18n="techSummary">🎾 AI 教練技術總結 (綜合三球)</span></h2>
+        <div class="advice-box" id="overallAdvice" data-i18n="loading">加載中...</div>
+      </div>
 
-            <div class="advice-section">
-                <h2>🎾 AI 教練技術總結 (綜合三球)</h2>
-                <div class="advice-box" id="overallAdvice">加載中...</div>
-            </div>
-
-            <div class="advice-section">
-                <h2>🎯 訓練菜單：優先改善項目</h2>
-                <div class="advice-box" id="priorityAdvice">加載中...</div>
-            </div>
-        </div>
+      <div class="advice-section">
+        <h2><span data-i18n="priorityItems">🎯 訓練菜單：優先改善項目</span></h2>
+        <div class="advice-box" id="priorityAdvice" data-i18n="loading">加載中...</div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        const STORAGE_KEY_V3 = "tennisAnalysisData";
-        const STORAGE_KEY_SYNC = "TENNIS_ANALYSIS_SYNC";
+  <script>
+    const STORAGE_KEY_V3 = "tennisAnalysisData";
+    const STORAGE_KEY_SYNC = "TENNIS_ANALYSIS_SYNC";
 
-        const elThemeToggle = document.getElementById("themeToggle");
-        const elReportDate = document.getElementById("reportDate");
-        const elNoData = document.getElementById("noDataMsg");
-        const elContent = document.getElementById("reportContent");
-        const elCardsContainer = document.getElementById("cardsContainer");
-        const elAvgScore = document.getElementById("avgScore");
-        const elOverallAdvice = document.getElementById("overallAdvice");
-        const elPriorityAdvice = document.getElementById("priorityAdvice");
+    const elThemeToggle = document.getElementById("themeToggle");
+    const elLangToggle = document.getElementById("langToggle");
+    const elReportDate = document.getElementById("reportDate");
+    const elNoData = document.getElementById("noDataMsg");
+    const elContent = document.getElementById("reportContent");
+    const elCardsContainer = document.getElementById("cardsContainer");
+    const elAvgScore = document.getElementById("avgScore");
+    const elOverallAdvice = document.getElementById("overallAdvice");
+    const elPriorityAdvice = document.getElementById("priorityAdvice");
 
-        // Theme Toggle
-        elThemeToggle.addEventListener("click", () => {
-            document.body.classList.toggle("light-mode");
+    // Translations Dictionary
+    const i18n = {
+      zh: {
+        close: "關閉",
+        theme: "切換亮暗色",
+        print: "列印 A4 報告",
+        langBtn: "English",
+        title: "AI 網球教練",
+        reportDate: "分析報告產出時間：",
+        noDataDate: "分析報告產出時間：無資料",
+        noData: "找不到最近的分析數據，請先在主畫面匯入資料或進行影片分析。",
+        overallScore: "綜合能力評分",
+        techSummary: "🎾 AI 教練技術總結 (綜合三球)",
+        priorityItems: "🎯 訓練菜單：優先改善項目",
+        loading: "加載中...",
+        shot: "第 {0} 球",
+        hitball: "擊球瞬間",
+        forward: "出拍前段",
+        backswing: "拉拍準備",
+        high: "HIGH",
+        med: "MED",
+        low: "LOW",
+        noAdvice: "（無綜合評論數據）",
+        summaryTitle: "【三球技術總結】\n",
+        summaryBody: "在近期的揮拍動作中，您的整體協調性漸入佳境！特別是【第 {0} 球】的表現具有極高的水準 ✨\n這球在「拉拍準備」與「擊球瞬間」的動力鍊傳導最為完整，擊球點與拍面控制非常確實。建議您在未來的訓練中，多去回想並保持這一次完美擊球的身體記憶！\n\n",
+        pointsTitle: "【教練各球點評】\n",
+        pointPrefix: "► 第 {0} 球：\n",
+        noSpecialAdvice: "無特別建議",
+        noImprovement: "無改善建議",
+        priorityTitle: "根據最近 {0} 球的平均表現數據，AI 教練建議您優先針對以下三大核心環節進行調整與加強：\n\n",
+        priorityItem: "► 第 {0} 優先改善：【{1}】\n  ↳ 目前平均掌握度：{2} / 100 分{3}\n  💡 個別建議：{4}\n\n",
+        alertMark: " ⚠️ (亟需改善)",
+        metric_Head: "頭部視線穩定",
+        metric_Backswing: "拉拍與側身",
+        metric_ForwardSwing: "出拍前段",
+        metric_HitballSwing: "擊球瞬間",
+        metric_FollowThrough: "收拍動作",
+        metric_Head_advice: "擊球時試著將視線停留在擊球點上，想像盯著球離開拍面的一瞬間，這能大幅提升擊球的穩定度與準確率喔！",
+        metric_Backswing_advice: "可以提早啟動側身動作，讓非持拍手協助引導肩膀轉動。充分的轉體蓄力是打出強而有力回球的關鍵！",
+        metric_ForwardSwing_advice: "試著讓拍頭自然掉落後再往前揮擊，利用身體的轉動去帶動手臂，而不是手臂主動發力，這樣揮拍會更流暢。",
+        metric_HitballSwing_advice: "留意擊球點要保持在身體前方，並在擊球瞬間讓手腕保持穩定。紮實的擊球手感來自於好的擊球位置與時機！",
+        metric_FollowThrough_advice: "擊球後順勢放鬆將球拍揮向對側肩膀上方，讓身體自然轉正。完整的收拍能保護手臂不受傷，並確保力量完全釋放。"
+      },
+      en: {
+        close: "Close",
+        theme: "Toggle Theme",
+        print: "Print A4 Report",
+        langBtn: "中文",
+        title: "AI TENNIS COACH",
+        reportDate: "Report Generated: ",
+        noDataDate: "Report Generated: No Data",
+        noData: "No recent analysis data found. Please import data or analyze a video on the main screen first.",
+        overallScore: "Overall Rating",
+        techSummary: "🎾 AI Coach Tech Summary (3 Shots)",
+        priorityItems: "🎯 Training Menu: Priority Improvements",
+        loading: "Loading...",
+        shot: "Shot {0}",
+        hitball: "Impact",
+        forward: "Forward Swing",
+        backswing: "Preparation",
+        high: "HIGH",
+        med: "MED",
+        low: "LOW",
+        noAdvice: "(No comprehensive commentary data)",
+        summaryTitle: "[3-Shot Technical Summary]\n",
+        summaryBody: "Your overall coordination in recent swings is improving! Specifically, the performance of [Shot {0}] was of an extremely high standard ✨\nThe kinetic chain transfer from 'Preparation' to 'Impact' was complete, with very solid contact point and racket face control. I recommend trying to remember and maintain the physical memory of this perfect shot in future training!\n\n",
+        pointsTitle: "[Coach's Shot-by-Shot Commentary]\n",
+        pointPrefix: "► Shot {0}:\n",
+        noSpecialAdvice: "No specific advice",
+        noImprovement: "No improvements suggested",
+        priorityTitle: "Based on the average performance data of the last {0} shots, the AI Coach recommends prioritizing the following three core areas for adjustment and strengthening:\n\n",
+        priorityItem: "► Priority {0}: [{1}]\n  ↳ Current Average Mastery: {2} / 100 PTS{3}\n  💡 Coach's Tip: {4}\n\n",
+        alertMark: " ⚠️ (Needs Improvement)",
+        metric_Head: "Head & Vision Stability",
+        metric_Backswing: "Preparation & Unit Turn",
+        metric_ForwardSwing: "Forward Swing",
+        metric_HitballSwing: "Impact",
+        metric_FollowThrough: "Follow-through",
+        metric_Head_advice: "Try to keep your eyes fixed on the contact point, watching the ball leave the strings. This will greatly improve your stability and accuracy!",
+        metric_Backswing_advice: "Start your unit turn earlier, using your non-dominant hand to guide the shoulder rotation. A full coil is key to a powerful shot!",
+        metric_ForwardSwing_advice: "Let the racket head drop naturally before swinging forward. Use your body rotation to pull the arm through for a more fluid and effortless swing.",
+        metric_HitballSwing_advice: "Ensure you make contact out in front of your body and keep your wrist stable at impact. Solid contact comes from good positioning and timing!",
+        metric_FollowThrough_advice: "Follow through smoothly over your opposite shoulder, letting your body naturally rotate forward. A complete finish prevents injury and ensures full power transfer."
+      }
+    };
+
+    let currentLang = "zh"; // Default to Chinese
+
+    function t(key, ...args) {
+      let text = i18n[currentLang][key] || key;
+      if (args.length > 0) {
+        args.forEach((arg, i) => {
+          text = text.replace(`{${i}}`, arg);
         });
+      }
+      return text;
+    }
 
-        // Helper functions
-        function formatDate(date) {
-            const pad = (n) => n.toString().padStart(2, '0');
-            return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    function updateLanguage() {
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (i18n[currentLang][key]) {
+          el.innerText = i18n[currentLang][key];
         }
+      });
+      elLangToggle.innerText = i18n[currentLang].langBtn;
 
-        function bandOf(score) {
-            if (score >= 85) return "high";
-            if (score >= 70) return "med";
-            return "low";
-        }
+      // Re-render JS content
+      loadData();
+    }
 
-        function createCard(record, index) {
-            let rawOverall = Number(record.overall || 0);
-            if (rawOverall > 0 && rawOverall <= 10) rawOverall *= 10;
-            const score = rawOverall.toFixed(1);
+    // Language Toggle
+    elLangToggle.addEventListener("click", () => {
+      currentLang = currentLang === "en" ? "zh" : "en";
+      updateLanguage();
+    });
 
-            const band = bandOf(rawOverall);
-            const bandClass = band === 'high' ? 'hi' : band === 'med' ? 'med' : 'low';
-            const bandLabel = band.toUpperCase();
+    // Theme Toggle
+    elThemeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("light-mode");
+    });
 
-            let hsRaw = Number(record.HitballSwing || 0);
-            if (hsRaw > 0 && hsRaw <= 10) hsRaw *= 10;
-            const hs = hsRaw.toFixed(1);
+    // Helper functions
+    function formatDate(date) {
+      const pad = (n) => n.toString().padStart(2, "0");
+      return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
 
-            let fsRaw = Number(record.ForwardSwing || 0);
-            if (fsRaw > 0 && fsRaw <= 10) fsRaw *= 10;
-            const fs = fsRaw.toFixed(1);
+    function bandOf(score) {
+      if (score >= 85) return "high";
+      if (score >= 70) return "med";
+      return "low";
+    }
 
-            let bsRaw = Number(record.Backswing || 0);
-            if (bsRaw > 0 && bsRaw <= 10) bsRaw *= 10;
-            const bs = bsRaw.toFixed(1);
+    function createCard(record, index) {
+      let rawOverall = Number(record.overall || 0);
+      if (rawOverall > 0 && rawOverall <= 10) rawOverall *= 10;
+      const score = rawOverall.toFixed(1);
 
-            return `
+      const band = bandOf(rawOverall);
+      const bandClass =
+        band === "hi" || band === "high"
+          ? "hi"
+          : band === "med"
+            ? "med"
+            : "low";
+      const bandLabel = bandClass.toUpperCase();
+
+      let hsRaw = Number(record.HitballSwing || 0);
+      if (hsRaw > 0 && hsRaw <= 10) hsRaw *= 10;
+      const hs = hsRaw.toFixed(1);
+      const hsBand =
+        bandOf(hsRaw) === "high"
+          ? "hi"
+          : bandOf(hsRaw) === "med"
+            ? "med"
+            : "low";
+
+      let fsRaw = Number(record.ForwardSwing || 0);
+      if (fsRaw > 0 && fsRaw <= 10) fsRaw *= 10;
+      const fs = fsRaw.toFixed(1);
+      const fsBand =
+        bandOf(fsRaw) === "high"
+          ? "hi"
+          : bandOf(fsRaw) === "med"
+            ? "med"
+            : "low";
+
+      let bsRaw = Number(record.Backswing || 0);
+      if (bsRaw > 0 && bsRaw <= 10) bsRaw *= 10;
+      const bs = bsRaw.toFixed(1);
+      const bsBand =
+        bandOf(bsRaw) === "high"
+          ? "hi"
+          : bandOf(bsRaw) === "med"
+            ? "med"
+            : "low";
+
+      return `
         <div class="ball-card">
-          <h3>第 ${index + 1} 球</h3>
+          <h3>${t('shot', index + 1)}</h3>
           <div class="pill-score ${bandClass}">
             <span class="pill-val">${score}</span>
-            <span class="pill-label">${bandLabel}</span>
+            <span class="pill-label">${t(bandLabel.toLowerCase())}</span>
           </div>
           <div class="stat-row">
-            <span class="stat-label">擊球瞬間</span>
-            <span class="stat-val">${hs}</span>
+            <div class="stat-header">
+                <span class="stat-label">${t('hitball')}</span>
+                <span class="stat-val">${hs}</span>
+            </div>
+            <div class="stat-bar-bg">
+                <div class="stat-bar-fill ${hsBand}" style="width: ${hs}%;"></div>
+            </div>
           </div>
           <div class="stat-row">
-            <span class="stat-label">出拍前段</span>
-            <span class="stat-val">${fs}</span>
+            <div class="stat-header">
+                <span class="stat-label">${t('forward')}</span>
+                <span class="stat-val">${fs}</span>
+            </div>
+            <div class="stat-bar-bg">
+                <div class="stat-bar-fill ${fsBand}" style="width: ${fs}%;"></div>
+            </div>
           </div>
           <div class="stat-row">
-            <span class="stat-label">拉拍準備</span>
-            <span class="stat-val">${bs}</span>
+            <div class="stat-header">
+                <span class="stat-label">${t('backswing')}</span>
+                <span class="stat-val">${bs}</span>
+            </div>
+            <div class="stat-bar-bg">
+                <div class="stat-bar-fill ${bsBand}" style="width: ${bs}%;"></div>
+            </div>
           </div>
         </div>
       `;
+    }
+
+    // Simple translation using Google Translate free endpoint
+    async function translateText(text, targetLang) {
+      if (!text || text.trim() === "") return text;
+      // If already in target lang roughly (by checking for Chinese characters)
+      const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+      if (targetLang === 'en' && !hasChinese) return text;
+      if (targetLang === 'zh' && hasChinese) return text;
+
+      try {
+        const sourceLang = targetLang === 'en' ? 'zh-TW' : 'en';
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        let translated = "";
+        if (data && data[0]) {
+          data[0].forEach(item => {
+            if (item[0]) translated += item[0];
+          });
+        }
+        return translated || text;
+      } catch (e) {
+        console.error("Translation error:", e);
+        return text; // fallback to original
+      }
+    }
+
+    async function extractAdvice(records) {
+      if (!records || records.length === 0) return t('noAdvice');
+
+      let bestIndex = 0;
+      let bestScore = -1;
+
+      records.forEach((rec, i) => {
+        const score = Number(rec.overall || 0);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = i;
+        }
+      });
+
+      let summary = t('summaryTitle');
+      summary += t('summaryBody', bestIndex + 1);
+
+      summary += t('pointsTitle');
+      for (let i = 0; i < records.length; i++) {
+        const rec = records[i];
+        let adviceText = rec.combined_advice || rec.advice || t('noSpecialAdvice');
+        adviceText = adviceText
+          .replace(/[A-Z]\./g, "\n•")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+
+        if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(adviceText)) {
+          adviceText = await translateText(adviceText, 'en');
+        } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(adviceText)) {
+          adviceText = await translateText(adviceText, 'zh-TW');
         }
 
-        function extractAdvice(records) {
-            if (!records || records.length === 0) return "（無綜合評論數據）";
+        summary += t('pointPrefix', i + 1) + `${adviceText}\n\n`;
+      }
 
-            let bestIndex = 0;
-            let bestScore = -1;
+      return summary.trim();
+    }
 
-            records.forEach((rec, i) => {
-                const score = Number(rec.overall || 0);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestIndex = i;
-                }
-            });
+    async function extractPriority(records) {
+      // Find lowest scores across the 3 balls for the available 5 metrics
+      const sumScores = {
+        metric_Head: 0,
+        metric_Backswing: 0,
+        metric_ForwardSwing: 0,
+        metric_HitballSwing: 0,
+        metric_FollowThrough: 0
+      };
+      const count = records.length;
+      if (count === 0) return t('noImprovement');
 
-            let summary = `【三球技術總結】\n`;
-            summary += `在近期的揮拍動作中，您的整體協調性漸入佳境！特別是【第 ${bestIndex + 1} 球】的表現具有極高的水準 ✨\n`;
-            summary += `這球在「拉拍準備」與「擊球瞬間」的動力鍊傳導最為完整，擊球點與拍面控制非常確實。建議您在未來的訓練中，多去回想並保持這一次完美擊球的身體記憶！\n\n`;
+      records.forEach((r) => {
+        sumScores["metric_Head"] += Number(r.Head || 0);
+        sumScores["metric_Backswing"] += Number(r.Backswing || 0);
+        sumScores["metric_ForwardSwing"] += Number(r.ForwardSwing || 0);
+        sumScores["metric_HitballSwing"] += Number(r.HitballSwing || 0);
+        sumScores["metric_FollowThrough"] += Number(r.FollowThrough || 0);
+      });
 
-            summary += `【教練各球點評】\n`;
-            records.forEach((rec, i) => {
-                let adviceText = rec.combined_advice || rec.advice || "無特別建議";
-                adviceText = adviceText.replace(/[A-Z]\./g, "\n•").replace(/\n{3,}/g, "\n\n").trim();
-                summary += `► 第 ${i + 1} 球：\n${adviceText}\n\n`;
-            });
+      const avgScores = Object.entries(sumScores).map(([k, v]) => ({
+        key: k,
+        name: t(k),
+        score: v / count,
+      }));
+      // Sort ascending to find lowest scores
+      avgScores.sort((a, b) => a.score - b.score);
 
-            return summary.trim();
+      const lowestThree = avgScores.slice(0, 3);
+      let html = t('priorityTitle', count);
+      lowestThree.forEach((item, i) => {
+        const formatScore = item.score.toFixed(1);
+        // Highlight very low scores
+        const alertMarkStr = item.score < 60 ? t('alertMark') : "";
+        const adviceStr = t(item.key + '_advice');
+        html += t('priorityItem', i + 1, item.name, formatScore, alertMarkStr, adviceStr);
+      });
+
+      return html.trim();
+    }
+
+    async function loadData() {
+      let data = [];
+      try {
+        // Priority: TENNIS_ANALYSIS_SYNC (array of latest). Fallback: tennisAnalysisData (single object).
+        const rawSync = localStorage.getItem(STORAGE_KEY_SYNC);
+        const rawV3 = localStorage.getItem(STORAGE_KEY_V3);
+
+        if (rawSync) {
+          let parsed = JSON.parse(rawSync);
+          if (Array.isArray(parsed)) {
+            data = parsed;
+          } else {
+            data = [parsed];
+          }
+        } else if (rawV3) {
+          let parsed = JSON.parse(rawV3);
+          data = Array.isArray(parsed) ? parsed : [parsed];
         }
+      } catch (e) {
+        console.error("Failed to parse local storage data", e);
+      }
 
-        function extractPriority(records) {
-            // Find lowest scores across the 3 balls for the available 5 metrics
-            const sumScores = {
-                "頭部視線穩定": 0, "拉拍與側身": 0, "出拍前段": 0, "擊球瞬間": 0, "收拍動作": 0
-            };
-            const count = records.length;
-            if (count === 0) return "無改善建議";
+      if (!data || data.length === 0) {
+        elNoData.style.display = "block";
+        elReportDate.textContent = t('noDataDate');
+        return;
+      }
 
-            records.forEach(r => {
-                sumScores["頭部視線穩定"] += Number(r.Head || 0);
-                sumScores["拉拍與側身"] += Number(r.Backswing || 0);
-                sumScores["出拍前段"] += Number(r.ForwardSwing || 0);
-                sumScores["擊球瞬間"] += Number(r.HitballSwing || 0);
-                sumScores["收拍動作"] += Number(r.FollowThrough || 0);
-            });
-
-            const avgScores = Object.entries(sumScores).map(([k, v]) => ({ name: k, score: v / count }));
-            // Sort ascending to find lowest scores
-            avgScores.sort((a, b) => a.score - b.score);
-
-            const lowestThree = avgScores.slice(0, 3);
-            let html = `根據最近 ${count} 球的平均表現數據，AI 教練建議您優先針對以下三大核心環節進行調整與加強：\n\n`;
-            lowestThree.forEach((item, i) => {
-                const formatScore = item.score.toFixed(1);
-                // Highlight very low scores
-                const alertMark = item.score < 60 ? " ⚠️ (亟需改善)" : "";
-                html += `► 第 ${i + 1} 優先改善：【${item.name}】\n  ↳ 目前平均掌握度：${formatScore} / 100 分${alertMark}\n\n`;
-            });
-
-            return html.trim();
+      // Deduplicate consecutive identical records (same scores)
+      // This prevents the exact same artificial 88.0/90.0 balls from duplicating
+      let uniqueData = [];
+      data.forEach((rec) => {
+        const isDuplicate =
+          uniqueData.length > 0 &&
+          uniqueData[uniqueData.length - 1].overall === rec.overall &&
+          uniqueData[uniqueData.length - 1].HitballSwing === rec.HitballSwing;
+        if (!isDuplicate) {
+          uniqueData.push(rec);
         }
+      });
 
-        function loadData() {
-            let data = [];
-            try {
-                // Priority: TENNIS_ANALYSIS_SYNC (array of latest). Fallback: tennisAnalysisData (single object).
-                const rawSync = localStorage.getItem(STORAGE_KEY_SYNC);
-                const rawV3 = localStorage.getItem(STORAGE_KEY_V3);
+      // data is unshifted (newest at index 0).
+      // We want the latest 3 distinct shots.
+      let latestThree = uniqueData.slice(0, 3);
 
-                if (rawSync) {
-                    let parsed = JSON.parse(rawSync);
-                    if (Array.isArray(parsed)) {
-                        data = parsed;
-                    } else {
-                        data = [parsed];
-                    }
-                } else if (rawV3) {
-                    let parsed = JSON.parse(rawV3);
-                    data = Array.isArray(parsed) ? parsed : [parsed];
-                }
-            } catch (e) {
-                console.error("Failed to parse local storage data", e);
-            }
-
-            if (!data || data.length === 0) {
-                elNoData.style.display = "block";
-                elReportDate.textContent = "分析報告產出時間：無資料";
-                return;
-            }
-
-            // Deduplicate consecutive identical records (same scores)
-            // This prevents the exact same artificial 88.0/90.0 balls from duplicating
-            let uniqueData = [];
-            data.forEach(rec => {
-                const isDuplicate = uniqueData.length > 0 &&
-                    uniqueData[uniqueData.length - 1].overall === rec.overall &&
-                    uniqueData[uniqueData.length - 1].HitballSwing === rec.HitballSwing;
-                if (!isDuplicate) {
-                    uniqueData.push(rec);
-                }
-            });
-
-            // data is unshifted (newest at index 0).
-            // We want the latest 3 distinct shots.
-            let latestThree = uniqueData.slice(0, 3);
-
-            // Sort by folder/trajectory name (id) so trajectory_1 is always first, 2 is second, etc.
-            // This ensures strict chronological order matching the UI dropdown regardless of storage queueing order
-            const targetData = latestThree.sort((a, b) => {
-                if (a.id && b.id) {
-                    return a.id.localeCompare(b.id, undefined, { numeric: true });
-                }
-                return 0;
-            });
-
-            elReportDate.textContent = `分析報告產出時間：${formatDate(new Date())}`;
-            elContent.style.display = "block";
-
-            // Render Cards
-            elCardsContainer.innerHTML = targetData.map((rec, i) => createCard(rec, i)).join("");
-
-            // Calculate Average Overall
-            const totalScore = targetData.reduce((sum, rec) => {
-                let rawO = Number(rec.overall || 0);
-                if (rawO > 0 && rawO <= 10) rawO *= 10;
-                return sum + rawO;
-            }, 0);
-            const avgScore = targetData.length > 0 ? (totalScore / targetData.length) : 0;
-            const elAvgScore = document.getElementById("avgScore");
-            if (elAvgScore) elAvgScore.textContent = avgScore.toFixed(1);
-
-            // Render Advice
-            elOverallAdvice.textContent = extractAdvice(targetData);
-            elPriorityAdvice.textContent = extractPriority(targetData);
+      // Sort by folder/trajectory name (id) so trajectory_1 is always first, 2 is second, etc.
+      // This ensures strict chronological order matching the UI dropdown regardless of storage queueing order
+      const targetData = latestThree.sort((a, b) => {
+        if (a.id && b.id) {
+          return a.id.localeCompare(b.id, undefined, { numeric: true });
         }
+        return 0;
+      });
 
-        loadData();
-    </script>
+      elReportDate.textContent = t('reportDate') + formatDate(new Date());
+      elContent.style.display = "block";
+
+      // Render Cards
+      elCardsContainer.innerHTML = targetData
+        .map((rec, i) => createCard(rec, i))
+        .join("");
+
+      // Calculate Average Overall
+      const totalScore = targetData.reduce((sum, rec) => {
+        let rawO = Number(rec.overall || 0);
+        if (rawO > 0 && rawO <= 10) rawO *= 10;
+        return sum + rawO;
+      }, 0);
+      const avgScore =
+        targetData.length > 0 ? totalScore / targetData.length : 0;
+      const elAvgScore = document.getElementById("avgScore");
+      if (elAvgScore) elAvgScore.textContent = avgScore.toFixed(1);
+
+      // Render Advice (async)
+      elOverallAdvice.textContent = t('loading');
+      elPriorityAdvice.textContent = t('loading');
+
+      const adviceStr = await extractAdvice(targetData);
+      const priorityStr = await extractPriority(targetData);
+
+      elOverallAdvice.textContent = adviceStr;
+      elPriorityAdvice.textContent = priorityStr;
+    }
+    updateLanguage(); // This will render everything with correct lang because loadData() is at end
+  </script>
 </body>
 
 </html>
