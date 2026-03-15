@@ -835,6 +835,12 @@
           </div>
           <div class="control-group">
             <div class="control-header">Recording Control</div>
+            <form class="api-form" data-endpoint="/start_recording">
+              <button type="submit" class="control-button">Start Recording</button>
+            </form>
+            <form class="api-form" data-endpoint="/stop_recording">
+              <button type="submit" class="control-button">Stop Recording</button>
+            </form>
             <!-- Auto 按鈕 -->
             <form class="api-form" data-endpoint="">
               <button id="auto" type="submit" class="control-button">
@@ -851,24 +857,6 @@
                 Check Queue Status
               </button>
             </form>
-            <!-- 測試通知 按鈕 (僅供開發測試) -->
-            <div
-              style="
-                margin-top: 10px;
-                border-top: 1px solid #444;
-                padding-top: 10px;
-              "
-            >
-              <button
-                id="testNotifyBtn"
-                type="button"
-                class="control-button"
-                style="background: #34495e; font-size: 16px"
-                title="Test the notification system UI and sound"
-              >
-                Test Notification UI
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -5311,10 +5299,6 @@
         console.log("⏱️ [通知系統] 啟動監控機制...");
         checkFirstBallReady();
       }, 500);
-
-      document.getElementById("testNotifyBtn").onclick = () => {
-        notifyBallReady("測試用戶", 1);
-      };
 
       async function checkFirstBallReady() {
         try {
