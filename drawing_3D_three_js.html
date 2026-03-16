@@ -701,6 +701,52 @@
       }
     </style>
 
+    <!-- 選手位置調整面板 樣式 -->
+    <style>
+      #playerPosPad {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(10, 16, 30, 0.88);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 10px;
+        padding: 8px 10px 10px;
+        z-index: 1200;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: none;
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+      }
+      #playerPosPad .pad-title {
+        font-size: 11px;
+        color: #aac;
+        text-align: center;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+      }
+      #playerPosPad .pad-footer {
+        font-size: 10px;
+        color: #778;
+        text-align: center;
+        margin-top: 4px;
+      }
+      #playerPosPad button {
+        display: block;
+        width: 100%;
+        margin-top: 6px;
+        padding: 3px 0;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 5px;
+        color: #ccc;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      #playerPosPad button:hover { background: rgba(255,255,255,0.2); }
+      #courtPadCanvas { display: block; cursor: crosshair; border-radius: 4px; }
+    </style>
+
     <!-- 載入 Three.js 與相關套件 -->
     <script type="importmap">
       {
@@ -762,6 +808,16 @@
         />
       </div>
       <div id="jointControls" class="checkbox-grid"></div>
+    </div>
+
+    <!-- 選手位置調整面板 -->
+    <div id="playerPosPad">
+      <div class="pad-title">📍 Player Position</div>
+      <canvas id="courtPadCanvas" width="110" height="220"></canvas>
+      <div class="pad-footer">
+        X: <span id="offsetXLabel">0.0</span>m &nbsp; Z: <span id="offsetZLabel">0.0</span>m
+      </div>
+      <button onclick="applyPlayerOffset(0,0);">Reset</button>
     </div>
 
     <!-- Feedback 區塊 (右側) -->
@@ -886,6 +942,8 @@
         showingFullTrajectory = false;
       let globalCenter = { x: 0, z: 0 },
         globalMinY = 0;
+      let baseGlobalCenter = { x: 0, z: 0 };
+      let playerOffsetX = 0, playerOffsetZ = 0; // scene-space meters
       let originalFeedbackContent = "";
       let originalOverallContent = "";
       let isTranslated = false;
@@ -2787,11 +2845,12 @@
         grid.material.transparent = true;
         scene.add(grid);
 
-        // === Pickleball Court 44ft × 20ft（球場線條） ===
+        // === Tennis Court 78ft × 36ft（網球場線條） ===
         const FT = 0.3048;
-        const courtLength = 44 * FT;
-        const courtWidth = 20 * FT;
-        const NVZ = 7 * FT;
+        const courtLength = 78 * FT;          // 場地全長
+        const courtWidthDoubles = 36 * FT;    // 雙打寬度
+        const courtWidthSingles = 27 * FT;    // 單打寬度
+        const serviceLineZ = 21 * FT;         // 發球線距網距離
 
         const lineColor = 0xffffff;
         const lineMat = new THREE.LineBasicMaterial({
@@ -2800,8 +2859,9 @@
         });
         const courtGroup = new THREE.Group();
 
-        const HALF_L = courtLength / 2;
-        const HALF_W = courtWidth / 2;
+        const HALF_L = courtLength / 2;           // 39ft
+        const HALF_D = courtWidthDoubles / 2;     // 18ft（雙打半寬）
+        const HALF_S = courtWidthSingles / 2;     // 13.5ft（單打半寬）
         const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
         const addLine = (pts) =>
           courtGroup.add(
@@ -2811,25 +2871,33 @@
             ),
           );
 
-        // 邊界（Sidelines & Baselines）
+        // 外框：雙打邊線 + 底線
         addLine([
-          V3(-HALF_W, 0, -HALF_L),
-          V3(HALF_W, 0, -HALF_L),
-          V3(HALF_W, 0, HALF_L),
-          V3(-HALF_W, 0, HALF_L),
-          V3(-HALF_W, 0, -HALF_L),
+          V3(-HALF_D, 0, -HALF_L),
+          V3(HALF_D, 0, -HALF_L),
+          V3(HALF_D, 0, HALF_L),
+          V3(-HALF_D, 0, HALF_L),
+          V3(-HALF_D, 0, -HALF_L),
         ]);
 
-        // 網線（置中 z=0）
-        addLine([V3(-HALF_W, 0, 0), V3(HALF_W, 0, 0)]);
+        // 單打邊線（Singles Sidelines）
+        addLine([V3(-HALF_S, 0, -HALF_L), V3(-HALF_S, 0, HALF_L)]);
+        addLine([V3(HALF_S, 0, -HALF_L), V3(HALF_S, 0, HALF_L)]);
 
-        // 廚房線（距網 ±7ft）
-        addLine([V3(-HALF_W, 0, NVZ), V3(HALF_W, 0, NVZ)]);
-        addLine([V3(-HALF_W, 0, -NVZ), V3(HALF_W, 0, -NVZ)]);
+        // 發球線（Service Lines，距網 ±21ft，只在單打寬度內）
+        addLine([V3(-HALF_S, 0, serviceLineZ), V3(HALF_S, 0, serviceLineZ)]);
+        addLine([V3(-HALF_S, 0, -serviceLineZ), V3(HALF_S, 0, -serviceLineZ)]);
 
-        // Centerlines（各半場：從廚房線到底線，不穿過廚房）
-        addLine([V3(0, 0, NVZ), V3(0, 0, HALF_L)]);
-        addLine([V3(0, 0, -NVZ), V3(0, 0, -HALF_L)]);
+        // 中線（Center Service Line，從一側發球線到另一側）
+        addLine([V3(0, 0, -serviceLineZ), V3(0, 0, serviceLineZ)]);
+
+        // 網線（Net，雙打全寬，置中 z=0）
+        addLine([V3(-HALF_D, 0, 0), V3(HALF_D, 0, 0)]);
+
+        // 底線中心記號（Center Marks，約 10cm）
+        const CM = 0.1;
+        addLine([V3(0, 0, -HALF_L), V3(0, 0, -HALF_L + CM)]);
+        addLine([V3(0, 0, HALF_L), V3(0, 0, HALF_L - CM)]);
 
         // 整個場地旋轉 90°
         courtGroup.rotation.y = -Math.PI / 2;
@@ -3764,6 +3832,89 @@
         globalCenter.x = sx / footPositions.length;
         globalCenter.z = sz / footPositions.length;
         globalMinY = Math.min(...footPositions.map((p) => p.y));
+        baseGlobalCenter = { x: globalCenter.x, z: globalCenter.z };
+        globalCenter.x -= playerOffsetX / SCALE_FACTOR;
+        globalCenter.z += playerOffsetZ / SCALE_FACTOR;
+      }
+
+      function applyPlayerOffset(dx, dz) {
+        playerOffsetX = dx;
+        playerOffsetZ = dz;
+        if (baseGlobalCenter) {
+          globalCenter.x = baseGlobalCenter.x - playerOffsetX / SCALE_FACTOR;
+          globalCenter.z = baseGlobalCenter.z + playerOffsetZ / SCALE_FACTOR;
+        }
+        window.__lastPoseFrameIdx = null;
+        window.__jointJumpGuard = {};
+        updatePose(currentFrame);
+        if (showingFullTrajectory) calculateFullTrajectory();
+        drawCourtPad();
+      }
+
+      function drawCourtPad() {
+        const canvas = document.getElementById('courtPadCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        const M = 8;
+        const DW = W - 2 * M, DH = H - 2 * M;
+        const CX = M + DW / 2, CY = M + DH / 2;
+        const HALF_L_M = 78 * 0.3048 / 2;   // 11.89m
+        const HALF_D_M = 36 * 0.3048 / 2;   // 5.49m doubles
+        const HALF_S_M = 27 * 0.3048 / 2;   // 4.12m singles
+        const SVC_M    = 21 * 0.3048;        // 6.40m
+        const SX = DW / (2 * HALF_D_M);
+        const SY = DH / (2 * HALF_L_M);
+        // world helpers: wz -> canvas X, wx -> canvas Y
+        const cpX = (wz) => CX + wz * SX;
+        const cpY = (wx) => CY - wx * SY;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#1a472a';
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 1;
+        // Outer doubles frame
+        ctx.strokeRect(cpX(-HALF_D_M), cpY(HALF_L_M), DW, DH);
+        // Singles sidelines
+        ctx.beginPath();
+        ctx.moveTo(cpX(-HALF_S_M), cpY(-HALF_L_M));
+        ctx.lineTo(cpX(-HALF_S_M), cpY(HALF_L_M));
+        ctx.moveTo(cpX(HALF_S_M),  cpY(-HALF_L_M));
+        ctx.lineTo(cpX(HALF_S_M),  cpY(HALF_L_M));
+        ctx.stroke();
+        // Net
+        ctx.beginPath();
+        ctx.moveTo(cpX(-HALF_D_M), cpY(0));
+        ctx.lineTo(cpX(HALF_D_M),  cpY(0));
+        ctx.stroke();
+        // Service lines
+        ctx.beginPath();
+        ctx.moveTo(cpX(-HALF_S_M), cpY(SVC_M));
+        ctx.lineTo(cpX(HALF_S_M),  cpY(SVC_M));
+        ctx.moveTo(cpX(-HALF_S_M), cpY(-SVC_M));
+        ctx.lineTo(cpX(HALF_S_M),  cpY(-SVC_M));
+        ctx.stroke();
+        // Center service line
+        ctx.beginPath();
+        ctx.moveTo(cpX(0), cpY(-SVC_M));
+        ctx.lineTo(cpX(0), cpY(SVC_M));
+        ctx.stroke();
+        // Player dot
+        const dotX = CX + playerOffsetZ * SX;
+        const dotY = CY - playerOffsetX * SY;
+        ctx.beginPath();
+        ctx.arc(
+          Math.max(M, Math.min(W - M, dotX)),
+          Math.max(M, Math.min(H - M, dotY)),
+          5, 0, Math.PI * 2
+        );
+        ctx.fillStyle = '#ffdd00';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        document.getElementById('offsetXLabel').textContent = playerOffsetX.toFixed(1);
+        document.getElementById('offsetZLabel').textContent = playerOffsetZ.toFixed(1);
       }
 
       // 簡單驗證點資料是否有效
@@ -5285,7 +5436,61 @@
       init();
       animate(); // 啟動動畫循環
       window.toggleMannequin = toggleMannequin; // 暴露給 HTML onclick
+      window.applyPlayerOffset = applyPlayerOffset; // 暴露給 HTML onclick
       console.log("🚀 [系統啟動] 3D 軌跡頁面載入完成");
+
+      // === Court Pad 拖拉互動 ===
+      (function initCourtPad() {
+        const canvas = document.getElementById('courtPadCanvas');
+        if (!canvas) return;
+        drawCourtPad();
+
+        const M = 8, DW = canvas.width - 2 * M, DH = canvas.height - 2 * M;
+        const CX = M + DW / 2, CY = M + DH / 2;
+        const HALF_L_M = 78 * 0.3048 / 2;
+        const HALF_D_M = 36 * 0.3048 / 2;
+        const SX = DW / (2 * HALF_D_M);
+        const SY = DH / (2 * HALF_L_M);
+
+        let dragging = false;
+
+        function getOffset(clientX, clientY) {
+          const rect = canvas.getBoundingClientRect();
+          const mx = clientX - rect.left;
+          const my = clientY - rect.top;
+          const oz = Math.max(-HALF_D_M, Math.min(HALF_D_M, (mx - CX) / SX));
+          const ox = Math.max(-HALF_L_M, Math.min(HALF_L_M, -(my - CY) / SY));
+          return { ox, oz };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+          dragging = true;
+          const { ox, oz } = getOffset(e.clientX, e.clientY);
+          applyPlayerOffset(ox, oz);
+        });
+        window.addEventListener('mousemove', (e) => {
+          if (!dragging) return;
+          const { ox, oz } = getOffset(e.clientX, e.clientY);
+          applyPlayerOffset(ox, oz);
+        });
+        window.addEventListener('mouseup', () => { dragging = false; });
+
+        canvas.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          dragging = true;
+          const t = e.touches[0];
+          const { ox, oz } = getOffset(t.clientX, t.clientY);
+          applyPlayerOffset(ox, oz);
+        }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          if (!dragging) return;
+          const t = e.touches[0];
+          const { ox, oz } = getOffset(t.clientX, t.clientY);
+          applyPlayerOffset(ox, oz);
+        }, { passive: false });
+        canvas.addEventListener('touchend', () => { dragging = false; });
+      })();
 
       // --- 自動偵測所有球的完成標記 ---
       let lastCheckedFolder = null;
