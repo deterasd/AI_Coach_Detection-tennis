@@ -747,6 +747,11 @@
     <button class="btn" onclick="window.close()" data-i18n="close">關閉</button>
     <button class="btn" id="langToggle">English</button>
     <button class="btn" id="themeToggle" data-i18n="theme">切換亮暗色</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label for="participantInput" data-i18n="participantLabel" style="font-size:14px;font-weight:500;white-space:nowrap;">參與者：</label>
+      <input id="participantInput" type="text" data-i18n-placeholder="participantPlaceholder" placeholder="輸入姓名"
+        style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:99px;padding:8px 16px;color:var(--text);font-size:14px;font-family:var(--font-main);outline:none;width:140px;" />
+    </div>
     <button class="btn btn-primary" onclick="window.print()" data-i18n="print">
       列印 A4 報告
     </button>
@@ -764,11 +769,21 @@
     </div>
 
     <div id="reportContent" style="display: none">
-      <div class="summary-bar">
-        <div class="summary-label">
-          <i class="fas fa-robot"></i> <span data-i18n="overallScore">綜合能力評分</span>
+      <div class="summary-bar" style="position:relative;">
+        <!-- 左：參與者 -->
+        <div class="summary-label" id="participantDisplay" style="flex:1;justify-content:flex-start;">
+          <i class="fas fa-user"></i>
+          <span data-i18n="participantLabel">參與者：</span><span id="participantName">—</span>
         </div>
-        <div class="summary-score" id="avgScore">0.0</div>
+        <!-- 中央：綜合評分（絕對置中） -->
+        <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;">
+          <div class="summary-label">
+            <i class="fas fa-robot"></i> <span data-i18n="overallScore">綜合能力評分</span>
+          </div>
+          <div class="summary-score" id="avgScore">0.0</div>
+        </div>
+        <!-- 右：對稱空白 -->
+        <div style="flex:1;"></div>
       </div>
 
       <div class="metrics-container" id="cardsContainer">
@@ -813,6 +828,8 @@
         noDataDate: "分析報告產出時間：無資料",
         noData: "找不到最近的分析數據，請先在主畫面匯入資料或進行影片分析。",
         overallScore: "綜合能力評分",
+        participantLabel: "參與者：",
+        participantPlaceholder: "輸入姓名",
         techSummary: "🎾 AI 教練技術總結 (綜合三球)",
         priorityItems: "🎯 訓練菜單：優先改善項目",
         loading: "加載中...",
@@ -854,6 +871,8 @@
         noDataDate: "Report Generated: No Data",
         noData: "No recent analysis data found. Please import data or analyze a video on the main screen first.",
         overallScore: "Overall Rating",
+        participantLabel: "Participant: ",
+        participantPlaceholder: "Enter name",
         techSummary: "🎾 AI Coach Tech Summary (3 Shots)",
         priorityItems: "🎯 Training Menu: Priority Improvements",
         loading: "Loading...",
@@ -889,6 +908,8 @@
 
     let currentLang = "zh"; // Default to Chinese
 
+    const STORAGE_KEY_PARTICIPANT = "TENNIS_PARTICIPANT_NAME";
+
     function t(key, ...args) {
       let text = i18n[currentLang][key] || key;
       if (args.length > 0) {
@@ -899,6 +920,29 @@
       return text;
     }
 
+    // Participant name logic
+    const elParticipantInput = document.getElementById("participantInput");
+    const elParticipantName = document.getElementById("participantName");
+
+    function updateParticipantDisplay() {
+      const name = elParticipantInput.value.trim();
+      elParticipantName.textContent = name || "—";
+      if (name) {
+        localStorage.setItem(STORAGE_KEY_PARTICIPANT, name);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_PARTICIPANT);
+      }
+    }
+
+    elParticipantInput.addEventListener("input", updateParticipantDisplay);
+
+    // Load saved name on page load
+    const savedName = localStorage.getItem(STORAGE_KEY_PARTICIPANT);
+    if (savedName) {
+      elParticipantInput.value = savedName;
+      elParticipantName.textContent = savedName;
+    }
+
     function updateLanguage() {
       document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.getAttribute("data-i18n");
@@ -906,6 +950,11 @@
           el.innerText = i18n[currentLang][key];
         }
       });
+      // Update placeholder for participant input
+      const phKey = elParticipantInput.getAttribute("data-i18n-placeholder");
+      if (phKey && i18n[currentLang][phKey]) {
+        elParticipantInput.placeholder = i18n[currentLang][phKey];
+      }
       elLangToggle.innerText = i18n[currentLang].langBtn;
 
       // Re-render JS content
