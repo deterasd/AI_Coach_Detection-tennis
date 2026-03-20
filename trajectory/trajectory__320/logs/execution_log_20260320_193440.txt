@@ -1,0 +1,47 @@
+2026-03-20 19:34:40 [INFO] 🎾 開始 陳孝宗0320 的完整軌跡分析流程
+2026-03-20 19:34:40 [INFO] 📁 輸出資料夾: trajectory\陳孝宗0320__trajectory\trajectory__3
+2026-03-20 19:34:40 [INFO] 📋 日誌檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\logs\execution_log_20260320_193440.txt
+2026-03-20 19:34:40 [INFO] 系統資訊: CUDA 可用 - NVIDIA GeForce RTX 5070 (記憶體: 11.9GB)
+2026-03-20 19:34:47 [INFO] 偵測到 3 個球對
+2026-03-20 19:34:47 [INFO] 
+處理第 1 顆球...
+2026-03-20 19:34:47 [INFO] 
+開始處理: 陳孝宗0320__球1
+2026-03-20 19:34:47 [INFO] 🎬 使用側面分割片段: 陳孝宗0320__1_side_segment.mp4
+2026-03-20 19:34:47 [INFO] 🎬 使用45度分割片段: 陳孝宗0320__1_45_segment.mp4
+2026-03-20 19:34:51 [INFO] 📹 Step 3 - 側面影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_1\陳孝宗0320__1_side_segment.mp4
+2026-03-20 19:34:51 [INFO]    軌跡檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_1\陳孝宗0320__球1_side(2D_trajectory_smoothed).json
+2026-03-20 19:34:53 [INFO] 📹 Step 3 - 45度影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_1\陳孝宗0320__1_45_segment.mp4
+2026-03-20 19:34:53 [INFO]    軌跡檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_1\陳孝宗0320__球1_45(2D_trajectory_smoothed).json
+2026-03-20 19:34:56 [INFO] ✅ 影片合併完成: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_1\陳孝宗0320__球1_full_video.mp4
+2026-03-20 19:34:59 [INFO] ✅ GPT 反饋已保存: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_1\陳孝宗0320__球1_segment_gpt_feedback.json
+2026-03-20 19:34:59 [INFO] ✅ 陳孝宗0320__球1 處理完成
+2026-03-20 19:34:59 [INFO] ✅ 第 1 顆球處理完成
+2026-03-20 19:34:59 [INFO] 
+處理第 2 顆球...
+2026-03-20 19:34:59 [INFO] 
+開始處理: 陳孝宗0320__球2
+2026-03-20 19:34:59 [INFO] 🎬 使用側面分割片段: 陳孝宗0320__2_side_segment.mp4
+2026-03-20 19:34:59 [INFO] 🎬 使用45度分割片段: 陳孝宗0320__2_45_segment.mp4
+2026-03-20 19:35:02 [INFO] 📹 Step 3 - 側面影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_2\陳孝宗0320__2_side_segment.mp4
+2026-03-20 19:35:02 [INFO]    軌跡檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_2\陳孝宗0320__球2_side(2D_trajectory_smoothed).json
+2026-03-20 19:35:04 [INFO] 📹 Step 3 - 45度影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_2\陳孝宗0320__2_45_segment.mp4
+2026-03-20 19:35:04 [INFO]    軌跡檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_2\陳孝宗0320__球2_45(2D_trajectory_smoothed).json
+2026-03-20 19:35:07 [INFO] ✅ 影片合併完成: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_2\陳孝宗0320__球2_full_video.mp4
+2026-03-20 19:35:11 [INFO] ✅ GPT 反饋已保存: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_2\陳孝宗0320__球2_segment_gpt_feedback.json
+2026-03-20 19:35:11 [INFO] ✅ 陳孝宗0320__球2 處理完成
+2026-03-20 19:35:11 [INFO] ✅ 第 2 顆球處理完成
+2026-03-20 19:35:11 [INFO] 
+處理第 3 顆球...
+2026-03-20 19:35:11 [INFO] 
+開始處理: 陳孝宗0320__球3
+2026-03-20 19:35:11 [INFO] 🎬 使用側面分割片段: 陳孝宗0320__3_side_segment.mp4
+2026-03-20 19:35:11 [INFO] 🎬 使用45度分割片段: 陳孝宗0320__3_45_segment.mp4
+2026-03-20 19:35:15 [INFO] 📹 Step 3 - 側面影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_3\陳孝宗0320__3_side_segment.mp4
+2026-03-20 19:35:15 [INFO]    軌跡檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_3\陳孝宗0320__球3_side(2D_trajectory_smoothed).json
+2026-03-20 19:35:17 [INFO] 📹 Step 3 - 45度影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_3\陳孝宗0320__3_45_segment.mp4
+2026-03-20 19:35:17 [INFO]    軌跡檔案: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_3\陳孝宗0320__球3_45(2D_trajectory_smoothed).json
+2026-03-20 19:35:20 [INFO] ✅ 影片合併完成: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_3\陳孝宗0320__球3_full_video.mp4
+2026-03-20 19:35:24 [INFO] ✅ GPT 反饋已保存: trajectory\陳孝宗0320__trajectory\trajectory__3\trajectory_3\陳孝宗0320__球3_segment_gpt_feedback.json
+2026-03-20 19:35:24 [INFO] ✅ 陳孝宗0320__球3 處理完成
+2026-03-20 19:35:24 [INFO] ✅ 第 3 顆球處理完成
