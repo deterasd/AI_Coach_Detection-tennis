@@ -1,0 +1,47 @@
+2026-03-22 01:35:22 [INFO] 🎾 開始 CHZ322 的完整軌跡分析流程
+2026-03-22 01:35:22 [INFO] 📁 輸出資料夾: trajectory\CHZ322__trajectory
+2026-03-22 01:35:22 [INFO] 📋 日誌檔案: trajectory\CHZ322__trajectory\logs\execution_log_20260322_013522.txt
+2026-03-22 01:35:22 [INFO] 系統資訊: CUDA 可用 - NVIDIA GeForce RTX 5070 (記憶體: 11.9GB)
+2026-03-22 01:35:29 [INFO] 偵測到 3 個球對
+2026-03-22 01:35:29 [INFO] 
+處理第 1 顆球...
+2026-03-22 01:35:29 [INFO] 
+開始處理: CHZ322__球1
+2026-03-22 01:35:29 [INFO] 🎬 使用側面分割片段: CHZ322__1_side_segment.mp4
+2026-03-22 01:35:29 [INFO] 🎬 使用45度分割片段: CHZ322__1_45_segment.mp4
+2026-03-22 01:35:33 [INFO] 📹 Step 3 - 側面影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\CHZ322__trajectory\trajectory_1\CHZ322__1_side_segment.mp4
+2026-03-22 01:35:33 [INFO]    軌跡檔案: trajectory\CHZ322__trajectory\trajectory_1\CHZ322__球1_side(2D_trajectory_smoothed).json
+2026-03-22 01:35:35 [INFO] 📹 Step 3 - 45度影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\CHZ322__trajectory\trajectory_1\CHZ322__1_45_segment.mp4
+2026-03-22 01:35:35 [INFO]    軌跡檔案: trajectory\CHZ322__trajectory\trajectory_1\CHZ322__球1_45(2D_trajectory_smoothed).json
+2026-03-22 01:35:38 [INFO] ✅ 影片合併完成: trajectory\CHZ322__trajectory\trajectory_1\CHZ322__球1_full_video.mp4
+2026-03-22 01:35:44 [INFO] ✅ GPT 反饋已保存: trajectory\CHZ322__trajectory\trajectory_1\CHZ322__球1_segment_gpt_feedback.json
+2026-03-22 01:35:44 [INFO] ✅ CHZ322__球1 處理完成
+2026-03-22 01:35:44 [INFO] ✅ 第 1 顆球處理完成
+2026-03-22 01:35:44 [INFO] 
+處理第 2 顆球...
+2026-03-22 01:35:44 [INFO] 
+開始處理: CHZ322__球2
+2026-03-22 01:35:44 [INFO] 🎬 使用側面分割片段: CHZ322__2_side_segment.mp4
+2026-03-22 01:35:44 [INFO] 🎬 使用45度分割片段: CHZ322__2_45_segment.mp4
+2026-03-22 01:35:47 [INFO] 📹 Step 3 - 側面影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\CHZ322__trajectory\trajectory_2\CHZ322__2_side_segment.mp4
+2026-03-22 01:35:47 [INFO]    軌跡檔案: trajectory\CHZ322__trajectory\trajectory_2\CHZ322__球2_side(2D_trajectory_smoothed).json
+2026-03-22 01:35:50 [INFO] 📹 Step 3 - 45度影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\CHZ322__trajectory\trajectory_2\CHZ322__2_45_segment.mp4
+2026-03-22 01:35:50 [INFO]    軌跡檔案: trajectory\CHZ322__trajectory\trajectory_2\CHZ322__球2_45(2D_trajectory_smoothed).json
+2026-03-22 01:35:53 [INFO] ✅ 影片合併完成: trajectory\CHZ322__trajectory\trajectory_2\CHZ322__球2_full_video.mp4
+2026-03-22 01:35:57 [INFO] ✅ GPT 反饋已保存: trajectory\CHZ322__trajectory\trajectory_2\CHZ322__球2_segment_gpt_feedback.json
+2026-03-22 01:35:57 [INFO] ✅ CHZ322__球2 處理完成
+2026-03-22 01:35:57 [INFO] ✅ 第 2 顆球處理完成
+2026-03-22 01:35:57 [INFO] 
+處理第 3 顆球...
+2026-03-22 01:35:57 [INFO] 
+開始處理: CHZ322__球3
+2026-03-22 01:35:57 [INFO] 🎬 使用側面分割片段: CHZ322__3_side_segment.mp4
+2026-03-22 01:35:57 [INFO] 🎬 使用45度分割片段: CHZ322__3_45_segment.mp4
+2026-03-22 01:36:01 [INFO] 📹 Step 3 - 側面影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\CHZ322__trajectory\trajectory_3\CHZ322__3_side_segment.mp4
+2026-03-22 01:36:01 [INFO]    軌跡檔案: trajectory\CHZ322__trajectory\trajectory_3\CHZ322__球3_side(2D_trajectory_smoothed).json
+2026-03-22 01:36:04 [INFO] 📹 Step 3 - 45度影片處理: C:\Users\資管所\Pictures\AI_Coach_Detection-tennis-analysis0311\AI_Coach_Detection-tennis-analysis\trajectory\CHZ322__trajectory\trajectory_3\CHZ322__3_45_segment.mp4
+2026-03-22 01:36:04 [INFO]    軌跡檔案: trajectory\CHZ322__trajectory\trajectory_3\CHZ322__球3_45(2D_trajectory_smoothed).json
+2026-03-22 01:36:07 [INFO] ✅ 影片合併完成: trajectory\CHZ322__trajectory\trajectory_3\CHZ322__球3_full_video.mp4
+2026-03-22 01:36:10 [INFO] ✅ GPT 反饋已保存: trajectory\CHZ322__trajectory\trajectory_3\CHZ322__球3_segment_gpt_feedback.json
+2026-03-22 01:36:10 [INFO] ✅ CHZ322__球3 處理完成
+2026-03-22 01:36:10 [INFO] ✅ 第 3 顆球處理完成
