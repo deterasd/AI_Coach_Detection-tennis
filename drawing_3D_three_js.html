@@ -807,6 +807,20 @@
           title="Playback Speed"
         />
       </div>
+      <div class="control-group" id="viewPresetsGroup">
+        <div class="control-header">📷 View</div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; gap: 6px;">
+            <button type="button" id="viewFrontBtn" title="正面（球員面向你）" style="font-size: 12px; padding: 6px 10px; flex: 1;">Front</button>
+            <button type="button" id="viewSideBtn" title="側面" style="font-size: 12px; padding: 6px 10px; flex: 1;">Side</button>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" id="viewBehindBtn" title="背後" style="font-size: 12px; padding: 6px 10px; flex: 1;">Behind</button>
+            <button type="button" id="viewTopBtn" title="俯視" style="font-size: 12px; padding: 6px 10px; flex: 1;">Top</button>
+          </div>
+          <button type="button" id="viewFocusPlayerBtn" title="對焦到當前幀的球員（隨時間軸移動會跟隨）" style="font-size: 12px; padding: 6px 10px; background: #2196F3; color: white;">Focus</button>
+        </div>
+      </div>
       <div id="jointControls" class="checkbox-grid"></div>
     </div>
 
@@ -2790,7 +2804,7 @@
           0.001,
           1000,
         );
-        camera.position.set(4, 4, 8);
+        camera.position.set(0, 1.5, 6);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -2815,7 +2829,15 @@
         // 設定控制器與燈光
         controls = new OrbitControls(camera, labelRenderer.domElement);
         controls.enableDamping = true;
-        controls.target.set(0, 4, 0);
+        controls.dampingFactor = 0.08;
+        controls.target.set(0, 1.2, 0);
+        controls.minDistance = 1.2;
+        controls.maxDistance = 35;
+        controls.zoomSpeed = 1.4;
+        controls.panSpeed = 0.8;
+        controls.rotateSpeed = 0.8;
+        controls.enablePan = true;
+        controls.maxPolarAngle = Math.PI * 0.92;
 
         const hemiLight = new THREE.HemisphereLight(0x8ac6ff, 0x060608, 0.85);
         scene.add(hemiLight);
@@ -3308,10 +3330,8 @@
           .getElementById("controls")
           .insertBefore(trajGroup, fileControlGroup.nextSibling);
 
-        // 檔案目錄選擇與載入 JSON
-        dirInput.addEventListener("change", async (e) => {
-          const rawFiles = Array.from(e.target.files);
-
+        // 共用：處理原始檔案列表（來自 dir 選擇或 URL 參數載入）
+        async function processRawFiles(rawFiles) {
           // 1) 解析所有 *_integrated_analysis.json，建立 dirPath -> sessionPath 對照
           const integratedFiles = rawFiles.filter((f) =>
             f.name.toLowerCase().endsWith("_integrated_analysis.json"),
@@ -3349,13 +3369,24 @@
                 }),
             ),
           );
+          // 若從 URL 載入時 integrated_analysis 的 trajectory_file 格式不符，用 webkitRelativePath 的目錄作為 sessionPath
+          rawFiles.filter((f) => f.name.includes("(3D_trajectory_smoothed).json")).forEach((f) => {
+            const dirPath = getDirPathFromRelativePath(f.webkitRelativePath) || "";
+            if (dirPath && !sessionPathByDirPath.has(dirPath)) {
+              sessionPathByDirPath.set(dirPath, dirPath);
+            }
+          });
           window._sessionPathByDirPath = sessionPathByDirPath;
           window._lastRawFiles = rawFiles;
-
-          // 儲存所有揮拍 session 路徑，供 dashboard 顯示多選下拉
           const allSessions = [...sessionPathByDirPath.values()].sort((a, b) =>
             a.localeCompare(b, "zh-Hant"),
           );
+          // 僅在尚未設定時才從 session 推導 folder；URL ?folder= 優先，避免 JSON trajectory_file 路徑與實際不符
+          if (allSessions.length && !window._currentSelectDirectoryFolder) {
+            window._currentSelectDirectoryFolder = allSessions[0].split("/")[0];
+          }
+
+          // 儲存所有揮拍 session 路徑，供 dashboard 顯示多選下拉
           try {
             localStorage.setItem(
               "LATEST_TRAJECTORY_SESSIONS",
@@ -3489,8 +3520,60 @@
             }
           };
           await loadJSONFile(fileToSelect);
+        }
+
+        dirInput.addEventListener("change", async (e) => {
+          await processRawFiles(Array.from(e.target.files));
         });
         fileControlGroup.appendChild(dirInput);
+
+        // --- 從 2D 頁面帶入的 folder/session 參數，自動載入軌跡 ---
+        (async () => {
+          const params = new URLSearchParams(window.location.search);
+          const folder = params.get("folder");
+          if (!folder) return;
+          window._currentSelectDirectoryFolder = folder;
+          let sessionsToLoad = [];
+          const sessionParam = params.get("session");
+          if (sessionParam) {
+            sessionsToLoad = [sessionParam];
+          } else {
+            try {
+              const subRes = await fetch(`/getSubfolders?folder=${encodeURIComponent(folder)}`);
+              if (subRes.ok) {
+                const subs = await subRes.json();
+                sessionsToLoad = subs.map((s) => `${folder}/${s}`);
+              }
+            } catch (e) {
+              console.warn("[3D] getSubfolders 失敗:", e);
+              return;
+            }
+          }
+          if (sessionsToLoad.length === 0) return;
+          const fakeFiles = [];
+          for (const sess of sessionsToLoad) {
+            try {
+              const jsonRes = await fetch(`/getjson?dir=trajectory/${encodeURIComponent(sess.replace(/\/\/+/g, "/"))}`);
+              if (!jsonRes.ok) continue;
+              const names = await jsonRes.json();
+              const sessEncoded = sess.split("/").map(encodeURIComponent).join("/");
+              for (const name of names) {
+                if (!name.includes("3D_trajectory") && !name.includes("integrated_analysis") && !name.includes("gpt_feedback")) continue;
+                const fileRes = await fetch(`/trajectory/${sessEncoded}/${encodeURIComponent(name)}`);
+                if (!fileRes.ok) continue;
+                const blob = await fileRes.blob();
+                const f = new File([blob], name, { type: "application/json" });
+                Object.defineProperty(f, "webkitRelativePath", { value: `${sess}/${name}` });
+                fakeFiles.push(f);
+              }
+            } catch (e) {
+              console.warn("[3D] 載入 session 失敗:", sess, e);
+            }
+          }
+          if (fakeFiles.length > 0) {
+            await processRawFiles(fakeFiles);
+          }
+        })();
 
         // --- Analysis Report 按鈕（開啟 2D Dashboard）---
         const controls = document.getElementById("controls");
@@ -3503,32 +3586,33 @@
         analysisBtn.title =
           "開啟 2D 分析報告頁面（dashboard.html）。";
         analysisBtn.onclick = () => {
-          // 優先使用獨立追蹤的 session；fallback 用 session 排序後的第一個（不依賴 files 順序）
+          const folder = window._currentSelectDirectoryFolder;
           const map = window._sessionPathByDirPath || new Map();
-          let sessionPath = window._currentSessionPath;
-          if (!sessionPath && map.size) {
-            const sorted = [...map.values()].sort((a, b) =>
-              a.localeCompare(b, "zh-Hant"),
-            );
-            sessionPath = sorted[0];
-          }
-          if (sessionPath && map.size) {
-            localStorage.setItem("LATEST_TRAJECTORY_SESSION", sessionPath);
-            console.log(
-              "[3D] Analysis Report: saved LATEST_TRAJECTORY_SESSION:",
-              sessionPath,
-            );
-            const allSessions = [...map.values()].sort((a, b) =>
-              a.localeCompare(b, "zh-Hant"),
-            );
+          const allSessions = [...map.values()].sort((a, b) =>
+            a.localeCompare(b, "zh-Hant"),
+          );
+          let sessionToLoad = window._currentSessionPath || allSessions[0];
+
+          if (folder) {
             try {
-              localStorage.setItem(
-                "LATEST_TRAJECTORY_SESSIONS",
-                JSON.stringify(allSessions),
-              );
+              localStorage.setItem("LATEST_TRAJECTORY_FOLDER", folder);
+              localStorage.setItem("LATEST_TRAJECTORY_SESSION", sessionToLoad || folder);
+              localStorage.setItem("LATEST_TRAJECTORY_SESSIONS", JSON.stringify(allSessions.length ? allSessions : [folder]));
             } catch (e) {}
           }
-          window.open("/2d_html/dashboard.html", "_blank");
+
+          let url = "/2d_html/dashboard.html";
+          if (folder) {
+            url += "?folder=" + encodeURIComponent(folder);
+            if (sessionToLoad && sessionToLoad.startsWith(folder + "/")) {
+              url += "&session=" + encodeURIComponent(sessionToLoad);
+            }
+            // 傳遞 3D 實際載入的 sessions，讓 2D 下拉只顯示這些（選一個就只顯示一個）
+            if (allSessions.length > 0) {
+              url += "&sessions=" + encodeURIComponent(JSON.stringify(allSessions));
+            }
+          }
+          window.open(url, "_blank");
         };
         analysisGroup.appendChild(analysisBtn);
         controls.appendChild(analysisGroup);
@@ -3686,6 +3770,7 @@
 
             computeGlobalCenterAndMinY();
             document.getElementById("slider").max = trajectoryData.length - 1;
+            if (multiFileTrajectories.visible) updateMultiTrajectories();
             updateFrame();
 
             showingFullTrajectory = true;
@@ -3721,11 +3806,14 @@
           "_gpt_feedback",
         );
         const fi = document.getElementById("dirInput");
+        let fFile = null;
+        if (fi && fi.files && fi.files.length) {
+          fFile = Array.from(fi.files).find((f) => f.name === feedbackFileName);
+        }
+        if (!fFile && window._lastRawFiles && window._lastRawFiles.length) {
+          fFile = window._lastRawFiles.find((f) => f.name === feedbackFileName);
+        }
         if (!fi) return Promise.resolve();
-
-        const fFile = Array.from(fi.files).find(
-          (f) => f.name === feedbackFileName,
-        );
         const feedbackContent = document.getElementById("feedbackContent");
         // 不動 overallContent，除非明確重置
         const overallContent = document.getElementById("overallContent");
@@ -3848,6 +3936,7 @@
         window.__jointJumpGuard = {};
         updatePose(currentFrame);
         if (showingFullTrajectory) calculateFullTrajectory();
+        if (multiFileTrajectories.visible) updateMultiTrajectories();
         drawCourtPad();
       }
 
@@ -3976,8 +4065,71 @@
             visibilityState[n] = true;
           }
         });
-        camera.position.set(4, 4, 8);
-        controls.target.set(0, 4, 0);
+        const target = getPlayerTargetInScene();
+        camera.position.set(target.x, target.y + 0.3, target.z + 6);
+        controls.target.copy(target);
+        controls.update();
+      }
+
+      // 視角預設與對焦（依 player position 校準）
+      function getPlayerTargetInScene() {
+        return new THREE.Vector3(playerOffsetX, 1.2, playerOffsetZ);
+      }
+
+      function applyViewPreset(name) {
+        const d = 5.5;
+        const target = getPlayerTargetInScene();
+        const lookY = target.y;
+        switch (name) {
+          case 'front':
+            camera.position.set(target.x, lookY + 0.3, target.z + d);
+            controls.target.copy(target);
+            break;
+          case 'side':
+            camera.position.set(target.x + d, lookY + 0.3, target.z);
+            controls.target.copy(target);
+            break;
+          case 'behind':
+            camera.position.set(target.x, lookY + 0.3, target.z - d);
+            controls.target.copy(target);
+            break;
+          case 'top':
+            camera.position.set(target.x, 10, target.z + 0.1);
+            controls.target.copy(target);
+            break;
+          default:
+            break;
+        }
+        controls.update();
+      }
+
+      function focusOnPlayer() {
+        const fr = trajectoryData[currentFrame];
+        if (!fr || !globalCenter) {
+          applyViewPreset('front');
+          return;
+        }
+        const sc = (p) => new THREE.Vector3(
+          (p.x - globalCenter.x) * SCALE_FACTOR,
+          (p.y - globalMinY) * SCALE_FACTOR,
+          -(p.z - globalCenter.z) * SCALE_FACTOR
+        );
+        const getPos = (name) => (validPoint(fr[name]) ? sc(fr[name]) : null);
+        const lAnkle = getPos('left_ankle');
+        const rAnkle = getPos('right_ankle');
+        const nose = getPos('nose');
+        const midFoot = (lAnkle && rAnkle)
+          ? new THREE.Vector3().addVectors(lAnkle, rAnkle).multiplyScalar(0.5)
+          : (lAnkle || rAnkle);
+        const headY = nose ? nose.y : (midFoot ? midFoot.y + 1.7 : 1.2);
+        const focusY = midFoot ? (midFoot.y + headY) * 0.5 : 1.2;
+        const focus = midFoot
+          ? new THREE.Vector3(midFoot.x, focusY, midFoot.z)
+          : getPlayerTargetInScene();
+        controls.target.copy(focus);
+        const dist = 4;
+        const dir = camera.position.clone().sub(controls.target).normalize();
+        camera.position.copy(focus).addScaledVector(dir, dist);
         controls.update();
       }
 
@@ -4928,13 +5080,16 @@
         multiFileTrajectories.labels.clear();
         if (!multiFileTrajectories.visible) return;
         const fi = document.getElementById("dirInput");
-        if (!fi) return;
-        const all = Array.from(fi.files)
-          .filter((f) => f.name.includes("(3D_trajectory_smoothed).json"))
+        const sourceFiles =
+          (fi?.files?.length
+            ? Array.from(fi.files)
+            : window._lastTrajectoryFiles || window._lastRawFiles || []) || [];
+        const all = sourceFiles
+          .filter((f) => f && f.name && f.name.includes("(3D_trajectory_smoothed).json"))
           .filter(
             (f) =>
-              !multiFileTrajectories.selectedFiles ||
-              multiFileTrajectories.selectedFiles.includes(f.webkitRelativePath),
+              !multiFileTrajectories.selectedFiles?.length ||
+              multiFileTrajectories.selectedFiles.includes(f.webkitRelativePath || f.name),
           );
         all.forEach(async (file, idx) => {
           try {
@@ -4973,6 +5128,7 @@
             });
             const line = new Line2(geo, mat);
             line.computeLineDistances();
+            if (!multiFileTrajectories.visible) return; // 使用者已點 Hide，不加入
             scene.add(line);
             multiFileTrajectories.lines.set(file.name, line);
             const lastPoint = arr[arr.length - 1];
@@ -4983,6 +5139,11 @@
             div.style.color = generateColor(idx);
             const lb = new CSS2DObject(div);
             lb.position.copy(lastPoint);
+            if (!multiFileTrajectories.visible) {
+              scene.remove(line);
+              multiFileTrajectories.lines.delete(file.name);
+              return;
+            }
             scene.add(lb);
             multiFileTrajectories.labels.set(file.name, lb);
           } catch (e) {
@@ -5035,6 +5196,33 @@
           }
         });
 
+        ['viewFrontBtn', 'viewSideBtn', 'viewBehindBtn', 'viewTopBtn'].forEach((id, i) => {
+          const names = ['front', 'side', 'behind', 'top'];
+          const btn = document.getElementById(id);
+          if (btn) btn.addEventListener("click", () => applyViewPreset(names[i]));
+        });
+        const focusBtn = document.getElementById("viewFocusPlayerBtn");
+        if (focusBtn) focusBtn.addEventListener("click", focusOnPlayer);
+
+        // 使用 Google Translate 免費 API，無需 main.py 後端
+        async function translateTextToEn(text) {
+          if (!text || !text.trim()) return text;
+          if (!/[\u4e00-\u9fa5]/.test(text)) return text; // 無中文則不翻譯
+          try {
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-TW&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            let translated = "";
+            if (data && data[0]) {
+              data[0].forEach((item) => { if (item[0]) translated += item[0]; });
+            }
+            return translated || text;
+          } catch (e) {
+            console.error("Translation error:", e);
+            throw e;
+          }
+        }
+
         document
           .getElementById("toggleLanguage")
           .addEventListener("click", async () => {
@@ -5043,94 +5231,29 @@
             const toggleButton = document.getElementById("toggleLanguage");
 
             if (!originalFeedbackContent || !originalOverallContent) {
-              // 第一次點擊時儲存兩個元素的原始內容
               originalFeedbackContent = feedbackContent.textContent.trim();
               originalOverallContent = overallContent.textContent.trim();
             }
 
             if (isTranslated) {
-              // 目前是英文，切換回中文
               feedbackContent.textContent = originalFeedbackContent;
               overallContent.textContent = originalOverallContent;
               toggleButton.textContent = "Eng";
               isTranslated = false;
             } else {
-              // 目前是中文，切換成英文
-              // 顯示 Loading 狀態
               feedbackContent.textContent = "翻譯中...";
               overallContent.textContent = "翻譯中...";
-
               try {
-                const [feedbackResponse, overallResponse] = await Promise.all([
-                  fetch(
-                    `${BASE_API}/translate?text=${encodeURIComponent(originalFeedbackContent)}`,
-                    {
-                      method: "GET",
-                      headers: { Accept: "application/json" },
-                      mode: "cors",
-                    },
-                  ),
-                  fetch(
-                    `${BASE_API}/translate?text=${encodeURIComponent(originalOverallContent)}`,
-                    {
-                      method: "GET",
-                      headers: { Accept: "application/json" },
-                      mode: "cors",
-                    },
-                  ),
+                const [fbText, ovText] = await Promise.all([
+                  translateTextToEn(originalFeedbackContent),
+                  translateTextToEn(originalOverallContent),
                 ]);
-
-                const feedbackData = await feedbackResponse
-                  .json()
-                  .catch(() => ({}));
-                const overallData = await overallResponse
-                  .json()
-                  .catch(() => ({}));
-
-                const getBackendError = (res, data) => {
-                  if (res.ok) return null;
-                  const d = data?.detail;
-                  if (typeof d === "string") return d;
-                  if (d && typeof d.error === "string") return d.error;
-                  return res.statusText || "翻譯失敗";
-                };
-
-                const err1 = getBackendError(feedbackResponse, feedbackData);
-                const err2 = getBackendError(overallResponse, overallData);
-                if (err1 || err2) {
-                  showMsg("翻譯請求錯誤: " + (err1 || err2), "error");
-                  // 發生錯誤時恢復原文
-                  feedbackContent.textContent = originalFeedbackContent;
-                  overallContent.textContent = originalOverallContent;
-                  return;
-                }
-
-                const fbText = feedbackData.translated_text;
-                const ovText = overallData.translated_text;
-                if (
-                  feedbackData.status === "success" &&
-                  overallData.status === "success" &&
-                  (fbText !== undefined || ovText !== undefined)
-                ) {
-                  if (fbText !== undefined)
-                    feedbackContent.textContent = String(fbText);
-                  if (ovText !== undefined)
-                    overallContent.textContent = String(ovText);
-                  toggleButton.textContent = "繁中";
-                  isTranslated = true;
-                } else {
-                  showMsg("翻譯請求錯誤: 未取得翻譯結果", "error");
-                  // 發生錯誤時恢復原文
-                  feedbackContent.textContent = originalFeedbackContent;
-                  overallContent.textContent = originalOverallContent;
-                }
+                feedbackContent.textContent = fbText;
+                overallContent.textContent = ovText;
+                toggleButton.textContent = "繁中";
+                isTranslated = true;
               } catch (err) {
-                const hint =
-                  err.message === "Failed to fetch"
-                    ? "請確認已啟動 main.py（port 8000）"
-                    : err.message;
-                showMsg("翻譯請求錯誤: " + hint, "error");
-                // 發生錯誤時恢復原文
+                showMsg("翻譯失敗: " + (err.message || "網路錯誤"), "error");
                 feedbackContent.textContent = originalFeedbackContent;
                 overallContent.textContent = originalOverallContent;
               }
@@ -5575,8 +5698,8 @@
                 <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>🔔 Analysis Complete!</strong></div>
                 <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">Player <strong>${playerName}</strong> - Ball <strong>${ballNumber}</strong> result is ready.</div>
                 <div style="display: flex; gap: 10px;">
-                    <button id="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View Result</button>
-                    <button id="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
+                    <button type="button" class="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View Result</button>
+                    <button type="button" class="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
                 </div>
             `;
         document.body.appendChild(notification);
@@ -5592,9 +5715,8 @@
         msg.volume = 1.0; // 確保音量最大
         window.speechSynthesis.speak(msg);
 
-        // 點擊「立即查看」
-        document.getElementById("viewResultBtn").onclick = () => {
-          // 在 3D 頁面中，點擊後開啟資料夾選擇器 (dirInput)
+        // 點擊「View Result」
+        notification.querySelector(".viewResultBtn").addEventListener("click", () => {
           const dirInput = document.getElementById("dirInput");
           if (dirInput) {
             dirInput.click();
@@ -5602,10 +5724,11 @@
             console.warn("[通知系統] 找不到 dirInput，請手動選擇資料夾");
           }
           notification.remove();
-        };
+        });
 
-        document.getElementById("closeNotifyBtn").onclick = () =>
+        notification.querySelector(".closeNotifyBtn").addEventListener("click", () => {
           notification.remove();
+        });
 
         // 20秒後自動消失
         setTimeout(() => {

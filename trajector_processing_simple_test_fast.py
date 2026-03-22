@@ -296,7 +296,7 @@ def simple_test_pipeline_fast(input_folder="input_videos",
             yolo_tennis_ball_model.model.to('cpu')
         
         # KNN資料集
-        knn_dataset = 'knn_dataset.json'
+        knn_dataset = 'knn_dataset_new.json'
         
         # 步驟9: 執行快速分析流程
         print("\n🚀 步驟9: 開始快速分析流程...")

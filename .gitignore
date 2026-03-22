@@ -1,7 +1,7 @@
 junior_forehand
 .venv
 .vscode
-# knn_dataset.json # Keep this if it is a small dataset needed for the code
+# knn_dataset_new.json # Keep this if it is a small dataset needed for the code
 open_ai_key.py
 ffprobe.exe
 ffplay.exe

@@ -171,11 +171,6 @@ body {
   font-weight: bold;
 }
 
-#similarityValue {
-  color: #ff6b35;
-  font-weight: bold;
-}
-
 video {
   width: 99%;
   max-width: 800px;

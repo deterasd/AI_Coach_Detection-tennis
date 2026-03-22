@@ -189,7 +189,7 @@ def visualize_contact_zone(result_json, save_dir="output"):
 
 if __name__ == "__main__":
     # 直接根據分析模組計算並繪圖（無需事先輸出 JSON）
-    knn_path = "knn_dataset.json"
+    knn_path = "knn_dataset_new.json"
     traj_path = "trajectory/testing_123/testing_(3D_trajectory_smoothed).json"
     out_dir = Path("output")
     out_dir.mkdir(exist_ok=True)

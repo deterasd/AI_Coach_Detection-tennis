@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title data-i18n="pageTitle">AI Tennis Coach - Comprehensive Report</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
   <!-- 引入 Google Fonts -->
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap"
@@ -112,6 +113,10 @@
       padding: 10px 15px;
       background: transparent;
     }
+    body.light-mode .advice-suggestion {
+      background: rgba(101, 163, 13, 0.08);
+      border-left-color: var(--accent);
+    }
 
     * {
       box-sizing: border-box;
@@ -177,6 +182,10 @@
       color: #fff;
     }
 
+    body.light-mode .toolbar .btn {
+      border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
     .btn-primary:hover {
       background: var(--gradient-primary);
       box-shadow: 0 8px 20px var(--accent-glow);
@@ -184,15 +193,15 @@
 
     .a4-page {
       width: 210mm;
-      height: 297mm;
-      /* Strict A4 height */
+      min-height: 297mm;
+      /* 螢幕檢視時可延伸顯示完整內容，不被截斷 */
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 16px;
       box-shadow: var(--card-shadow);
       padding: 15mm 15mm;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       display: flex;
       flex-direction: column;
     }
@@ -477,7 +486,7 @@
 
     .advice-section {
       flex: 1;
-      /* Allow sections to share remaining height */
+      /* Allow sections to share remaining height on screen */
       display: flex;
       flex-direction: column;
       min-height: 0;
@@ -503,13 +512,36 @@
       background: var(--gradient-card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px 18px;
+      padding: 16px 20px;
       font-size: 13.5px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: var(--text);
-      white-space: pre-wrap;
       box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
     }
+
+    .advice-summary { margin-bottom: 20px; color: var(--muted); font-size: 13px; }
+    .advice-ball-section {
+      white-space: normal;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .advice-ball-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .advice-ball-title { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+    .advice-suggestion {
+      background: rgba(204, 255, 0, 0.08);
+      border-left: 4px solid var(--accent);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+    }
+    .advice-metric { margin-bottom: 12px; }
+    .advice-metric-title { font-weight: 600; color: var(--text); margin-bottom: 4px; font-size: 12.5px; }
+    .advice-metric-content { padding-left: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .advice-metric-content.insufficient { font-size: 11px; color: #f59e0b; }
+    .advice-sub { margin-bottom: 3px; }
+    .advice-sub-label { color: var(--accent); font-weight: 600; }
 
     /* Scrollbar styling for boxes just in case */
     .advice-box::-webkit-scrollbar {
@@ -533,10 +565,111 @@
       }
 
       body {
-        background: white !important;
-        /* Force white background for print */
         padding: 0;
         display: block;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* 深色模式列印：保持目前畫面深色主題 */
+      body:not(.light-mode) {
+        background: #0b1120 !important;
+      }
+      body:not(.light-mode) .a4-page {
+        --bg: #0b1120 !important;
+        --card: #141e33 !important;
+        --text: #f0f0f0 !important;
+        --muted: #8b92a5 !important;
+        --border: rgba(255, 255, 255, 0.1) !important;
+        background: #141e33 !important;
+        color: #f0f0f0 !important;
+      }
+      body:not(.light-mode) .summary-bar,
+      body:not(.light-mode) .ball-card,
+      body:not(.light-mode) .advice-box {
+        background: #141e33 !important;
+        border-color: rgba(204, 255, 0, 0.5) !important;
+        color: #f0f0f0 !important;
+      }
+      body:not(.light-mode) .summary-label,
+      body:not(.light-mode) .stat-label,
+      body:not(.light-mode) .stat-val,
+      body:not(.light-mode) .sub-brand,
+      body:not(.light-mode) p.subtitle,
+      body:not(.light-mode) .ball-card h3,
+      body:not(.light-mode) .advice-section h2,
+      body:not(.light-mode) .pill-label,
+      body:not(.light-mode) h1 {
+        color: #f0f0f0 !important;
+        -webkit-text-fill-color: #f0f0f0 !important;
+      }
+      body:not(.light-mode) .stat-label,
+      body:not(.light-mode) p.subtitle,
+      body:not(.light-mode) .pill-label {
+        color: #8b92a5 !important;
+      }
+      body:not(.light-mode) header::after {
+        background: rgba(204, 255, 0, 0.5) !important;
+      }
+      body:not(.light-mode) .ball-card:not(:last-child)::after {
+        background-color: rgba(204, 255, 0, 0.5) !important;
+      }
+
+      /* 淺色模式列印：保持目前畫面淺色主題 */
+      body.light-mode {
+        background: white !important;
+      }
+      body.light-mode .a4-page,
+      body.light-mode {
+        --bg: white !important;
+        --card: white !important;
+        --text: black !important;
+        --muted: #4b5563 !important;
+        --border: #e5e7eb !important;
+        color: black !important;
+      }
+      body.light-mode .summary-bar {
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-bottom: 1px solid #65a30d !important;
+      }
+      body.light-mode .ball-card {
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-top: 1px solid #65a30d !important;
+      }
+      body.light-mode .ball-card:not(:last-child)::after {
+        background-color: #65a30d !important;
+      }
+      body.light-mode .advice-box {
+        background: white !important;
+        border-left: 4px solid #65a30d !important;
+      }
+      body.light-mode .summary-label,
+      body.light-mode .stat-label,
+      body.light-mode .stat-val,
+      body.light-mode .advice-box,
+      body.light-mode .sub-brand,
+      body.light-mode p.subtitle,
+      body.light-mode .ball-card h3,
+      body.light-mode .advice-section h2,
+      body.light-mode .pill-label {
+        color: black !important;
+      }
+      body.light-mode .stat-label,
+      body.light-mode p.subtitle,
+      body.light-mode .pill-label {
+        color: #4b5563 !important;
+      }
+      body.light-mode h1 {
+        background: none !important;
+        color: black !important;
+        -webkit-text-fill-color: black !important;
+      }
+      body.light-mode header::after {
+        background: #e5e7eb !important;
       }
 
       .toolbar {
@@ -608,48 +741,13 @@
         padding-bottom: 6px !important;
       }
 
-      /* Enable Light mode variables for print explicitly to fix Safari WebKit bug */
-      body,
-      .a4-page {
-        --bg: white !important;
-        --card: white !important;
-        --text: black !important;
-        --muted: #4b5563 !important;
-        --border: #e5e7eb !important;
-        --gradient-card: white !important;
-        color: black !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-
-      .summary-label,
-      .stat-label,
-      .stat-val,
-      .advice-box,
-      .sub-brand,
-      p.subtitle,
-      .ball-card h3,
-      .advice-section h2,
-      .pill-label {
-        color: black !important;
-      }
-
-      .stat-label,
-      p.subtitle,
-      .pill-label {
-        color: #4b5563 !important;
-        /* muted */
-      }
 
       .a4-page::before {
         display: none;
       }
 
       .summary-bar {
-        background: white !important;
         box-shadow: none !important;
-        border: none !important;
-        border-bottom: 1px solid #ccff00 !important;
         border-radius: 0 !important;
         padding-left: 0 !important;
         padding-right: 0 !important;
@@ -660,10 +758,7 @@
       }
 
       .ball-card {
-        background: white !important;
         box-shadow: none !important;
-        border: none !important;
-        border-top: 1px solid #ccff00 !important;
         border-radius: 0 !important;
         padding-left: 8px !important;
         padding-right: 12px !important;
@@ -683,7 +778,6 @@
         bottom: 15px;
         right: -5px;
         width: 1px;
-        background-color: #ccff00 !important;
       }
 
       .ball-card::before {
@@ -691,23 +785,11 @@
       }
 
       .advice-box {
-        background: white !important;
         box-shadow: none !important;
-        border: none !important;
-        border-left: 4px solid #ccff00 !important;
-        /* Optic yellow accent line */
         border-radius: 0 !important;
-        padding: 10px 15px !important;
-      }
-
-      h1 {
-        background: none !important;
-        color: black !important;
-        -webkit-text-fill-color: black !important;
       }
 
       header::after {
-        background: #e5e7eb !important;
         box-shadow: none !important;
       }
 
@@ -716,7 +798,17 @@
         flex: none !important;
       }
 
-      .advice-box,
+      .advice-section {
+        flex: none !important;
+        page-break-before: avoid !important;
+        /* 避免強制新分頁，讓內容順流 */
+      }
+
+      .advice-box {
+        page-break-inside: auto !important;
+        /* 允許分頁，避免空一大段 */
+      }
+
       .ball-card {
         page-break-inside: avoid;
       }
@@ -760,7 +852,7 @@
   <div class="a4-page">
     <header>
       <h1 data-i18n="title">AI 網球教練</h1>
-      <div class="sub-brand">TENNIS AI COACHING SYSTEM</div>
+      <div class="sub-brand" data-i18n="subBrand">TENNIS AI COACHING SYSTEM</div>
       <p class="subtitle" id="reportDate">分析報告產出時間：--</p>
     </header>
 
@@ -819,6 +911,8 @@
     // Translations Dictionary
     const i18n = {
       zh: {
+        pageTitle: "AI 網球教練 - 綜合報告",
+        subBrand: "TENNIS AI COACHING SYSTEM",
         close: "關閉",
         theme: "切換亮暗色",
         print: "列印 A4 報告",
@@ -847,7 +941,7 @@
         pointPrefix: "► 第 {0} 球：\n",
         noSpecialAdvice: "無特別建議",
         noImprovement: "無改善建議",
-        priorityTitle: "根據最近 {0} 球的平均表現數據，AI 教練建議您優先針對以下三大核心環節進行調整與加強：\n\n",
+        priorityTitle: "以下為每球分數最低的三項，建議優先加強：\n\n",
         priorityItem: "► 第 {0} 優先改善：【{1}】\n  ↳ 目前平均掌握度：{2} / 100 分{3}\n  💡 個別建議：{4}\n\n",
         alertMark: " ⚠️ (亟需改善)",
         metric_Head: "頭部視線穩定",
@@ -855,13 +949,21 @@
         metric_ForwardSwing: "出拍前段",
         metric_HitballSwing: "擊球瞬間",
         metric_FollowThrough: "收拍動作",
+        metric_ContactZone: "擊球點區域",
+        metric_BodyWeight: "重心",
+        metric_RacketFace: "拍面角度",
         metric_Head_advice: "擊球時試著將視線停留在擊球點上，想像盯著球離開拍面的一瞬間，這能大幅提升擊球的穩定度與準確率喔！",
         metric_Backswing_advice: "可以提早啟動側身動作，讓非持拍手協助引導肩膀轉動。充分的轉體蓄力是打出強而有力回球的關鍵！",
         metric_ForwardSwing_advice: "試著讓拍頭自然掉落後再往前揮擊，利用身體的轉動去帶動手臂，而不是手臂主動發力，這樣揮拍會更流暢。",
         metric_HitballSwing_advice: "留意擊球點要保持在身體前方，並在擊球瞬間讓手腕保持穩定。紮實的擊球手感來自於好的擊球位置與時機！",
-        metric_FollowThrough_advice: "擊球後順勢放鬆將球拍揮向對側肩膀上方，讓身體自然轉正。完整的收拍能保護手臂不受傷，並確保力量完全釋放。"
+        metric_FollowThrough_advice: "擊球後順勢放鬆將球拍揮向對側肩膀上方，讓身體自然轉正。完整的收拍能保護手臂不受傷，並確保力量完全釋放。",
+        metric_ContactZone_advice: "建議留意擊球點位置，左右距離、高度與前後深度都應在舒適揮拍範圍內。",
+        metric_BodyWeight_advice: "建議揮拍時微微屈膝，擊球瞬間將重心往前送到左腳，讓下半身幫助出力與穩定。",
+        metric_RacketFace_advice: "建議參考教練示範，調整擊球瞬間的拍面朝向。"
       },
       en: {
+        pageTitle: "AI Tennis Coach - Comprehensive Report",
+        subBrand: "TENNIS AI COACHING SYSTEM",
         close: "Close",
         theme: "Toggle Theme",
         print: "Print A4 Report",
@@ -890,7 +992,7 @@
         pointPrefix: "► Shot {0}:\n",
         noSpecialAdvice: "No specific advice",
         noImprovement: "No improvements suggested",
-        priorityTitle: "Based on the average performance data of the last {0} shots, the AI Coach recommends prioritizing the following three core areas for adjustment and strengthening:\n\n",
+        priorityTitle: "Below are the three lowest-scoring items per shot. Focus on improving these first:\n\n",
         priorityItem: "► Priority {0}: [{1}]\n  ↳ Current Average Mastery: {2} / 100 PTS{3}\n  💡 Coach's Tip: {4}\n\n",
         alertMark: " ⚠️ (Needs Improvement)",
         metric_Head: "Head & Vision Stability",
@@ -898,11 +1000,17 @@
         metric_ForwardSwing: "Forward Swing",
         metric_HitballSwing: "Impact",
         metric_FollowThrough: "Follow-through",
+        metric_ContactZone: "Contact Zone",
+        metric_BodyWeight: "Body Weight",
+        metric_RacketFace: "Racket Face",
         metric_Head_advice: "Try to keep your eyes fixed on the contact point, watching the ball leave the strings. This will greatly improve your stability and accuracy!",
         metric_Backswing_advice: "Start your unit turn earlier, using your non-dominant hand to guide the shoulder rotation. A full coil is key to a powerful shot!",
         metric_ForwardSwing_advice: "Let the racket head drop naturally before swinging forward. Use your body rotation to pull the arm through for a more fluid and effortless swing.",
         metric_HitballSwing_advice: "Ensure you make contact out in front of your body and keep your wrist stable at impact. Solid contact comes from good positioning and timing!",
-        metric_FollowThrough_advice: "Follow through smoothly over your opposite shoulder, letting your body naturally rotate forward. A complete finish prevents injury and ensures full power transfer."
+        metric_FollowThrough_advice: "Follow through smoothly over your opposite shoulder, letting your body naturally rotate forward. A complete finish prevents injury and ensures full power transfer.",
+        metric_ContactZone_advice: "Keep your contact point within a comfortable swing range for lateral, height and depth.",
+        metric_BodyWeight_advice: "Bend your knees slightly during the swing and shift your weight forward to the front foot at contact.",
+        metric_RacketFace_advice: "Adjust your racket face orientation at contact by referring to coach demonstrations."
       }
     };
 
@@ -946,8 +1054,10 @@
     function updateLanguage() {
       document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.getAttribute("data-i18n");
-        if (i18n[currentLang][key]) {
-          el.innerText = i18n[currentLang][key];
+        const val = i18n[currentLang]?.[key];
+        if (val) {
+          el.innerText = val;
+          if (key === "pageTitle" && document.title !== undefined) document.title = val;
         }
       });
       // Update placeholder for participant input
@@ -956,8 +1066,9 @@
         elParticipantInput.placeholder = i18n[currentLang][phKey];
       }
       elLangToggle.innerText = i18n[currentLang].langBtn;
+      document.documentElement.lang = currentLang === "zh" ? "zh-TW" : "en";
 
-      // Re-render JS content
+      // Re-render JS content (cards, advice, priority)
       loadData();
     }
 
@@ -998,35 +1109,20 @@
             : "low";
       const bandLabel = bandClass.toUpperCase();
 
-      let hsRaw = Number(record.HitballSwing || 0);
-      if (hsRaw > 0 && hsRaw <= 10) hsRaw *= 10;
-      const hs = hsRaw.toFixed(1);
-      const hsBand =
-        bandOf(hsRaw) === "high"
-          ? "hi"
-          : bandOf(hsRaw) === "med"
-            ? "med"
-            : "low";
+      const hsVal = record.HitballSwing != null && record.HitballSwing !== '' ? Number(record.HitballSwing) : null;
+      let hsRaw = hsVal != null ? (hsVal > 0 && hsVal <= 10 ? hsVal * 10 : hsVal) : 0;
+      const hs = hsVal != null ? hsRaw.toFixed(1) : '--';
+      const hsBand = hsVal != null ? (bandOf(hsRaw) === "high" ? "hi" : bandOf(hsRaw) === "med" ? "med" : "low") : "low";
 
-      let fsRaw = Number(record.ForwardSwing || 0);
-      if (fsRaw > 0 && fsRaw <= 10) fsRaw *= 10;
-      const fs = fsRaw.toFixed(1);
-      const fsBand =
-        bandOf(fsRaw) === "high"
-          ? "hi"
-          : bandOf(fsRaw) === "med"
-            ? "med"
-            : "low";
+      const fsVal = record.ForwardSwing != null && record.ForwardSwing !== '' ? Number(record.ForwardSwing) : null;
+      let fsRaw = fsVal != null ? (fsVal > 0 && fsVal <= 10 ? fsVal * 10 : fsVal) : 0;
+      const fs = fsVal != null ? fsRaw.toFixed(1) : '--';
+      const fsBand = fsVal != null ? (bandOf(fsRaw) === "high" ? "hi" : bandOf(fsRaw) === "med" ? "med" : "low") : "low";
 
-      let bsRaw = Number(record.Backswing || 0);
-      if (bsRaw > 0 && bsRaw <= 10) bsRaw *= 10;
-      const bs = bsRaw.toFixed(1);
-      const bsBand =
-        bandOf(bsRaw) === "high"
-          ? "hi"
-          : bandOf(bsRaw) === "med"
-            ? "med"
-            : "low";
+      const bsVal = record.Backswing != null && record.Backswing !== '' ? Number(record.Backswing) : null;
+      let bsRaw = bsVal != null ? (bsVal > 0 && bsVal <= 10 ? bsVal * 10 : bsVal) : 0;
+      const bs = bsVal != null ? bsRaw.toFixed(1) : '--';
+      const bsBand = bsVal != null ? (bandOf(bsRaw) === "high" ? "hi" : bandOf(bsRaw) === "med" ? "med" : "low") : "low";
 
       return `
         <div class="ball-card">
@@ -1041,7 +1137,7 @@
                 <span class="stat-val">${hs}</span>
             </div>
             <div class="stat-bar-bg">
-                <div class="stat-bar-fill ${hsBand}" style="width: ${hs}%;"></div>
+                <div class="stat-bar-fill ${hsBand}" style="width: ${hs === '--' ? 0 : hs}%;"></div>
             </div>
           </div>
           <div class="stat-row">
@@ -1050,7 +1146,7 @@
                 <span class="stat-val">${fs}</span>
             </div>
             <div class="stat-bar-bg">
-                <div class="stat-bar-fill ${fsBand}" style="width: ${fs}%;"></div>
+                <div class="stat-bar-fill ${fsBand}" style="width: ${fs === '--' ? 0 : fs}%;"></div>
             </div>
           </div>
           <div class="stat-row">
@@ -1059,7 +1155,7 @@
                 <span class="stat-val">${bs}</span>
             </div>
             <div class="stat-bar-bg">
-                <div class="stat-bar-fill ${bsBand}" style="width: ${bs}%;"></div>
+                <div class="stat-bar-fill ${bsBand}" style="width: ${bs === '--' ? 0 : bs}%;"></div>
             </div>
           </div>
         </div>
@@ -1092,83 +1188,184 @@
       }
     }
 
+    // 8 項分析對應 analyses 的 key 與顯示標籤
+    const HIDDEN_ANALYSIS_KEYS = [];
+    const EIGHT_ANALYSIS_KEYS = [
+      { key: 'backswing_advice', label: 'metric_Backswing' },
+      { key: 'forwardswing_advice', label: 'metric_ForwardSwing' },
+      { key: 'hitballswing_advice', label: 'metric_HitballSwing' },
+      { key: 'followthrough_advice', label: 'metric_FollowThrough' },
+      { key: 'contact_zone_advice', label: 'metric_ContactZone' },
+      { key: 'center_of_mass_advice', label: 'metric_BodyWeight' },
+      { key: 'racket_face_advice', label: 'metric_RacketFace' },
+      { key: 'head_stability_advice', label: 'metric_Head' }
+    ];
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /** 將分析文字拆成 A. B. C. D. 子項，回傳 HTML */
+    function formatMetricContent(text) {
+      if (!text || !String(text).trim()) return '';
+      const raw = String(text).trim();
+      // 拆成 [前綴, A.xxx, B.xxx, C.xxx, ...]，沒有 A.B.C. 開頭的視為單一項
+      const parts = raw.split(/(?=[A-Z]\.)/).map(s => s.trim()).filter(Boolean);
+      if (parts.length === 0) return escapeHtml(raw);
+      const html = parts.map(p => {
+        const match = p.match(/^([A-Z])\.(.*)$/);
+        if (match) {
+          return `<div class="advice-sub"><span class="advice-sub-label">${match[1]}.</span> ${escapeHtml(match[2])}</div>`;
+        }
+        return `<div class="advice-sub">${escapeHtml(p)}</div>`;
+      }).join('');
+      return html;
+    }
+
+    async function formatEightPointAdviceHtml(analyses) {
+      if (!analyses || typeof analyses !== 'object') return '';
+      const blocks = [];
+      for (const { key, label } of EIGHT_ANALYSIS_KEYS) {
+        if (HIDDEN_ANALYSIS_KEYS.includes(key)) continue;
+        let text = analyses[key];
+        if (text && String(text).trim()) {
+          text = String(text).trim();
+          if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(text)) {
+            text = await translateText(text, 'en');
+          } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(text)) {
+            text = await translateText(text, 'zh-TW');
+          }
+          const labelName = t(label);
+          const content = formatMetricContent(text);
+          const insufficientClass = isInsufficient(text) ? ' insufficient' : '';
+          blocks.push(`<div class="advice-metric"><div class="advice-metric-title">${escapeHtml(labelName)}</div><div class="advice-metric-content${insufficientClass}">${content}</div></div>`);
+        }
+      }
+      return blocks.join('');
+    }
+
     async function extractAdvice(records) {
       if (!records || records.length === 0) return t('noAdvice');
 
       let bestIndex = 0;
       let bestScore = -1;
-
       records.forEach((rec, i) => {
         const score = Number(rec.overall || 0);
-        if (score > bestScore) {
-          bestScore = score;
-          bestIndex = i;
-        }
+        if (score > bestScore) { bestScore = score; bestIndex = i; }
       });
 
-      let summary = t('summaryTitle');
-      summary += t('summaryBody', bestIndex + 1);
+      let html = `<div class="advice-summary">${escapeHtml(t('summaryTitle') + t('summaryBody', bestIndex + 1))}</div>`;
 
-      summary += t('pointsTitle');
       for (let i = 0; i < records.length; i++) {
         const rec = records[i];
-        let adviceText = rec.combined_advice || rec.advice || t('noSpecialAdvice');
-        adviceText = adviceText
-          .replace(/[A-Z]\./g, "\n•")
-          .replace(/\n{3,}/g, "\n\n")
-          .trim();
+        let ballHtml = '';
 
-        if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(adviceText)) {
-          adviceText = await translateText(adviceText, 'en');
-        } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(adviceText)) {
-          adviceText = await translateText(adviceText, 'zh-TW');
+        if (rec.analyses && typeof rec.analyses === 'object') {
+          const suggestion = rec.advice || rec.suggestion || '';
+          if (suggestion && String(suggestion).trim()) {
+            let sugText = suggestion.trim();
+            if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(sugText)) {
+              sugText = await translateText(sugText, 'en');
+            } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(sugText)) {
+              sugText = await translateText(sugText, 'zh-TW');
+            }
+            ballHtml += `<div class="advice-suggestion">${escapeHtml(sugText)}</div>`;
+          }
+          ballHtml += await formatEightPointAdviceHtml(rec.analyses);
+        } else {
+          let fallback = rec.combined_advice || rec.advice || t('noSpecialAdvice');
+          fallback = fallback.replace(/([。！？])([A-Z]\.)/g, '$1\n$2').replace(/\n{3,}/g, '\n\n').trim();
+          if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(fallback)) {
+            fallback = await translateText(fallback, 'en');
+          } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(fallback)) {
+            fallback = await translateText(fallback, 'zh-TW');
+          }
+          ballHtml += `<div class="advice-metric-content" style="white-space: pre-wrap;">${escapeHtml(fallback)}</div>`;
         }
 
-        summary += t('pointPrefix', i + 1) + `${adviceText}\n\n`;
+        const ballTitle = t('pointPrefix', i + 1).replace(/\n/g, '').trim();
+        html += `<div class="advice-ball-section"><div class="advice-ball-title">${escapeHtml(ballTitle)}</div>${ballHtml}</div>`;
       }
 
-      return summary.trim();
+      return html;
+    }
+
+    // 每球最低三項：record key -> metric label key & advice key
+    const HIDDEN_PRIORITY_KEYS = [];
+    const PRIORITY_METRIC_MAP = [
+      { recordKey: 'Head', labelKey: 'metric_Head', adviceKey: 'head_stability_advice' },
+      { recordKey: 'Backswing', labelKey: 'metric_Backswing', adviceKey: 'backswing_advice' },
+      { recordKey: 'ForwardSwing', labelKey: 'metric_ForwardSwing', adviceKey: 'forwardswing_advice' },
+      { recordKey: 'HitballSwing', labelKey: 'metric_HitballSwing', adviceKey: 'hitballswing_advice' },
+      { recordKey: 'FollowThrough', labelKey: 'metric_FollowThrough', adviceKey: 'followthrough_advice' },
+      { recordKey: 'ContactZone', labelKey: 'metric_ContactZone', adviceKey: 'contact_zone_advice' },
+      { recordKey: 'BodyWeight', labelKey: 'metric_BodyWeight', adviceKey: 'center_of_mass_advice' },
+      { recordKey: 'RacketFace', labelKey: 'metric_RacketFace', adviceKey: 'racket_face_advice' }
+    ];
+
+    const INSUFFICIENT_ADVICE = "專家數據不足，無法比較";
+    function isInsufficient(advice) {
+      return advice && String(advice).includes(INSUFFICIENT_ADVICE);
+    }
+    function formatScore(raw) {
+      if (raw == null || raw === '') return '--';
+      const n = Number(raw);
+      return (n > 0 && n <= 10) ? (n * 10).toFixed(1) : n.toFixed(1);
     }
 
     async function extractPriority(records) {
-      // Find lowest scores across the 3 balls for the available 5 metrics
-      const sumScores = {
-        metric_Head: 0,
-        metric_Backswing: 0,
-        metric_ForwardSwing: 0,
-        metric_HitballSwing: 0,
-        metric_FollowThrough: 0
-      };
-      const count = records.length;
-      if (count === 0) return t('noImprovement');
+      if (!records || records.length === 0) return t('noImprovement');
 
-      records.forEach((r) => {
-        sumScores["metric_Head"] += Number(r.Head || 0);
-        sumScores["metric_Backswing"] += Number(r.Backswing || 0);
-        sumScores["metric_ForwardSwing"] += Number(r.ForwardSwing || 0);
-        sumScores["metric_HitballSwing"] += Number(r.HitballSwing || 0);
-        sumScores["metric_FollowThrough"] += Number(r.FollowThrough || 0);
-      });
+      let html = `<div class="advice-summary">${escapeHtml(t('priorityTitle', records.length))}</div>`;
 
-      const avgScores = Object.entries(sumScores).map(([k, v]) => ({
-        key: k,
-        name: t(k),
-        score: v / count,
-      }));
-      // Sort ascending to find lowest scores
-      avgScores.sort((a, b) => a.score - b.score);
+      for (let i = 0; i < records.length; i++) {
+        const rec = records[i];
+        const items = [];
+        for (const { recordKey, labelKey, adviceKey } of PRIORITY_METRIC_MAP) {
+          if (HIDDEN_PRIORITY_KEYS.includes(recordKey)) continue;
+          const raw = rec[recordKey];
+          const advice = (rec.analyses && rec.analyses[adviceKey]) ? String(rec.analyses[adviceKey]).trim() : '';
+          if (isInsufficient(advice)) continue;
+          if (raw != null && raw !== '' && !isNaN(Number(raw))) {
+            const score = Number(raw);
+            let advice = (rec.analyses && rec.analyses[adviceKey]) ? String(rec.analyses[adviceKey]).trim() : t(labelKey + '_advice');
+            if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(advice)) {
+              advice = await translateText(advice, 'en');
+            } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(advice)) {
+              advice = await translateText(advice, 'zh-TW');
+            }
+            items.push({ labelKey, score, advice });
+          }
+        }
+        items.sort((a, b) => a.score - b.score);
+        const lowestThree = items.slice(0, 3);
 
-      const lowestThree = avgScores.slice(0, 3);
-      let html = t('priorityTitle', count);
-      lowestThree.forEach((item, i) => {
-        const formatScore = item.score.toFixed(1);
-        // Highlight very low scores
-        const alertMarkStr = item.score < 60 ? t('alertMark') : "";
-        const adviceStr = t(item.key + '_advice');
-        html += t('priorityItem', i + 1, item.name, formatScore, alertMarkStr, adviceStr);
-      });
+        let ballHtml = '';
+        lowestThree.forEach((item, idx) => {
+          const raw = item.score;
+          const displayScore = formatScore(raw);
+          const alertMark = (raw <= 6 || (raw > 10 && raw < 60)) ? ' ' + t('alertMark') : '';
+          const sep = currentLang === 'zh' ? '：' : ': ';
+          const content = `${currentLang === 'zh' ? '掌握度' : 'Score'}${sep}${displayScore} / 100${alertMark}\n${item.advice}`;
+          const contentHtml = formatMetricContent(content) || escapeHtml(content);
+          ballHtml += `<div class="advice-metric"><div class="advice-metric-title">${escapeHtml(t(item.labelKey))}</div><div class="advice-metric-content">${contentHtml}</div></div>`;
+        });
 
-      return html.trim();
+        if (lowestThree.length === 0) {
+          ballHtml = `<div class="advice-metric-content">${escapeHtml(t('noImprovement'))}</div>`;
+        }
+
+        const ballTitle = t('pointPrefix', i + 1).replace(/\n/g, '').trim();
+        html += `<div class="advice-ball-section"><div class="advice-ball-title">${escapeHtml(ballTitle)}</div>${ballHtml}</div>`;
+      }
+
+      return html;
     }
 
     async function loadData() {
@@ -1198,27 +1395,19 @@
         elReportDate.textContent = t('noDataDate');
         return;
       }
+      elNoData.style.display = "none";
 
-      // Deduplicate consecutive identical records (same scores)
-      // This prevents the exact same artificial 88.0/90.0 balls from duplicating
-      let uniqueData = [];
-      data.forEach((rec) => {
-        const isDuplicate =
-          uniqueData.length > 0 &&
-          uniqueData[uniqueData.length - 1].overall === rec.overall &&
-          uniqueData[uniqueData.length - 1].HitballSwing === rec.HitballSwing;
-        if (!isDuplicate) {
-          uniqueData.push(rec);
-        }
+      // 僅依 id 去重，不依分數（不同揮拍可能分數相同，誤删會少顯示）
+      const seenIds = new Set();
+      const uniqueData = data.filter((rec) => {
+        const rid = rec.id || "";
+        if (seenIds.has(rid)) return false;
+        seenIds.add(rid);
+        return true;
       });
 
-      // data is unshifted (newest at index 0).
-      // We want the latest 3 distinct shots.
-      let latestThree = uniqueData.slice(0, 3);
-
-      // Sort by folder/trajectory name (id) so trajectory_1 is always first, 2 is second, etc.
-      // This ensures strict chronological order matching the UI dropdown regardless of storage queueing order
-      const targetData = latestThree.sort((a, b) => {
+      // 有幾筆揮拍紀錄就顯示幾筆（至少 3 筆才能從 dashboard 開啟，此處顯示全部）
+      const targetData = uniqueData.sort((a, b) => {
         if (a.id && b.id) {
           return a.id.localeCompare(b.id, undefined, { numeric: true });
         }
@@ -1251,8 +1440,8 @@
       const adviceStr = await extractAdvice(targetData);
       const priorityStr = await extractPriority(targetData);
 
-      elOverallAdvice.textContent = adviceStr;
-      elPriorityAdvice.textContent = priorityStr;
+      elOverallAdvice.innerHTML = adviceStr;
+      elPriorityAdvice.innerHTML = priorityStr;
     }
     updateLanguage(); // This will render everything with correct lang because loadData() is at end
   </script>

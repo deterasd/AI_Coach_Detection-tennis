@@ -54,7 +54,7 @@ P2 = np.array([
 print(f"✅ 模型和校正矩陣已載入\n")
 
 # KNN 資料集路徑
-knn_dataset_path = 'knn_dataset.json'
+knn_dataset_path = 'knn_dataset_new.json'
 
 # 處理每一對球
 for ball_idx, ball_pair in enumerate(seg_data['ball_pairs'], 1):

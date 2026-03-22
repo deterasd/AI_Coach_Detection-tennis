@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tennis Rating – High/Medium/Low</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
   <style>
     :root {
       --bg: #0b0b0c;
@@ -888,7 +889,7 @@
           align-items: center;
           margin-bottom: 16px;
         ">
-      <button class="back-btn-ui" onclick="window.history.back()">
+      <button class="back-btn-ui" onclick="(function(){const u=sessionStorage.getItem('DASHBOARD_RETURN_URL');if(u){sessionStorage.removeItem('DASHBOARD_RETURN_URL');window.location.href=u;}else{window.history.back();}})()">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -1021,9 +1022,6 @@
             <div class="advice-row">
               <strong>動作類型：</strong><span id="recActionType">-</span>
             </div>
-            <div class="advice-row">
-              <strong>相似度：</strong><span id="recSimilarity">-</span>
-            </div>
           </div>
         </div>
 
@@ -1092,6 +1090,32 @@
               <div class="ac-bar-fill" id="barContactzone"></div>
             </div>
             <div class="ac-text" id="textContactzone">尚無資料</div>
+          </div>
+
+          <!-- 重心 -->
+          <div class="analysis-card" id="cardBodyWeight">
+            <div class="ac-header">
+              <span class="ac-icon">⚖️</span>
+              <span class="ac-title">重心 (Body Weight)</span>
+              <span class="ac-conf" id="confBodyWeight">--</span>
+            </div>
+            <div class="ac-bar-bg">
+              <div class="ac-bar-fill" id="barBodyWeight"></div>
+            </div>
+            <div class="ac-text" id="textBodyWeight">尚無資料</div>
+          </div>
+
+          <!-- 擊球拍面角度 -->
+          <div class="analysis-card" id="cardRacketFace">
+            <div class="ac-header">
+              <span class="ac-icon">📐</span>
+              <span class="ac-title">擊球拍面角度 (Racket Face)</span>
+              <span class="ac-conf" id="confRacketFace">--</span>
+            </div>
+            <div class="ac-bar-bg">
+              <div class="ac-bar-fill" id="barRacketFace"></div>
+            </div>
+            <div class="ac-text" id="textRacketFace">尚無資料</div>
           </div>
 
           <!-- 頭部穩定 -->
@@ -1239,6 +1263,7 @@
       { key: "HitTiming", label: "擊球點/節奏" },
       { key: "RacketFace", label: "拍面角度" },
     ];
+    const HIDDEN_PARTS = [];
 
     // 加權
     const WEIGHTS = {
@@ -1467,15 +1492,17 @@
       return "url(#gradLow)";
     }
     function computeOverall(rec, weighted) {
-      if (rec.overall && rec.overall > 0) return rec.overall;
+      // 一律依 8 項計算，確保與 dashboard 一致（不再使用預存 overall）
       if (!weighted) {
+        const displayParts = PARTS.filter((p) => !HIDDEN_PARTS.includes(p.key));
         let sum = 0;
-        for (const p of PARTS) sum += rec[p.key] ?? 0;
-        return sum / PARTS.length;
+        for (const p of displayParts) sum += rec[p.key] ?? 0;
+        return sum / displayParts.length;
       }
+      const displayParts = PARTS.filter((p) => !HIDDEN_PARTS.includes(p.key));
       let sw = 0;
       let sx = 0;
-      for (const p of PARTS) {
+      for (const p of displayParts) {
         const w = WEIGHTS[p.key] ?? 1;
         sw += w;
         sx += (rec[p.key] ?? 0) * w;
@@ -1786,7 +1813,7 @@
         advice: "請匯入數據或等待分析結果",
       };
 
-      const parts = PARTS.map((p) => ({
+      const parts = PARTS.filter((p) => !HIDDEN_PARTS.includes(p.key)).map((p) => ({
         key: p.key,
         label: p.label,
         score: Number(rec[p.key] || 0),
@@ -1883,13 +1910,10 @@
               ? String(rec.hand)
               : "-";
       const actionLabel = rec.action_type || "-";
-      const simLabel = rec.similarity || "-";
       const elHand = document.getElementById("recHand");
       const elAction = document.getElementById("recActionType");
-      const elSim = document.getElementById("recSimilarity");
       if (elHand) elHand.textContent = handLabel;
       if (elAction) elAction.textContent = actionLabel;
-      if (elSim) elSim.textContent = simLabel;
 
       // 更新各分析卡片的信心度與進度條（rec 的分數為 0–10  scale）
       const confBarMap = [
@@ -1913,6 +1937,16 @@
           key: "ContactZone",
           confId: "confContactzone",
           barId: "barContactzone",
+        },
+        {
+          key: "BodyWeight",
+          confId: "confBodyWeight",
+          barId: "barBodyWeight",
+        },
+        {
+          key: "RacketFace",
+          confId: "confRacketFace",
+          barId: "barRacketFace",
         },
         { key: "Head", confId: "confHead", barId: "barHead" },
       ];
@@ -1949,6 +1983,8 @@
         textHitballswing: analyses.hitballswing_advice,
         textFollowthrough: analyses.followthrough_advice,
         textContactzone: analyses.contact_zone_advice,
+        textBodyWeight: analyses.center_of_mass_advice,
+        textRacketFace: analyses.racket_face_advice,
         textHead: analyses.head_stability_advice,
       };
       for (const [elId, text] of Object.entries(adviceMap)) {
@@ -1967,14 +2003,17 @@
     }
 
     function init() {
-      try {
-        const stored = localStorage.getItem("tennisAnalysisData");
-        if (stored) {
-          const data = JSON.parse(stored);
-          RECORDS.unshift(data);
+      // 僅在無 TENNIS_ANALYSIS_SYNC 時才用 tennisAnalysisData 作為 fallback，避免重複（ANALYSIS_RESULT + trajectory_1/2/3）
+      if (RECORDS.length === 0) {
+        try {
+          const stored = localStorage.getItem("tennisAnalysisData");
+          if (stored) {
+            const data = JSON.parse(stored);
+            RECORDS = [data];
+          }
+        } catch (e) {
+          console.error("Failed to load stored analysis data", e);
         }
-      } catch (e) {
-        console.error("Failed to load stored analysis data", e);
       }
 
       elCount.textContent = (RECORDS.length > 0 ? RECORDS.length : 0) + " 筆";

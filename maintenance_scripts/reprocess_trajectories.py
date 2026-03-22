@@ -75,7 +75,7 @@ def reprocess_existing_segments(user_name, user_height=175):
     ])
     
     # KNN 資料集
-    knn_dataset = 'knn_dataset.json'
+    knn_dataset = 'knn_dataset_new.json'
     
     # 匯入處理函數
     from trajector_processing_unified import process_multiple_balls

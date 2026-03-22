@@ -509,10 +509,10 @@ async def download(background_tasks: BackgroundTasks):
                         # 將處理任務加入隊列，等待工作者依序處理
                         knn_dataset_path = 'knn_dataset_new.json'
                         if not Path(knn_dataset_path).exists():
-                            print(f"knn_dataset.json not found at: {knn_dataset_path}")
+                            print(f"knn_dataset_new.json not found at: {knn_dataset_path}")
                             raise HTTPException(
                                 status_code=500,
-                                detail=f"knn_dataset.json not found at: {knn_dataset_path}"
+                                detail=f"knn_dataset_new.json not found at: {knn_dataset_path}"
                             )
                         with open(knn_dataset_path, 'r', encoding='utf-8') as f:
                             knn_data = json.load(f)
@@ -523,7 +523,7 @@ async def download(background_tasks: BackgroundTasks):
                         )
                         #await trajectory_queue.put(
                          #   (P1, P2, yolo_pose_model, yolo_tennis_ball_model,paddle_model,
-                          #   side_video_path, video_45_path, 'knn_dataset.json') 
+                          #   side_video_path, video_45_path, 'knn_dataset_new.json') 
                         #)# 👈 0923加入 paddle 模型
                     else:
                         if not side_video_ready:

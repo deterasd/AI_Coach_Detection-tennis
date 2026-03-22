@@ -412,7 +412,7 @@ def simple_test_pipeline(input_folder="input_videos",
         ])
         
         # KNN資料集
-        knn_dataset = 'knn_dataset.json'
+        knn_dataset = 'knn_dataset_new.json'
         
         # 步驟8: 執行完整分析流程
         print("\n🚀 步驟8: 開始完整分析流程...")

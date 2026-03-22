@@ -791,7 +791,7 @@ if __name__ == "__main__":
     name = "test_user"
     P1 = [0, 0, 0]  # 根據實際情況設定
     P2 = [0, 0, 0]  # 根據實際情況設定
-    knn_dataset_path = "knn_dataset.json"
+    knn_dataset_path = "knn_dataset_new.json"
     
     # 檢查檔案是否存在
     if not os.path.exists(video_side) or not os.path.exists(video_45):

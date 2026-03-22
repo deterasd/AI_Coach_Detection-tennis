@@ -413,7 +413,7 @@ if __name__ == "__main__":
         yolo_paddle_model=yolo_paddle_model,
         video_side=args.video_side,
         video_45=args.video_45,
-        knn_dataset='knn_dataset.json',
+        knn_dataset='knn_dataset_new.json',
         name=args.name,
         ball_entry_direction=args.direction,
         output_folder=args.output,

@@ -475,7 +475,10 @@ def analyze_hitballswing(trajectory_data, knn_dataset_path: str = "knn_dataset_n
         else:
             advice_parts.append("B.手腕位置:數據不足")
         
-        combined_advice = "".join(advice_parts)
+        # 各子項以「。」結尾後再銜接下一項
+        def _end_period(s):
+            return s if s.rstrip().endswith("。") else s + "。"
+        combined_advice = "".join(_end_period(p) for p in advice_parts)
         
         # 計算信心度 (基於 Level)
         # Level 1 = 1.0 (100分), Level 2 = 0.8 (80分), Level 3 = 0.6 (60分), Invalid = 0.0

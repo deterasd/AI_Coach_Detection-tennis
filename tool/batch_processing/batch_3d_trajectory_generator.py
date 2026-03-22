@@ -405,7 +405,7 @@ class Batch3DTrajectoryGenerator:
                         yolo_tennis_ball_model=self.yolo_tennis_ball_model,
                         video_side=side_video,
                         video_45=deg45_video,
-                        knn_dataset='knn_dataset.json',
+                        knn_dataset='knn_dataset_new.json',
                         name=key,
                         ball_entry_direction="right",
                         confidence_threshold=0.5,

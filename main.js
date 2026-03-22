@@ -152,7 +152,7 @@ async function fetchVideoList(folder, autoSelectFirst = false) {
   console.log("fetchVideoList 完成");
 }
 
-// 從影片列表中挑選最合適的影片：優先 processed_full_video > full_video > 其他 mp4
+// 從影片列表中挑選影片：僅顯示檔名結尾為 *_full_video.mp4 或 *_processed_full_video.mp4 的檔案（不含 segment 等片段檔）
 function pickBestVideos(videos_all) {
   const preferred = videos_all.filter((v) =>
     v.toLowerCase().endsWith("_processed_full_video.mp4"),
@@ -162,7 +162,7 @@ function pickBestVideos(videos_all) {
     v.toLowerCase().endsWith("_full_video.mp4"),
   );
   if (withFull.length > 0) return withFull;
-  return videos_all.filter((v) => v.toLowerCase().endsWith(".mp4"));
+  return []; // 2D 頁面只播放 full_video，不顯示 segment 等其他 mp4
 }
 
 function highlightSelection() {
@@ -222,7 +222,7 @@ async function checkFirstBallReady() {
         if (videoResponse.ok) {
           const files = await videoResponse.json();
           if (files.includes("ready.txt")) {
-            notifyBallReady(cleanName, ballNum);
+            notifyBallReady(cleanName, ballNum, latestFolderFull);
             notifiedBalls.add(ballKey); // 標記為已通知
           }
         }
@@ -235,7 +235,7 @@ async function checkFirstBallReady() {
   }
 }
 
-function notifyBallReady(playerName, ballNumber) {
+function notifyBallReady(playerName, ballNumber, folderNameForSelect = null) {
   // 視覺通知 (升級版)
   const notification = document.createElement("div");
   notification.id = "readyNotification";
@@ -257,8 +257,8 @@ function notifyBallReady(playerName, ballNumber) {
         <div style="margin-bottom: 8px; font-size: 20px; color: #4CAF50;"><strong>🔔 Analysis Complete!</strong></div>
         <div style="margin-bottom: 18px; color: #eee; font-size: 16px;">Player <strong>${playerName}</strong> - Ball <strong>${ballNumber}</strong> result is ready.</div>
         <div style="display: flex; gap: 10px;">
-            <button id="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View Result</button>
-            <button id="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
+            <button type="button" class="viewResultBtn" style="background: #4CAF50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold;">View Result</button>
+            <button type="button" class="closeNotifyBtn" style="background: transparent; color: #999; border: 1px solid #444; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; flex: 1;">Dismiss</button>
         </div>
     `;
   document.body.appendChild(notification);
@@ -274,20 +274,34 @@ function notifyBallReady(playerName, ballNumber) {
   msg.volume = 1.0; // 確保音量最大
   window.speechSynthesis.speak(msg);
 
-  // 點擊「立即查看」
-  document.getElementById("viewResultBtn").onclick = () => {
-    // 自動選擇下拉選單
-    const options = Array.from(folderSelect.options);
-    const targetOption = options.find((opt) => opt.value === playerName);
-    if (targetOption) {
-      folderSelect.value = playerName;
-      fetchVideoList(playerName, true); // true 表示自動選擇第一球
-    }
-    notification.remove();
-  };
+  // 點擊「View Result」
+  const viewBtn = notification.querySelector(".viewResultBtn");
+  if (viewBtn) {
+    viewBtn.addEventListener("click", async () => {
+      const folderToSelect = folderNameForSelect || playerName;
+      let targetOption = Array.from(folderSelect.options).find(
+        (opt) => opt.value === folderToSelect || opt.value.includes(playerName)
+      );
+      if (!targetOption && folderToSelect) {
+        await fetchFolderList();
+        targetOption = Array.from(folderSelect.options).find(
+          (opt) => opt.value === folderToSelect || opt.value.includes(playerName)
+        );
+      }
+      if (targetOption) {
+        folderSelect.value = targetOption.value;
+        await fetchVideoList(targetOption.value, true);
+      } else if (folderToSelect) {
+        folderSelect.value = folderToSelect;
+        await fetchVideoList(folderToSelect, true);
+      }
+      notification.remove();
+    });
+  }
 
-  document.getElementById("closeNotifyBtn").onclick = () =>
+  notification.querySelector(".closeNotifyBtn").addEventListener("click", () => {
     notification.remove();
+  });
 
   // 20秒後自動消失
   setTimeout(() => {
@@ -344,8 +358,9 @@ videoSelect.addEventListener("change", (e) => {
     // pathParts: [".", "trajectory", folderName, (sub?), videoFile]
     if (pathParts.length >= 4) {
       const videoFile = pathParts[pathParts.length - 1];
-      // 還原 prefix：去掉常見後綴
-      const prefix = videoFile
+      // prefix = 影片檔名去掉 .mp4 與常見後綴，保留 球N（例如：陳孝宗0320__球1_full_video.mp4 → 陳孝宗0320__球1）
+      // 2D 軌跡 JSON 檔名格式：{prefix}_side(2D_trajectory_smoothed).json、{prefix}_45(2D_trajectory_smoothed).json
+      let prefix = videoFile
         .replace(/_processed_full_video\.mp4$/i, "")
         .replace(/_full_video\.mp4$/i, "")
         .replace(/\.mp4$/i, "")
@@ -354,22 +369,9 @@ videoSelect.addEventListener("change", (e) => {
       // 建構 JSON 所在的目錄路徑（去掉 video 檔名，保留目錄部分）
       const jsonDir = pathParts.slice(0, pathParts.length - 1).join("/");
 
-      // 從 prefix 互推 45 和 side 的 JSON 路徑
-      let fortyFivePrefix, sidePrefix;
-      if (/_45_segment/i.test(prefix)) {
-        fortyFivePrefix = prefix;
-        sidePrefix = prefix.replace(/_45_segment/i, "_side_segment");
-      } else if (/_side_segment/i.test(prefix)) {
-        sidePrefix = prefix;
-        fortyFivePrefix = prefix.replace(/_side_segment/i, "_45_segment");
-      } else {
-        // 無法判斷角度（如 tim401__1）→ 補後綴
-        fortyFivePrefix = `${prefix}_45_segment`;
-        sidePrefix = `${prefix}_side_segment`;
-      }
-
-      const Json_45_Path = `${jsonDir}/${fortyFivePrefix}(2D_trajectory_smoothed).json`;
-      const Json_side_Path = `${jsonDir}/${sidePrefix}(2D_trajectory_smoothed).json`;
+      // 2D 軌跡檔：{prefix}_side(...).json 與 {prefix}_45(...).json（實際檔名為 _side / _45，非 _side_segment）
+      const Json_45_Path = `${jsonDir}/${prefix}_45(2D_trajectory_smoothed).json`;
+      const Json_side_Path = `${jsonDir}/${prefix}_side(2D_trajectory_smoothed).json`;
 
       console.log("JSON 目錄:", jsonDir, "prefix:", prefix);
       console.log("Loading JSON files:", Json_45_Path, Json_side_Path);
@@ -379,45 +381,45 @@ videoSelect.addEventListener("change", (e) => {
 });
 
 async function handleFileSelection(filePath45, filePathSide) {
-  try {
-    const response45 = await fetch(filePath45);
-    if (!response45.ok) {
-      console.error(
-        "45 degree file not found, please check if path is correct:",
-        filePath45,
-      );
-      throw new Error(`HTTP error! Status: ${response45.status}`);
+  const tryFetch = async (path) => {
+    let r = await fetch(path);
+    if (!r.ok && path.includes("_smoothed)")) {
+      const fallback = path.replace("(2D_trajectory_smoothed)", "(2D_trajectory)");
+      r = await fetch(fallback);
+      if (r.ok) return { res: r, usedPath: fallback };
     }
-    const data45 = await response45.json();
-    const filename45 = filePath45.split("/").pop();
-    console.log(
-      "45 degree JSON file loaded successfully, filename:",
-      filename45,
-    );
-    document.getElementById("filename2").textContent = filename45;
-    createChart("trajectoryChart2", data45);
+    return r.ok ? { res: r, usedPath: path } : null;
+  };
+  try {
+    const out45 = await tryFetch(filePath45);
+    if (!out45) {
+      console.error("45 degree file not found:", filePath45);
+    } else {
+      const data45 = await out45.res.json();
+      const filename45 = out45.usedPath.split("/").pop();
+      const fn2 = document.getElementById("filename2");
+      if (fn2) fn2.textContent = filename45;
+      createChart("trajectoryChart2", data45);
+    }
   } catch (error) {
     console.error("Failed to load 45 degree JSON file:", error);
   }
   try {
-    const responseSide = await fetch(filePathSide);
-    if (!responseSide.ok) {
-      console.error(
-        "Side file not found, please check if path is correct:",
-        filePathSide,
-      );
-      throw new Error(`HTTP error! Status: ${responseSide.status}`);
-    }
-    const dataSide = await responseSide.json();
-    const filenameSide = filePathSide.split("/").pop();
-    console.log("Side JSON file loaded successfully, filename:", filenameSide);
-    document.getElementById("filename1").textContent = filenameSide;
-    createChart("trajectoryChart1", dataSide);
+    const outSide = await tryFetch(filePathSide);
+    if (!outSide) {
+      console.error("Side file not found:", filePathSide);
+    } else {
+      const dataSide = await outSide.res.json();
+      const filenameSide = outSide.usedPath.split("/").pop();
+      const fn1 = document.getElementById("filename1");
+      if (fn1) fn1.textContent = filenameSide;
+      createChart("trajectoryChart1", dataSide);
 
-    // 載入分析結果（使用 45 度角檔案路徑來提取正確的 prefix）
+      // 載入分析結果（使用 45 度角檔案路徑來提取正確的 prefix）
     // 同時傳入當前播放影片的 src，以便儲入 localStorage
-    const currentVideoSrc = videoPlayer ? videoPlayer.src : "";
-    await loadAnalysisResults(filePath45, filePathSide, currentVideoSrc);
+      const currentVideoSrc = videoPlayer ? videoPlayer.src : "";
+      await loadAnalysisResults(filePath45, filePathSide, currentVideoSrc);
+    }
   } catch (error) {
     console.error("Failed to load Side JSON file:", error);
   }
@@ -513,21 +515,27 @@ function formatAdviceText(text) {
   return formatted;
 }
 
-// 分析檔名使用 _segment 後綴（與 pipeline 輸出一致），2D 軌跡檔名可能是 _45_segment / _side_segment
+// 從 2D 軌跡檔名提取分析用的 base prefix（例：陳孝宗0320__球1_45 → 陳孝宗0320__球1）
+// 分析檔：{base}_integrated_analysis.json、{base}_segment_gpt_feedback.json
 function analysisPrefix(prefix) {
   if (!prefix) return prefix;
-  return prefix.replace(/_45_segment$|_side_segment$/i, "_segment");
+  return prefix
+    .replace(/_45_segment$|_side_segment$/i, "_segment")
+    .replace(/_45$|_side$/i, "")           // 陳孝宗0320__球1_45 → 陳孝宗0320__球1
+    .replace(/_segment$/, "");              // 陳孝宗__1_segment → 陳孝宗__1
 }
 
 // 載入整合分析結果（取代原本的 KNN 分析）
+// 實際檔名：{base}_integrated_analysis.json
 async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
   try {
     const seg = fileName ? `${fileName}/` : "";
-    const prefixForAnalysis = analysisPrefix(prefix);
-    let integratedPath = `./trajectory/${folderName}/${seg}${prefix}_integrated_analysis.json`;
+    const base = analysisPrefix(prefix);
+    const baseDir = `./trajectory/${folderName}/${seg}`;
+    let integratedPath = `${baseDir}${base}_integrated_analysis.json`;
     let response = await fetch(integratedPath);
-    if (!response.ok && prefixForAnalysis !== prefix) {
-      integratedPath = `./trajectory/${folderName}/${seg}${prefixForAnalysis}_integrated_analysis.json`;
+    if (!response.ok && base !== prefix) {
+      integratedPath = `${baseDir}${prefix}_integrated_analysis.json`;
       response = await fetch(integratedPath);
     }
 
@@ -546,6 +554,8 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
           { key: "hitballswing_advice", title: "🎾 擊球出拍轉身分析" },
           { key: "followthrough_advice", title: "🔄 收拍分析" },
           { key: "contact_zone_advice", title: "📍 擊球點區域分析" },
+          { key: "center_of_mass_advice", title: "⚖️ 重心分析" },
+          { key: "racket_face_advice", title: "🎯 擊球拍面角度分析" },
           { key: "head_stability_advice", title: "👁️ 頭部穩定度分析" },
         ];
 
@@ -619,15 +629,6 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
         }
       }
 
-      // 顯示相似度（如果有 expert_distance）
-      if (integratedData.expert_distance !== undefined) {
-        const similarity = (
-          (1 / (1 + integratedData.expert_distance)) *
-          100
-        ).toFixed(1);
-        document.getElementById("similarityValue").textContent =
-          `${similarity}%`;
-      }
       // Processing Stats：整合分析有資料時先顯示
       if (
         integratedData.statistics &&
@@ -660,14 +661,24 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
         let stored = {};
         try { stored = JSON.parse(localStorage.getItem('tennisAnalysisData') || '{}'); } catch (e) { stored = {}; }
 
-        const similarity = integratedData.expert_distance !== undefined
-          ? ((1 / (1 + integratedData.expert_distance)) * 100).toFixed(1) + "%"
-          : null;
-
         const stats = integratedData.statistics || {};
         const cz = stats.contact_zone?.flags || {};
         const czOk = [cz.lateral_in_range, cz.height_in_range, cz.depth_in_range].filter(Boolean).length;
         const ContactZone = (czOk / 3) * 10;
+        const WEIGHTS = { Head: 1.0, Backswing: 1.0, ForwardSwing: 1.0, HitballSwing: 1.5, FollowThrough: 1.0, BodyWeight: 1.0, HitTiming: 1.2, RacketFace: 1.2 };
+        const scores = {
+          Head: (stats.head_stability_confidence || 0) * 10,
+          Backswing: (stats.backswing_confidence || 0) * 10,
+          ForwardSwing: (stats.forwardswing_confidence || 0) * 10,
+          HitballSwing: (stats.hitballswing_confidence || 0) * 10,
+          FollowThrough: (stats.followthrough_confidence || 0) * 10,
+          BodyWeight: (stats.center_of_mass_confidence ?? 0) * 10,
+          HitTiming: ContactZone,
+          RacketFace: (stats.racket_face_confidence ?? 0) * 10
+        };
+        let sw = 0, sx = 0;
+        for (const [k, w] of Object.entries(WEIGHTS)) { sx += (scores[k] || 0) * w; sw += w; }
+        const overall = Number((sx / sw).toFixed(1));
         const toSave = Object.assign(stored, {
           id: "ANALYSIS_RESULT",
           hand: "right",
@@ -678,12 +689,11 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
           HitballSwing: (stats.hitballswing_confidence || 0) * 10,
           FollowThrough: (stats.followthrough_confidence || 0) * 10,
           ContactZone: ContactZone,
-          BodyWeight: 0,
-          HitTiming: 0,
-          RacketFace: 0,
-          overall: 0,
+          BodyWeight: (stats.center_of_mass_confidence ?? 0) * 10,
+          HitTiming: ContactZone,
+          RacketFace: (stats.racket_face_confidence ?? 0) * 10,
+          overall,
           action_type: integratedData.action_type || null,
-          similarity: similarity,
           nearest_expert: integratedData.nearest_expert || null,
           analyses: integratedData.analyses || null,
           statistics: integratedData.statistics || null,
@@ -699,8 +709,8 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
         console.warn('將分析資料存入 localStorage 失敗:', e);
       }
     } else {
-      // Fallback: 嘗試載入原本的 KNN feedback
-      const knnPath = `./trajectory/${folderName}/${seg}${prefix}_knn_feedback.txt`;
+      // Fallback: 嘗試載入原本的 KNN feedback（檔名：{base}_segment_knn_feedback.txt）
+      const knnPath = `${baseDir}${base}_segment_knn_feedback.txt`;
       const knnResponse = await fetch(knnPath);
       if (knnResponse.ok) {
         const knnText = await knnResponse.text();
@@ -730,14 +740,17 @@ async function loadKNNAnalysis(folderName, fileName, prefix, videoSrc) {
 }
 
 // 載入 GPT 分析結果
+// 實際檔名：{base}_segment_gpt_feedback.json
 async function loadGPTAnalysis(folderName, fileName, prefix) {
   try {
     const seg = fileName ? `${fileName}/` : "";
-    const prefixForAnalysis = analysisPrefix(prefix);
-    let gptPath = `./trajectory/${folderName}/${seg}${prefix}_gpt_feedback.json`;
+    const base = analysisPrefix(prefix);
+    const baseDir = `./trajectory/${folderName}/${seg}`;
+    // 依序嘗試：base_segment_gpt_feedback.json、base_gpt_feedback.json
+    let gptPath = `${baseDir}${base}_segment_gpt_feedback.json`;
     let response = await fetch(gptPath);
-    if (!response.ok && prefixForAnalysis !== prefix) {
-      gptPath = `./trajectory/${folderName}/${seg}${prefixForAnalysis}_gpt_feedback.json`;
+    if (!response.ok) {
+      gptPath = `${baseDir}${base}_gpt_feedback.json`;
       response = await fetch(gptPath);
     }
     console.log("Loading GPT feedback from:", gptPath);
@@ -864,23 +877,16 @@ let charts = {
   chart2: null,
 };
 
-// 開啟 3D 視覺化並傳遞選中的資料夾與軌跡
+// 開啟 3D 視覺化：只傳遞「選擇資料夾」中的資料夾，讓 3D 載入整個目錄（等同 Select Directory）
 function open3DVisualization() {
   const selectedFolder = document.getElementById("folderSelect").value;
-  const idx = parseInt(document.getElementById("videoSelect").value, 10);
-  const opt = currentTrajectoryOptions[idx];
 
   if (!selectedFolder) {
     alert("請先選擇一個資料夾！");
     return;
   }
 
-  let url = "/3d";
   const params = new URLSearchParams();
   params.append("folder", selectedFolder);
-  if (opt && (opt.prefix || opt.label)) {
-    params.append("video", opt.prefix || opt.label);
-  }
-  if (params.toString()) url += "?" + params.toString();
-  window.open(url, "_blank");
+  window.open("/3d?" + params.toString(), "_blank");
 }

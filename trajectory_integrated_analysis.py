@@ -7,12 +7,22 @@ import json
 import numpy as np
 from datetime import datetime
 from trajectory_analysis.trajectory_center_of_mass_knn import analyze_center_of_mass
+from trajectory_analysis.trajectory_racket_face_knn import analyze_racket_face
 from trajectory_analysis.trajectory_backswing_knn import analyze_backswing
 from trajectory_analysis.trajectory_forwardswing_knn import analyze_forwardswing
 from trajectory_analysis.trajectory_hitballswing_knn import analyze_hitballswing
 from trajectory_analysis.trajectory_followthrough_knn import analyze_followthrough
 from trajectory_analysis.trajectory_contact_zone_eval import analyze_contact_zone
 from trajectory_analysis.trajectory_head_stability import analyze_head_stability
+
+
+# 當建議含此關鍵字時，該分析不計分、不納入總成績、不列入優先改善項目
+INSUFFICIENT_ADVICE = "專家數據不足，無法比較"
+
+
+def _is_insufficient(advice):
+    """檢查是否為「專家數據不足，無法比較」"""
+    return advice and INSUFFICIENT_ADVICE in advice
 
 
 def load_json(file_path):
@@ -36,6 +46,8 @@ def combine_all_advice(analyses_dict):
         "hitballswing_advice",
         "followthrough_advice",
         "contact_zone_advice",
+        "center_of_mass_advice",
+        "racket_face_advice",
     ]
     
     for analysis_key in analysis_order:
@@ -71,25 +83,48 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
     }
     
     # 0. KNN 建議不再寫入 analyses（依需求省略）
-    # 1. 重心分析（暫停執行與輸出）
-    # print("執行重心分析...")
-    # 暫停：不執行 analyze_center_of_mass，也不輸出 center_of_mass_advice 與統計
-    # try:
-    #     center_of_mass_data = analyze_center_of_mass(
-    #         knn_dataset, trajectory_data, expert_filename
-    #     )
-    #     result["analyses"]["center_of_mass_advice"] = center_of_mass_data.get("height_advice", "")
-    #     result["expert_distance"] = center_of_mass_data.get("distance", 0.0)
-    #     result["statistics"]["center_of_mass"] = center_of_mass_data.get("statistics", {})
-    #     print(f"重心分析完成: {center_of_mass_data.get('height_assessment', '未知')}")
-    # except Exception as e:
-    #     print(f"重心分析失敗: {e}")
-    #     result["analyses"]["center_of_mass_advice"] = "重心分析失敗"
-    
     # 優先改善項目候選清單
     priority_candidates = []
 
-    # 2. 拉拍分析
+    # 1. 重心分析
+    print("執行重心分析...")
+    try:
+        trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
+        center_of_mass_advice, center_of_mass_confidence, com_priority = analyze_center_of_mass(
+            trajectory_json, knn_dataset, expert_filename
+        )
+        result["analyses"]["center_of_mass_advice"] = center_of_mass_advice
+        if _is_insufficient(center_of_mass_advice):
+            result["statistics"]["center_of_mass_insufficient_data"] = True
+        else:
+            result["statistics"]["center_of_mass_confidence"] = center_of_mass_confidence
+            if com_priority:
+                priority_candidates.append(com_priority)
+        print(f"重心分析完成: 信心度 {center_of_mass_confidence:.2f}")
+    except Exception as e:
+        print(f"重心分析失敗: {e}")
+        result["analyses"]["center_of_mass_advice"] = "重心分析失敗"
+
+    # 2. 擊球拍面角度分析
+    print("執行擊球拍面角度分析...")
+    try:
+        trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
+        racket_face_advice, racket_face_confidence, rf_priority = analyze_racket_face(
+            trajectory_json, knn_dataset, expert_filename
+        )
+        result["analyses"]["racket_face_advice"] = racket_face_advice
+        if _is_insufficient(racket_face_advice):
+            result["statistics"]["racket_face_insufficient_data"] = True
+        else:
+            result["statistics"]["racket_face_confidence"] = racket_face_confidence
+            if rf_priority:
+                priority_candidates.append(rf_priority)
+        print(f"擊球拍面角度分析完成: 信心度 {racket_face_confidence:.2f}")
+    except Exception as e:
+        print(f"擊球拍面角度分析失敗: {e}")
+        result["analyses"]["racket_face_advice"] = "擊球拍面角度分析失敗"
+
+    # 3. 拉拍分析
     print("執行拉拍分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
@@ -98,15 +133,18 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["backswing_advice"] = backswing_suggestion
-        result["statistics"]["backswing_confidence"] = backswing_confidence
-        if bs_priority:
-            priority_candidates.append(bs_priority)
+        if _is_insufficient(backswing_suggestion):
+            result["statistics"]["backswing_insufficient_data"] = True
+        else:
+            result["statistics"]["backswing_confidence"] = backswing_confidence
+            if bs_priority:
+                priority_candidates.append(bs_priority)
         print(f"拉拍分析完成: 信心度 {backswing_confidence:.2f}")
     except Exception as e:
         print(f"拉拍分析失敗: {e}")
         result["analyses"]["backswing_advice"] = "拉拍分析失敗"
 
-    # 3. 前段出拍分析
+    # 4. 前段出拍分析
     print("執行前段出拍分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
@@ -114,15 +152,18 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["forwardswing_advice"] = forwardswing_suggestion
-        result["statistics"]["forwardswing_confidence"] = forwardswing_confidence
-        if fs_priority:
-            priority_candidates.append(fs_priority)
+        if _is_insufficient(forwardswing_suggestion):
+            result["statistics"]["forwardswing_insufficient_data"] = True
+        else:
+            result["statistics"]["forwardswing_confidence"] = forwardswing_confidence
+            if fs_priority:
+                priority_candidates.append(fs_priority)
         print(f"前段出拍分析完成: 信心度 {forwardswing_confidence:.2f}")
     except Exception as e:
         print(f"前段出拍分析失敗: {e}")
         result["analyses"]["forwardswing_advice"] = "前段出拍分析失敗"
 
-    # 4. 擊球出拍轉身分析
+    # 5. 擊球出拍轉身分析
     print("執行擊球出拍轉身分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
@@ -130,15 +171,18 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["hitballswing_advice"] = hitballswing_suggestion
-        result["statistics"]["hitballswing_confidence"] = hitballswing_confidence
-        if hs_priority:
-            priority_candidates.append(hs_priority)
+        if _is_insufficient(hitballswing_suggestion):
+            result["statistics"]["hitballswing_insufficient_data"] = True
+        else:
+            result["statistics"]["hitballswing_confidence"] = hitballswing_confidence
+            if hs_priority:
+                priority_candidates.append(hs_priority)
         print(f"擊球出拍轉身分析完成: 信心度 {hitballswing_confidence:.2f}")
     except Exception as e:
         print(f"擊球出拍轉身分析失敗: {e}")
         result["analyses"]["hitballswing_advice"] = "擊球出拍轉身分析失敗"
 
-    # 5. 收拍分析
+    # 6. 收拍分析
     print("執行收拍分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
@@ -146,15 +190,18 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["followthrough_advice"] = followthrough_suggestion
-        result["statistics"]["followthrough_confidence"] = followthrough_confidence
-        if ft_priority:
-            priority_candidates.append(ft_priority)
+        if _is_insufficient(followthrough_suggestion):
+            result["statistics"]["followthrough_insufficient_data"] = True
+        else:
+            result["statistics"]["followthrough_confidence"] = followthrough_confidence
+            if ft_priority:
+                priority_candidates.append(ft_priority)
         print(f"收拍分析完成: 信心度 {followthrough_confidence:.2f}")
     except Exception as e:
         print(f"收拍分析失敗: {e}")
         result["analyses"]["followthrough_advice"] = "收拍分析失敗"
 
-    # 6. 擊球點區域分析（球 vs 專業分佈）
+    # 7. 擊球點區域分析（球 vs 專業分佈）
     print("執行擊球點區域分析...")
     try:
         contact_zone = analyze_contact_zone(knn_dataset, trajectory_data)
@@ -172,7 +219,7 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
         print(f"擊球點區域分析失敗: {e}")
         result["analyses"]["contact_zone_advice"] = "擊球點區域分析失敗"
 
-    # 7. 頭部穩定度分析（眼睛盯球）
+    # 8. 頭部穩定度分析（眼睛盯球）
     print("執行頭部穩定度分析...")
     try:
         trajectory_json = load_json(trajectory_data) if isinstance(trajectory_data, str) else trajectory_data
@@ -180,9 +227,12 @@ def analyze_all_features(trajectory_data, knn_dataset, expert_filename, knn_sugg
             trajectory_json, knn_dataset, expert_filename
         )
         result["analyses"]["head_stability_advice"] = head_stability_suggestion
-        result["statistics"]["head_stability_confidence"] = head_stability_confidence
-        if hd_priority:
-            priority_candidates.append(hd_priority)
+        if _is_insufficient(head_stability_suggestion):
+            result["statistics"]["head_stability_insufficient_data"] = True
+        else:
+            result["statistics"]["head_stability_confidence"] = head_stability_confidence
+            if hd_priority:
+                priority_candidates.append(hd_priority)
         print(f"頭部穩定度分析完成: 信心度 {head_stability_confidence:.2f}")
     except Exception as e:
         print(f"頭部穩定度分析失敗: {e}")
@@ -265,7 +315,7 @@ def analyze_integrated_trajectory(trajectory_data, knn_dataset, expert_filename,
 if __name__ == "__main__":
     # 測試用
     trajectory_path = "trajectory/testing_123/testing_(3D_trajectory_smoothed).json"
-    knn_dataset_path = "knn_dataset.json"
+    knn_dataset_path = "knn_dataset_new.json"
     expert_name = "pro_2_4(3D_trajectory_smoothed).json"
     
     result_path = analyze_integrated_trajectory(

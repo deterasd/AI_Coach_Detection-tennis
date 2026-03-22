@@ -93,7 +93,7 @@ def main():
         [   -0.122625,     0.020539,     0.992241,    90.876653],
     ])
 
-    knn_dataset_path = "knn_dataset.json"
+    knn_dataset_path = "knn_dataset_new.json"
 
     # 5. 啟動管線化流程
     print(f"\n🚀 啟動管線化流程...")

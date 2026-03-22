@@ -1,259 +1,393 @@
+"""
+重心分析模組（Body Weight / Center of Mass）
+--------------------------------------------------------
+依分析說明/重心分析使用說明.md 實作
+
+兩個分析點：
+A. 擊球時膝蓋彎曲（重心高低）：與 pro P10/P90/P100 比較
+B. 擊球後重心前移：自我比較（擊球前 vs 擊球後、左膝 vs 右膝）
+--------------------------------------------------------
+"""
+
 import json
 import numpy as np
+from typing import List, Dict, Tuple, Optional
 
 
-def load_json(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:
-        return json.load(file)
+# ========== 工具函式 ==========
+def load_json(file_path: str):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def _extract_center_of_mass_feature(frames, normalize_by_height=True):
+def _get_point(frame: Dict, name: str) -> Optional[np.ndarray]:
+    """從幀中提取關鍵點座標 (x, y, z)"""
+    p = frame.get(name)
+    if not p:
+        return None
+    x, y, z = p.get("x"), p.get("y"), p.get("z")
+    if x is None or y is None or z is None:
+        return None
+    return np.array([float(x), float(y), float(z)], dtype=float)
+
+
+def _distance(p1: np.ndarray, p2: np.ndarray) -> float:
+    """計算兩點 3D 距離"""
+    return float(np.linalg.norm(p2 - p1))
+
+
+def _knee_angle(hip: np.ndarray, knee: np.ndarray, ankle: np.ndarray) -> float:
     """
-    計算每幀的垂直重心代理指標：
-    - 預設使用 (髖 - 踝) 的 y 軸差值。
-    - 若 normalize_by_height=True，則會以頭頂–踝部距離或近似身高比例進行正規化。
-      可減少不同身高或攝影比例對結果的影響。
-    返回與幀數相等長度的浮點數列表（跳過沒有所需數據的幀）。
+    計算膝部內角度（hip-knee-ankle 三點夾角）
+    回傳 0~180°，角度越大膝蓋越直、重心越高
     """
-    feature_values = []
-    for frame in frames:
-        hips, ankles, heads = [], [], []
+    a = _distance(knee, ankle)
+    c = _distance(hip, knee)
+    b = _distance(hip, ankle)
+    if a < 1e-6 or c < 1e-6:
+        return 180.0
+    cos_val = (a * a + c * c - b * b) / (2 * a * c)
+    cos_val = max(-1.0, min(1.0, cos_val))
+    return float(np.degrees(np.arccos(cos_val)))
 
-        # 收集各部位 y 座標
-        if 'left_hip' in frame and frame['left_hip'] and frame['left_hip'].get('y') is not None:
-            hips.append(frame['left_hip']['y'])
-        if 'right_hip' in frame and frame['right_hip'] and frame['right_hip'].get('y') is not None:
-            hips.append(frame['right_hip']['y'])
-        if 'left_ankle' in frame and frame['left_ankle'] and frame['left_ankle'].get('y') is not None:
-            ankles.append(frame['left_ankle']['y'])
-        if 'right_ankle' in frame and frame['right_ankle'] and frame['right_ankle'].get('y') is not None:
-            ankles.append(frame['right_ankle']['y'])
-        if 'nose' in frame and frame['nose'] and frame['nose'].get('y') is not None:
-            heads.append(frame['nose']['y'])  # 使用 nose 或 head 作為頭頂點近似
 
-        # 若關鍵點不足則跳過
-        if len(hips) == 0 or len(ankles) == 0:
+def _find_impact_frame(frames: List[Dict]) -> Optional[int]:
+    """找出擊球幀索引"""
+    for i, frame in enumerate(frames):
+        if frame.get("tennis_ball_hit"):
+            return i
+    return None
+
+
+# ========== 專家範圍計算 ==========
+def _calculate_pro_knee_ranges(knn_dataset: List[Dict]) -> Dict:
+    """
+    從 knn_dataset_new.json 的 pro 數據計算擊球幀膝部角度的 P10/P50/P90/P100
+    取 max(左膝, 右膝) 作為該幀代表值
+    """
+    pro_data = [d for d in knn_dataset if d.get("level") == "pro"]
+    knee_angles = []
+
+    for expert in pro_data:
+        frames = expert.get("data", [])
+        if not frames:
             continue
-
-        mean_hip_y = float(np.mean(hips))
-        mean_ankle_y = float(np.mean(ankles))
-
-        # 若啟用 normalize_by_height，使用相對身高比例進行修正
-        if normalize_by_height:
-            # 使用鼻子到腳踝距離作為身高基準
-            if len(ankles) > 0 and len(heads) > 0:
-                mean_head_y = float(np.mean(heads))   # nose 的 y 值
-                mean_ankle_y = float(np.mean(ankles)) # ankle 的 y 值
-                height = abs(mean_head_y - mean_ankle_y)  # 以鼻子到腳踝距離近似身高
-            else:
-                continue  # 若無法偵測到 nose 或 ankle，略過該幀
-
-            if height > 0:
-                relative_com = abs(mean_hip_y - mean_ankle_y) / height
-                feature_values.append(relative_com)
+        impact_idx = _find_impact_frame(frames)
+        if impact_idx is None:
+            continue
+        frame = frames[impact_idx]
+        lh = _get_point(frame, "left_hip")
+        rh = _get_point(frame, "right_hip")
+        lk = _get_point(frame, "left_knee")
+        rk = _get_point(frame, "right_knee")
+        la = _get_point(frame, "left_ankle")
+        ra = _get_point(frame, "right_ankle")
+        if all(p is not None for p in [lh, lk, la]):
+            left_angle = _knee_angle(lh, lk, la)
         else:
-            feature_values.append(mean_hip_y - mean_ankle_y)
-
-    return feature_values
-
-
-def _minmax_normalize_sequences(sequences):
-    """
-    使用全域最小-最大值一起標準化多個一維序列。
-    參數: sequences: list[list[float]]
-    返回: list[list[float]] 具有相同形狀。
-    """
-    if not sequences:
-        return sequences
-    non_empty_arrays = [np.array(seq, dtype=float) for seq in sequences if len(seq) > 0]
-    if len(non_empty_arrays) == 0:
-        return sequences
-    concat = np.concatenate(non_empty_arrays)
-    min_v = float(np.min(concat))
-    max_v = float(np.max(concat))
-    if max_v - min_v == 0:
-        return sequences
-    normalized = []
-    for seq in sequences:
-        arr = np.array(seq, dtype=float)
-        if arr.size == 0:
-            normalized.append(seq)
+            left_angle = None
+        if all(p is not None for p in [rh, rk, ra]):
+            right_angle = _knee_angle(rh, rk, ra)
         else:
-            normalized.append(((arr - min_v) / (max_v - min_v)).tolist())
-    return normalized
+            right_angle = None
+        if left_angle is not None and right_angle is not None:
+            knee_angles.append(max(left_angle, right_angle))
+        elif left_angle is not None:
+            knee_angles.append(left_angle)
+        elif right_angle is not None:
+            knee_angles.append(right_angle)
 
-
-def _analyze_center_of_mass_height(current_seq, expert_features):
-    """
-    分析重心高低：比較當前重心與專家重心的平均高度
-    回傳重心高低判斷和對應建議
-    """
-    if not current_seq or not expert_features:
-        return "", ""
-
-    # 計算當前重心的平均高度
-    current_avg = np.mean(current_seq)
-
-    # 計算所有專家重心的平均高度
-    expert_avgs = [np.mean(seq) for seq in expert_features if len(seq) > 0]
-    if not expert_avgs:
-        return "", ""
-
-    expert_mean = np.mean(expert_avgs)
-    expert_std = np.std(expert_avgs)
-
-    height_diff = current_avg - expert_mean
-
-    # 若只有一位專家（標準差=0），改用相對比例比較
-    if expert_std == 0:
-        if expert_mean != 0:
-            diff_ratio = height_diff / expert_mean
-            if diff_ratio > 0.05:
-                height_assessment = "重心偏高"
-                height_advice = "建議降低重心，多屈膝以穩定下盤。"
-            elif diff_ratio < -0.05:
-                height_assessment = "重心偏低"
-                height_advice = "建議適度提高重心，保持身體直立。"
-            else:
-                height_assessment = "重心適中"
-                height_advice = "重心位置良好，請持續保持。"
-        else:
-            height_assessment = "資料不足"
-            height_advice = ""
-    else:
-        if height_diff > expert_std * 0.5:
-            height_assessment = "重心偏高"
-            height_advice = "建議降低重心，多屈膝以穩定下盤，有助於擊球穩定性和力量傳遞。"
-        elif height_diff < -expert_std * 0.5:
-            height_assessment = "重心偏低"
-            height_advice = "建議適度提高重心，保持身體直立，避免過度彎曲影響擊球流暢性。"
-        else:
-            height_assessment = "重心適中"
-            height_advice = "重心位置良好，請繼續保持。"
-
-    return height_assessment, height_advice
-
-
-def analyze_center_of_mass(merged_dataset_path, dynamic_filename, knn_expert_filename=None, normalize_by_height=True):
-    """
-    基於原有 KNN 找到的專家進行重心分析，確保前後一致。
-    - merged_dataset_path: knn_dataset.json 的路徑（專家資料庫）
-    - dynamic_filename: 當前 3D 平滑軌跡 json 的路徑
-    - knn_expert_filename: 原有 KNN 找到的專家檔案名稱（可選）
-    - normalize_by_height: 是否啟用以身高比例修正的重心計算
-    產生 JSON 結果並保存到動態檔案旁邊，返回其路徑。
-    """
-    merged_dataset = load_json(merged_dataset_path)
-    trajectory_data = load_json(dynamic_filename)
-    current_seq = _extract_center_of_mass_feature(trajectory_data, normalize_by_height=normalize_by_height)
-
-    if knn_expert_filename:
-        # 使用指定專家進行重心分析
-        target_expert = next((e for e in merged_dataset if e.get("filename") == knn_expert_filename), None)
-
-        if target_expert is None:
-            result = {
-                'feature': 'center_of_mass_vertical_diff',
-                'status': 'expert_not_found',
-                'message': f'專家 {knn_expert_filename} 未找到'
-            }
-        else:
-            expert_seq = _extract_center_of_mass_feature(target_expert['data'], normalize_by_height=normalize_by_height)
-            height_assessment, height_advice = _analyze_center_of_mass_height(current_seq, [expert_seq])
-
-            if len(expert_seq) > 0 and len(current_seq) > 0:
-                min_len = min(len(expert_seq), len(current_seq))
-                distance = float(np.mean(np.abs(np.array(expert_seq[:min_len]) - np.array(current_seq[:min_len]))))
-            else:
-                distance = float('inf')
-
-            expert_advice = target_expert.get('suggestion', 'None')
-            combined_advice = (
-                f"與專家「{knn_expert_filename}」的動作相似度距離為 {distance:.3f}。\n"
-                f"【重心分析】{height_assessment}：{height_advice}\n"
-                f"【專家建議】{expert_advice}"
-            )
-
-            result = {
-                'feature': 'center_of_mass_vertical_diff',
-                'nearest_expert': knn_expert_filename,
-                'distance': distance,
-                'advice': combined_advice,
-                'height_assessment': height_assessment,
-                'height_advice': height_advice,
-                'expert_advice': expert_advice,
-                'statistics': {
-                    'sequence_len_test': len(current_seq),
-                    'sequence_len_expert': len(expert_seq),
-                    'current_avg_height': float(np.mean(current_seq)) if current_seq else 0,
-                    'expert_avg_height': float(np.mean(expert_seq)) if expert_seq else 0
-                }
-            }
-
-    else:
-        # 多專家 KNN 模式
-        expert_entries, expert_features, expert_suggestions = [], [], []
-        for entry in merged_dataset:
-            if not isinstance(entry, dict) or 'data' not in entry:
-                continue
-            if "是否擊球:否" in entry.get("suggestion", ""):
-                continue
-            seq = _extract_center_of_mass_feature(entry['data'], normalize_by_height=normalize_by_height)
-            expert_entries.append(entry)
-            expert_features.append(seq)
-            expert_suggestions.append(entry.get('suggestion', 'None'))
-
-        height_assessment, height_advice = _analyze_center_of_mass_height(current_seq, expert_features)
-
-        normalized = _minmax_normalize_sequences(expert_features + [current_seq])
-        normalized_experts, normalized_current = normalized[:-1], normalized[-1]
-
-        distances = []
-        for idx, seq in enumerate(normalized_experts):
-            if len(seq) == 0 or len(normalized_current) == 0:
-                distances.append((idx, float('inf')))
-                continue
-            min_len = min(len(seq), len(normalized_current))
-            dist = float(np.mean(np.abs(np.array(seq[:min_len]) - np.array(normalized_current[:min_len]))))
-            distances.append((idx, dist))
-
-        if not distances:
-            result = {
-                'feature': 'center_of_mass_vertical_diff',
-                'status': 'no_data',
-                'message': 'No valid expert or current sequence.'
-            }
-        else:
-            best_idx, best_dist = min(distances, key=lambda x: x[1])
-            best_entry = expert_entries[best_idx]
-            expert_advice = expert_suggestions[best_idx]
-            combined_advice = f"{expert_advice}\n\n【重心分析】\n{height_assessment}：{height_advice}"
-
-            result = {
-                'feature': 'center_of_mass_vertical_diff',
-                'nearest_expert': best_entry.get('filename', 'unknown'),
-                'distance': best_dist,
-                'advice': combined_advice,
-                'height_assessment': height_assessment,
-                'height_advice': height_advice,
-                'expert_advice': expert_advice,
-                'statistics': {
-                    'sequence_len_test': len(normalized_current),
-                    'sequence_len_expert': len(normalized_experts[best_idx]),
-                    'current_avg_height': float(np.mean(current_seq)) if current_seq else 0,
-                    'expert_avg_height': float(np.mean([np.mean(seq) for seq in expert_features if seq])) if expert_features else 0
-                }
-            }
-
-        out_path = dynamic_filename.replace('(3D_trajectory_smoothed).json', '_center_of_mass_knn.json')
-        try:
-            with open(out_path, 'w', encoding='utf-8') as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
-        except Exception:
-            out_path = dynamic_filename + '.center_of_mass_knn.json'
-            with open(out_path, 'w', encoding='utf-8') as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
-        return out_path
-
-    print(f"重心分析完成: {result.get('height_assessment', '未知')}")
+    result = {"sample_count": len(knee_angles)}
+    if knee_angles:
+        result["knee_angle_impact"] = {
+            "p10": float(np.percentile(knee_angles, 10)),
+            "p50": float(np.percentile(knee_angles, 50)),
+            "p90": float(np.percentile(knee_angles, 90)),
+            "p100": float(np.max(knee_angles)),
+        }
     return result
+
+
+# ========== 分析點 A：擊球時膝蓋彎曲 ==========
+def _analyze_knee_bend(
+    impact_frame: Dict, pro_ranges: Dict
+) -> Dict:
+    """
+    A. 擊球時膝蓋彎曲（重心高低）
+    判斷：≤P90 得宜；P90<x<P100 略高；≥P100 過高
+    """
+    lh = _get_point(impact_frame, "left_hip")
+    rh = _get_point(impact_frame, "right_hip")
+    lk = _get_point(impact_frame, "left_knee")
+    rk = _get_point(impact_frame, "right_knee")
+    la = _get_point(impact_frame, "left_ankle")
+    ra = _get_point(impact_frame, "right_ankle")
+
+    left_angle = _knee_angle(lh, lk, la) if all(p is not None for p in [lh, lk, la]) else None
+    right_angle = _knee_angle(rh, rk, ra) if all(p is not None for p in [rh, rk, ra]) else None
+
+    if left_angle is None and right_angle is None:
+        return {
+            "is_valid": False,
+            "knee_angle_impact": None,
+            "level": None,
+            "advice": "數據不足，無法分析擊球時膝蓋彎曲",
+        }
+
+    knee_angle = max(left_angle or 0, right_angle or 0) if (left_angle and right_angle) else (left_angle or right_angle)
+    kr = pro_ranges.get("knee_angle_impact", {})
+    p50 = kr.get("p50")
+    p90 = kr.get("p90")
+    p100 = kr.get("p100")
+
+    if p90 is None or p100 is None:
+        return {
+            "is_valid": True,
+            "knee_angle_impact": float(knee_angle),
+            "level": None,
+            "advice": "專家數據不足，無法比較",
+        }
+
+    diff_deg = round(knee_angle - (p50 or p90), 1)
+    diff_str = f"（膝部角度 {knee_angle:.1f}°，與專家中位數差 {diff_deg:+.1f}°）" if (p50 is not None and diff_deg != 0) else ""
+
+    if knee_angle <= p90:
+        level = "a"
+        advice = "擊球身體重心得宜"
+    elif knee_angle < p100:
+        level = "b"
+        advice = f"擊球時整體重心略高{diff_str}，建議揮拍時可以微微屈膝"
+    else:
+        level = "c"
+        advice = f"擊球時整體重心太高{diff_str}，建議揮拍時可以屈膝"
+
+    return {
+        "is_valid": True,
+        "knee_angle_impact": float(knee_angle),
+        "in_range": knee_angle <= p90,
+        "level": level,
+        "advice": advice,
+    }
+
+
+# ========== 分析點 B：擊球後重心前移 ==========
+POST_IMPACT_FRAMES = 8
+
+
+def _analyze_weight_shift(
+    frames: List[Dict], impact_idx: int
+) -> Dict:
+    """
+    B. 擊球後重心前移（自我比較）
+    條件1: 右膝擊球後 > 擊球前
+    條件2: 擊球後左膝 < 擊球後右膝
+    """
+    n = len(frames)
+    if impact_idx < 0 or impact_idx >= n:
+        return {"is_valid": False, "advice": "擊球幀索引無效"}
+
+    def _get_knee_angles(idx: int) -> Tuple[Optional[float], Optional[float]]:
+        f = frames[idx]
+        lh, rh = _get_point(f, "left_hip"), _get_point(f, "right_hip")
+        lk, rk = _get_point(f, "left_knee"), _get_point(f, "right_knee")
+        la, ra = _get_point(f, "left_ankle"), _get_point(f, "right_ankle")
+        left_a = _knee_angle(lh, lk, la) if all(p is not None for p in [lh, lk, la]) else None
+        right_a = _knee_angle(rh, rk, ra) if all(p is not None for p in [rh, rk, ra]) else None
+        return left_a, right_a
+
+    # 擊球前：取擊球幀前數幀平均，不足則用擊球幀
+    before_start = max(0, impact_idx - 5)
+    before_end = impact_idx
+    right_befores = []
+    for i in range(before_start, before_end):
+        _, ra = _get_knee_angles(i)
+        if ra is not None:
+            right_befores.append(ra)
+    right_knee_before = float(np.mean(right_befores)) if right_befores else None
+
+    # 擊球後：取擊球幀後數幀平均
+    after_start = impact_idx + 1
+    after_end = min(n, impact_idx + POST_IMPACT_FRAMES + 1)
+    left_afters, right_afters = [], []
+    for i in range(after_start, after_end):
+        la, ra = _get_knee_angles(i)
+        if la is not None:
+            left_afters.append(la)
+        if ra is not None:
+            right_afters.append(ra)
+    left_knee_after = float(np.mean(left_afters)) if left_afters else None
+    right_knee_after = float(np.mean(right_afters)) if right_afters else None
+
+    if right_knee_before is None:
+        right_knee_before = right_knee_after
+    if right_knee_before is None or right_knee_after is None or left_knee_after is None:
+        return {
+            "is_valid": False,
+            "advice": "擊球前後膝蓋數據不足，無法分析重心前移",
+        }
+
+    cond1 = right_knee_after > right_knee_before
+    cond2 = left_knee_after < right_knee_after
+
+    if cond1 and cond2:
+        level = "a"
+        advice = "擊球時身體重心往前得宜"
+    elif cond1 or cond2:
+        level = "b"
+        advice = "擊球時身體重心往前略不足，建議揮拍時重心要往左腳移動"
+    else:
+        level = "c"
+        advice = "擊球時身體重心往前明顯不足，建議揮拍時重心要往左腳移動"
+
+    return {
+        "is_valid": True,
+        "right_knee_before": right_knee_before,
+        "right_knee_after": right_knee_after,
+        "left_knee_after": left_knee_after,
+        "cond1_ok": cond1,
+        "cond2_ok": cond2,
+        "level": level,
+        "advice": advice,
+    }
+
+
+# ========== 主分析函式 ==========
+def analyze_center_of_mass(
+    trajectory_data,
+    knn_dataset_path: str = "knn_dataset_new.json",
+    expert_filename: str = None,
+) -> Tuple[str, float, Optional[str]]:
+    """
+    重心分析（Body Weight）
+
+    兩個分析點：
+    A. 擊球時膝蓋彎曲（與 pro P10/P90/P100 比較）
+    B. 擊球後重心前移（自我比較）
+
+    Args:
+        trajectory_data: 軌跡數據（路徑或 dict，或 list of frames）
+        knn_dataset_path: KNN 數據集路徑
+        expert_filename: 專家文件名（本模組不依賴單一專家，保留參數以兼容整合分析）
+
+    Returns:
+        (建議文字, 信心度, 優先改善項目)
+    """
+    try:
+        knn_dataset = load_json(knn_dataset_path)
+        if not isinstance(knn_dataset, list):
+            knn_dataset = knn_dataset.get("data", [])
+
+        pro_ranges = _calculate_pro_knee_ranges(knn_dataset)
+
+        if isinstance(trajectory_data, str):
+            traj = load_json(trajectory_data)
+        elif isinstance(trajectory_data, dict):
+            traj = trajectory_data
+        else:
+            traj = trajectory_data
+        frames = traj if isinstance(traj, list) else traj.get("data", [])
+        if not frames:
+            return "軌跡數據為空", 0.0, None
+
+        impact_idx = _find_impact_frame(frames)
+        if impact_idx is None:
+            return "未找到擊球幀", 0.0, None
+
+        impact_frame = frames[impact_idx]
+
+        a_result = _analyze_knee_bend(impact_frame, pro_ranges)
+        b_result = _analyze_weight_shift(frames, impact_idx)
+
+        advice_parts = []
+        if a_result["is_valid"]:
+            advice_parts.append(f"A.膝蓋彎曲:{a_result['advice']}")
+        else:
+            advice_parts.append("A.膝蓋彎曲:數據不足")
+        if b_result["is_valid"]:
+            advice_parts.append(f"B.重心前移:{b_result['advice']}")
+        else:
+            advice_parts.append("B.重心前移:數據不足")
+
+        # 各子項以「。」結尾後再銜接下一項
+        def _end_period(s):
+            return s if s.rstrip().endswith("。") else s + "。"
+        combined = "".join(_end_period(p) for p in advice_parts)
+
+        # 依 level 給分：a=1.0, b=0.7, c=0.4, 專家數據不足=0.5，無效=不計入
+        level_to_score = {"a": 1.0, "b": 0.7, "c": 0.4, None: 0.5}
+        scores = []
+        for res in [a_result, b_result]:
+            if res.get("is_valid"):
+                lvl = res.get("level")
+                scores.append(level_to_score.get(lvl, 0.5))
+        confidence = sum(scores) / len(scores) if scores else 0.0
+
+        priority = None
+        level_priority = {"c": 2, "b": 1, "a": 0}
+        for name, res in [("膝蓋彎曲", a_result), ("重心前移", b_result)]:
+            if res.get("is_valid") and res.get("level") in ("b", "c"):
+                if level_priority.get(res["level"], 0) >= 1:
+                    priority = name
+                    break
+
+        return combined, confidence, priority
+    except Exception as e:
+        return f"重心分析失敗: {e}", 0.0, None
+
+
+def analyze_center_of_mass_detailed(
+    trajectory_data,
+    knn_dataset_path: str = "knn_dataset_new.json",
+    expert_filename: str = None,
+) -> Dict:
+    """
+    重心分析詳細結果，返回兩個分析點與專家範圍
+    """
+    try:
+        knn_dataset = load_json(knn_dataset_path)
+        if not isinstance(knn_dataset, list):
+            knn_dataset = knn_dataset.get("data", [])
+
+        pro_ranges = _calculate_pro_knee_ranges(knn_dataset)
+
+        if isinstance(trajectory_data, str):
+            traj = load_json(trajectory_data)
+        elif isinstance(trajectory_data, dict):
+            traj = trajectory_data
+        else:
+            traj = trajectory_data
+        frames = traj if isinstance(traj, list) else traj.get("data", [])
+        if not frames:
+            return {"error": "軌跡數據為空"}
+
+        impact_idx = _find_impact_frame(frames)
+        if impact_idx is None:
+            return {"error": "未找到擊球幀"}
+
+        a_result = _analyze_knee_bend(frames[impact_idx], pro_ranges)
+        b_result = _analyze_weight_shift(frames, impact_idx)
+
+        return {
+            "impact_idx": impact_idx,
+            "post_impact_end": min(len(frames), impact_idx + POST_IMPACT_FRAMES + 1),
+            "pro_ranges": pro_ranges,
+            "A_knee_bend": a_result,
+            "B_weight_shift": b_result,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+if __name__ == "__main__":
+    import os
+    knn_path = "knn_dataset_new.json"
+    traj_path = "trajectory/CHZ322__trajectory/trajectory_1/CHZ322__球1_segment(3D_trajectory_smoothed).json"
+    if os.path.exists(knn_path) and os.path.exists(traj_path):
+        suggestion, confidence, priority = analyze_center_of_mass(traj_path, knn_path)
+        print(f"建議: {suggestion}")
+        print(f"信心度: {confidence}")
+        print(f"優先改善: {priority}")
+        detailed = analyze_center_of_mass_detailed(traj_path, knn_path)
+        print(json.dumps(detailed, ensure_ascii=False, indent=2))
+    else:
+        print("請提供 knn_dataset_new.json 與軌跡檔路徑進行測試")

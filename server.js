@@ -86,16 +86,17 @@ app.get("/getVideos", (req, res) => {
   });
 });
 
-// 列出指定資料夾的子目錄（用於動態掃描 player6_N、trajectory_N 等不同命名）
+// 列出指定資料夾的子目錄（用於動態掃描 trajectory_N 等揮拍紀錄）
+// 僅回傳符合 trajectory_* 命名結構的資料夾（排除 logs、segments 等）
 app.get("/getSubfolders", (req, res) => {
   const folder = req.query.folder;
   if (!folder) return res.status(400).json({ error: "請提供 folder 參數" });
   const dir = path.join(__dirname, "trajectory", folder);
   if (!fs.existsSync(dir)) return res.json([]);
   const entries = fs.readdirSync(dir);
-  const subfolders = entries.filter((e) =>
-    fs.statSync(path.join(dir, e)).isDirectory()
-  );
+  const subfolders = entries
+    .filter((e) => fs.statSync(path.join(dir, e)).isDirectory())
+    .filter((e) => /^trajectory_\d+$/.test(e)); // 僅揮拍紀錄：trajectory_1, trajectory_2, ...
   res.json(subfolders);
 });
 

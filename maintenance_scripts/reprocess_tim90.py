@@ -53,7 +53,7 @@ P2 = np.array([
 ])
 
 # KNN 資料集路徑
-knn_dataset_path = 'knn_dataset.json'
+knn_dataset_path = 'knn_dataset_new.json'
 
 print(f"✅ 模型和校正矩陣已載入\n")
 

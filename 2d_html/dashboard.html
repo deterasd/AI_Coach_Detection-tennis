@@ -7,6 +7,7 @@
     <title>網球動作分析報告</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../favicon.png" />
     <style>
         :root {
             /* Importing colors from v3 and origin */
@@ -118,8 +119,64 @@
             background: #374151;
         }
 
+        .btn:disabled,
+        .btn.btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #111827;
+        }
+
+        .btn:disabled:hover,
+        .btn.btn-disabled:hover {
+            background: #111827;
+        }
+
         .btn i {
             font-size: 1rem;
+        }
+
+        /* Toast 通知（符合畫面風格，右上角滑出） */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border: 1px solid var(--accent-yellow);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            animation: toastSlideIn 0.3s ease;
+            max-width: 90vw;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast .toast-icon {
+            color: var(--accent-yellow);
+            font-size: 1.1rem;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .import-select {
@@ -437,14 +494,11 @@
             font-size: 0.7rem;
             /* Reduced from 0.75rem */
             color: var(--accent-yellow);
-            margin-top: 2px;
-            /* Reduced from 4px */
-            line-height: 1.2;
-            /* Reduced from 1.3 */
-            opacity: 0.85;
-            /* Slightly more transparent */
-            font-weight: 400;
-            /* Lighter weight */
+        }
+        /* 專家數據不足時以橘色小字顯示 */
+        .metric-hint.insufficient {
+            font-size: 0.65rem;
+            color: #f59e0b;
         }
 
         .status-chip {
@@ -602,6 +656,7 @@
 </head>
 
 <body>
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
     <div class="app-container">
         <!-- Top Navigation -->
         <!-- Top Navigation -->
@@ -609,8 +664,8 @@
             <div class="logo">網球動作分析報告</div>
             <div class="actions">
                 <!-- Comprehensive Report Button -->
-                <button class="btn" id="btnComprehensiveReport"
-                    onclick="window.open('../tennis_comprehensive_report.html', '_blank')">
+                <button class="btn btn-disabled" id="btnComprehensiveReport" title="至少要有三筆揮拍紀錄"
+                    onclick="goToComprehensiveReport()">
                     <i class="fas fa-clipboard-check"></i> 三球綜合報告
                 </button>
                 <button class="btn" id="btnDetailReport" onclick="goToDetail()">
@@ -680,7 +735,7 @@
             <!-- Metrics Column -->
             <div class="metrics-column">
                 <!-- Card 1: Backswing -->
-                <div class="metric-card">
+                <div class="metric-card" data-metric="Backswing">
                     <div class="metric-icon-box"><i class="fas fa-redo"></i></div>
                     <div class="metric-info">
                         <div class="metric-title">拉拍準備 (Backswing)</div>
@@ -693,7 +748,7 @@
                 </div>
 
                 <!-- Card 2: Forward Swing -->
-                <div class="metric-card">
+                <div class="metric-card" data-metric="ForwardSwing">
                     <div class="metric-icon-box"><i class="fas fa-arrow-right"></i></div>
                     <div class="metric-info">
                         <div class="metric-title">出拍前段 (Forward Swing)</div>
@@ -706,7 +761,7 @@
                 </div>
 
                 <!-- Card 3: Hit Ball -->
-                <div class="metric-card">
+                <div class="metric-card" data-metric="HitballSwing">
                     <div class="metric-icon-box"><i class="fas fa-sun"></i></div>
                     <div class="metric-info">
                         <div class="metric-title">擊球瞬間 (Impact)</div>
@@ -719,7 +774,7 @@
                 </div>
 
                 <!-- Card 4: Follow Through -->
-                <div class="metric-card">
+                <div class="metric-card" data-metric="FollowThrough">
                     <div class="metric-icon-box"><i class="fas fa-hand-holding"></i></div>
                     <div class="metric-info">
                         <div class="metric-title">收拍 (Follow Through)</div>
@@ -732,7 +787,7 @@
                 </div>
 
                 <!-- Card 5: Head Stability -->
-                <div class="metric-card">
+                <div class="metric-card" data-metric="Head">
                     <div class="metric-icon-box"><i class="fas fa-user-circle"></i></div>
                     <div class="metric-info">
                         <div class="metric-title">頭部穩定 (Head)</div>
@@ -741,6 +796,45 @@
                     <span class="status-chip" id="tHead">--</span>
                     <div class="metric-bar-bg">
                         <div class="metric-bar-fill" id="bHead"></div>
+                    </div>
+                </div>
+
+                <!-- Card 6: Contact Zone / Hit Timing -->
+                <div class="metric-card" data-metric="ContactZone">
+                    <div class="metric-icon-box"><i class="fas fa-bullseye"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">擊球點區域 (Contact Zone)</div>
+                        <div class="metric-value"><span id="mContactZone">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tContactZone">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bContactZone"></div>
+                    </div>
+                </div>
+
+                <!-- Card 7: Body Weight -->
+                <div class="metric-card" data-metric="BodyWeight">
+                    <div class="metric-icon-box"><i class="fas fa-balance-scale"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">重心 (Body Weight)</div>
+                        <div class="metric-value"><span id="mBodyWeight">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tBodyWeight">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bBodyWeight"></div>
+                    </div>
+                </div>
+
+                <!-- Card 8: Racket Face (前端隱藏，後端保留) -->
+                <div class="metric-card" id="metricCardRacketFace" data-metric="RacketFace">
+                    <div class="metric-icon-box"><i class="fas fa-table-tennis"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-title">拍面角度 (Racket Face)</div>
+                        <div class="metric-value"><span id="mRacketFace">--</span></div>
+                    </div>
+                    <span class="status-chip" id="tRacketFace">--</span>
+                    <div class="metric-bar-bg">
+                        <div class="metric-bar-fill" id="bRacketFace"></div>
                     </div>
                 </div>
             </div>
@@ -894,6 +988,12 @@
     </div>
 
     <script>
+        // 專家數據不足時不計分、不納入總成績、不列入優先改善
+        const INSUFFICIENT_ADVICE = "專家數據不足，無法比較";
+        function isInsufficient(advice) {
+            return advice && String(advice).includes(INSUFFICIENT_ADVICE);
+        }
+
         // --- Static Data (FEEDBACKS from v3) ---
         const FEEDBACKS = {
             Head: {
@@ -950,7 +1050,46 @@
                     Low: "擊球後很快停住，幾乎沒有完整收拍，容易影響出力與保護手臂。"
                 },
                 fixText: "收拍時讓右手手腕與球拍往左肩後方甩動，可以想像最後讓拍子停在左肩或左耳旁。"
+            },
+            ContactZone: {
+                part: "擊球點區域",
+                code: "Contact-zone",
+                compare: "擊球點左右位置、上下高度、前後深度在專家建議的理想區間內。",
+                levelText: {
+                    High: "左右、上下、前後位置均在理想區間，揮拍距離與擊球時機掌握良好。",
+                    Medium: "多數維度在理想區間，偶爾略有偏差。",
+                    Low: "擊球點位置明顯偏離理想區間，需調整擊球時機與站位。"
+                },
+                fixText: "建議留意擊球點位置，左右距離、高度與前後深度都應在舒適揮拍範圍內。"
+            },
+            BodyWeight: {
+                part: "下肢 — 重心高低",
+                code: "Body-weight",
+                compare: "擊球時兩腳膝蓋要彎曲，擊球後右腳膝部內角度要比擊球前小，代表重心有往前送。",
+                levelText: {
+                    High: "擊球身體重心高度適中，屈膝與重心前送都表現良好。",
+                    Medium: "擊球時整體重心略高或前送不足，穩定度與力道還可以再提升。",
+                    Low: "擊球時重心明顯過高，多半用直膝擊球，重心沒有往前移動。"
+                },
+                fixText: "建議揮拍時微微屈膝，擊球瞬間將重心往前送到左腳，讓下半身幫助出力與穩定。"
+            },
+            RacketFace: {
+                part: "拍面角度",
+                code: "Racket-face",
+                compare: "擊球瞬間球拍面朝向與專家範本比較。",
+                levelText: {
+                    High: "拍面角度得宜，擊球穩定。",
+                    Medium: "拍面角度尚可，或有小幅偏差。",
+                    Low: "拍面角度明顯偏差，可能影響擊球品質。"
+                },
+                fixText: "建議參考教練示範，調整擊球瞬間的拍面朝向。"
             }
+        };
+
+        // 8 項加權（與 rating_feedback 一致）
+        const DASHBOARD_WEIGHTS = {
+            Head: 1.0, Backswing: 1.0, ForwardSwing: 1.0, HitballSwing: 1.5,
+            FollowThrough: 1.0, BodyWeight: 1.0, HitTiming: 1.2, RacketFace: 1.2
         };
 
         // --- Video Logic ---
@@ -1007,6 +1146,35 @@
             mp4Select.classList.add('hidden');
             jsonSelect.classList.add('hidden');
             if (importHint) importHint.style.display = 'none';
+            updateComprehensiveReportButtonState();
+        }
+
+        function updateComprehensiveReportButtonState() {
+            const count = serverSessionsList.length > 0 ? serverSessionsList.length : importedSessions.size;
+            const btn = document.getElementById('btnComprehensiveReport');
+            if (!btn) return;
+            if (count >= 3) {
+                btn.classList.remove('btn-disabled');
+                btn.title = '開啟三球綜合報告';
+            } else {
+                btn.classList.add('btn-disabled');
+                btn.title = '至少要有三筆揮拍紀錄';
+            }
+        }
+
+        function showToast(message, duration = 2500) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const el = document.createElement('div');
+            el.className = 'toast';
+            el.innerHTML = '<i class="fas fa-exclamation-circle toast-icon"></i><span></span>';
+            el.querySelector('span').textContent = message || '';
+            container.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.2s';
+                setTimeout(() => el.remove(), 200);
+            }, duration);
         }
 
         function getDirPathFromRelativePath(relPath) {
@@ -1082,13 +1250,19 @@
 
         function populateSessionSelect() {
             const keys = [...importedSessions.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+            // 匯入模式：用 URL folder 或 localStorage 組成完整路徑顯示（避免只顯示 trajectory_1）
+            const urlParams = new URLSearchParams(window.location.search);
+            const folderPrefix = urlParams.get('folder') || (typeof localStorage !== 'undefined' ? localStorage.getItem('LATEST_TRAJECTORY_FOLDER') : '') || '';
+            const toDisplayPath = (k) => (folderPrefix && !k.includes('/')) ? folderPrefix + '/' + k : k;
             sessionSelect.innerHTML = `<option value="">選擇揮拍紀錄（資料夾）</option>` + keys.map(k => {
                 const info = importedSessions.get(k);
-                return `<option value="${encodeURIComponent(k)}">${k}（mp4:${info.mp4.length}, json:${info.json.length}）</option>`;
+                const displayPath = toDisplayPath(k);
+                return `<option value="${encodeURIComponent(k)}">${displayPath}（mp4:${info.mp4.length}, json:${info.json.length}）</option>`;
             }).join('');
             sessionSelect.disabled = keys.length === 0;
             clearImportBtn.disabled = keys.length === 0;
             if (importHint) importHint.style.display = keys.length ? 'inline' : 'none';
+            updateComprehensiveReportButtonState();
         }
 
         function pickDefaultFiles(info) {
@@ -1288,8 +1462,10 @@
             resetImportUI();
         });
 
-        // init
-        resetImportUI();
+        // init：若有待還原的「從詳細報告返回」狀態則不先清空，讓 runDashboardInit 還原
+        if (!sessionStorage.getItem('DASHBOARD_STATE_BEFORE_DETAIL')) {
+            resetImportUI();
+        }
 
         // 已移除舊的「載入數據 / 載入影片」按鈕，因此也移除對應的 input 事件綁定
 
@@ -1339,35 +1515,68 @@
             }
 
             // 5. Head Stability
-            const headHint = data.analyses?.head_stability_advice &&
-                data.analyses.head_stability_advice.includes("眼睛有盯球")
-                ? "✓ 視線穩定" : "";
-            updateCard('Head', 'Head', stats.head_stability_confidence, headHint);
+            const headInsuff = isInsufficient(data.analyses?.head_stability_advice);
+            const headHint = headInsuff ? INSUFFICIENT_ADVICE : (data.analyses?.head_stability_advice?.includes("眼睛有盯球") ? "✓ 視線穩定" : "");
+            updateCard('Head', 'Head', headInsuff ? null : stats.head_stability_confidence, headHint, headInsuff);
 
             // 1. Backswing
-            const backswingHint = extractMetricHint(data.analyses?.backswing_advice || "");
-            updateCard('Backswing', 'Backswing', stats.backswing_confidence, backswingHint);
+            const backswingInsuff = isInsufficient(data.analyses?.backswing_advice);
+            const backswingHint = backswingInsuff ? INSUFFICIENT_ADVICE : extractMetricHint(data.analyses?.backswing_advice || "");
+            updateCard('Backswing', 'Backswing', backswingInsuff ? null : stats.backswing_confidence, backswingHint, backswingInsuff);
 
             // 2. Forward Swing
-            const forwardHint = extractMetricHint(data.analyses?.forwardswing_advice || "");
-            updateCard('ForwardSwing', 'ForwardSwing', stats.forwardswing_confidence, forwardHint);
+            const forwardInsuff = isInsufficient(data.analyses?.forwardswing_advice);
+            const forwardHint = forwardInsuff ? INSUFFICIENT_ADVICE : extractMetricHint(data.analyses?.forwardswing_advice || "");
+            updateCard('ForwardSwing', 'ForwardSwing', forwardInsuff ? null : stats.forwardswing_confidence, forwardHint, forwardInsuff);
 
             // 3. Hit Ball
-            const hitballHint = extractMetricHint(data.analyses?.hitballswing_advice || "");
-            updateCard('HitballSwing', 'HitballSwing', stats.hitballswing_confidence, hitballHint);
+            const hitballInsuff = isInsufficient(data.analyses?.hitballswing_advice);
+            const hitballHint = hitballInsuff ? INSUFFICIENT_ADVICE : extractMetricHint(data.analyses?.hitballswing_advice || "");
+            updateCard('HitballSwing', 'HitballSwing', hitballInsuff ? null : stats.hitballswing_confidence, hitballHint, hitballInsuff);
 
             // 4. Follow Through
-            const followHint = extractMetricHint(data.analyses?.followthrough_advice || "");
-            updateCard('FollowThrough', 'FollowThrough', stats.followthrough_confidence, followHint);
+            const followInsuff = isInsufficient(data.analyses?.followthrough_advice);
+            const followHint = followInsuff ? INSUFFICIENT_ADVICE : extractMetricHint(data.analyses?.followthrough_advice || "");
+            updateCard('FollowThrough', 'FollowThrough', followInsuff ? null : stats.followthrough_confidence, followHint, followInsuff);
 
-            // Overall Score (Average of 5 metrics)
-            const overall = Math.round(
-                (stats.backswing_confidence +
-                    stats.forwardswing_confidence +
-                    stats.hitballswing_confidence +
-                    stats.followthrough_confidence +
-                    stats.head_stability_confidence) / 5 * 100
-            );
+            // 6. Contact Zone / Hit Timing
+            const cz = stats.contact_zone?.flags || {};
+            const czOk = [cz.lateral_in_range, cz.height_in_range, cz.depth_in_range].filter(Boolean).length;
+            const contactZoneConf = czOk / 3;
+            const contactHint = data.analyses?.contact_zone_advice?.includes("理想區間") ? "✓ 位置良好" : "";
+            updateCard('ContactZone', 'ContactZone', contactZoneConf, contactHint, false);
+
+            // 7. Body Weight
+            const bodyInsuff = isInsufficient(data.analyses?.center_of_mass_advice);
+            const bodyHint = bodyInsuff ? INSUFFICIENT_ADVICE : extractMetricHint(data.analyses?.center_of_mass_advice || "");
+            updateCard('BodyWeight', 'BodyWeight', bodyInsuff ? null : (stats.center_of_mass_confidence ?? 0), bodyHint, bodyInsuff);
+
+            // 8. Racket Face
+            const racketInsuff = isInsufficient(data.analyses?.racket_face_advice);
+            const racketHint = racketInsuff ? INSUFFICIENT_ADVICE : extractMetricHint(data.analyses?.racket_face_advice || "");
+            updateCard('RacketFace', 'RacketFace', racketInsuff ? null : (stats.racket_face_confidence ?? 0), racketHint, racketInsuff);
+
+            // Overall Score (排除「專家數據不足」的項目後加權平均)
+            const toScore10 = (c) => (c == null ? null : (c || 0) * 10);
+            const scores = {
+                Head: headInsuff ? null : toScore10(stats.head_stability_confidence),
+                Backswing: backswingInsuff ? null : toScore10(stats.backswing_confidence),
+                ForwardSwing: forwardInsuff ? null : toScore10(stats.forwardswing_confidence),
+                HitballSwing: hitballInsuff ? null : toScore10(stats.hitballswing_confidence),
+                FollowThrough: followInsuff ? null : toScore10(stats.followthrough_confidence),
+                BodyWeight: bodyInsuff ? null : toScore10(stats.center_of_mass_confidence),
+                HitTiming: contactZoneConf * 10,
+                RacketFace: racketInsuff ? null : toScore10(stats.racket_face_confidence)
+            };
+            let weightedSum = 0, weightSum = 0;
+            for (const [k, w] of Object.entries(DASHBOARD_WEIGHTS)) {
+                const sk = scores[k];
+                if (sk != null && !isNaN(sk)) {
+                    weightedSum += sk * w;
+                    weightSum += w;
+                }
+            }
+            const overall = weightSum > 0 ? Math.round((weightedSum / weightSum) * 10) : 0;
             document.getElementById('overallScore').innerText = overall;
 
             // --- Grade Calculation (New) ---
@@ -1389,15 +1598,28 @@
             const elDesc = document.getElementById('overallDesc');
             if (elDesc) elDesc.innerText = gradeDesc;
 
-            // Update Radar Chart
-            const toScore = (conf) => Math.round((conf || 0) * 100);
+            // Update Radar Chart (8 項，專家數據不足填 0 避免破圖)
+            const toScore = (conf, insuff) => insuff ? 0 : Math.round((conf || 0) * 100);
             updateRadar([
-                toScore(stats.backswing_confidence),
-                toScore(stats.forwardswing_confidence),
-                toScore(stats.hitballswing_confidence),
-                toScore(stats.followthrough_confidence),
-                toScore(stats.head_stability_confidence)
+                toScore(stats.backswing_confidence, backswingInsuff),
+                toScore(stats.forwardswing_confidence, forwardInsuff),
+                toScore(stats.hitballswing_confidence, hitballInsuff),
+                toScore(stats.followthrough_confidence, followInsuff),
+                toScore(stats.head_stability_confidence, headInsuff),
+                toScore(contactZoneConf, false),
+                toScore(stats.center_of_mass_confidence, bodyInsuff),
+                toScore(stats.racket_face_confidence, racketInsuff)
             ]);
+
+            // 依分數由低到高排列卡片（專家數據不足排最後）
+            const CARD_TO_SCORE = { Backswing: 'Backswing', ForwardSwing: 'ForwardSwing', HitballSwing: 'HitballSwing', FollowThrough: 'FollowThrough', Head: 'Head', ContactZone: 'HitTiming', BodyWeight: 'BodyWeight', RacketFace: 'RacketFace' };
+            const col = document.querySelector('.metrics-column');
+            if (col) {
+                const cards = [...col.querySelectorAll('.metric-card')].filter(c => c.style.display !== 'none');
+                const scoreVal = (m) => { const k = CARD_TO_SCORE[m]; return k ? (scores[k] ?? 999) : 999; };
+                cards.sort((a, b) => (scoreVal(a.dataset.metric) ?? 999) - (scoreVal(b.dataset.metric) ?? 999));
+                cards.forEach(c => col.appendChild(c));
+            }
 
             // --- NEW: Sychronize Data for Detailed Report Page ---
 
@@ -1410,20 +1632,30 @@
                 console.log("✅ Using GPT suggestion:", fullAdvice);
             }
 
-            // Sync structured data to localStorage so other pages can read it
+            // Sync structured data to localStorage（詳細報告／三球綜合報告皆預期 0-10 分制，overall 為加權 0-10）
             try {
+                const toScore10 = (c, insuff) => insuff ? null : Number(((c || 0) * 10).toFixed(1));
+                const overall10 = weightSum > 0 ? Number((weightedSum / weightSum).toFixed(1)) : 0;
+                const ContactZone = contactZoneConf * 10;
                 const syncData = {
                     id: currentSessionPath ? currentSessionPath.split('/').pop() : "ANALYSIS_RESULT",
                     video: 0,
                     hand: data.hand || "right",
-                    overall: overall,
-                    Backswing: toScore(stats.backswing_confidence),
-                    ForwardSwing: toScore(stats.forwardswing_confidence),
-                    HitballSwing: toScore(stats.hitballswing_confidence),
-                    FollowThrough: toScore(stats.followthrough_confidence),
-                    Head: toScore(stats.head_stability_confidence),
+                    overall: overall10,
+                    Backswing: toScore10(stats.backswing_confidence, backswingInsuff),
+                    ForwardSwing: toScore10(stats.forwardswing_confidence, forwardInsuff),
+                    HitballSwing: toScore10(stats.hitballswing_confidence, hitballInsuff),
+                    FollowThrough: toScore10(stats.followthrough_confidence, followInsuff),
+                    Head: toScore10(stats.head_stability_confidence, headInsuff),
+                    ContactZone,
+                    BodyWeight: toScore10(stats.center_of_mass_confidence, bodyInsuff),
+                    HitTiming: ContactZone,
+                    RacketFace: toScore10(stats.racket_face_confidence, racketInsuff),
                     advice: fullAdvice,
                     combined_advice: fullAdvice,
+                    analyses: data.analyses || {},
+                    statistics: data.statistics || {},
+                    action_type: data.action_type || null,
                     timestamp: Date.now()
                 };
 
@@ -1439,19 +1671,24 @@
                         syncQueue = JSON.parse(rawQueue);
                         if (!Array.isArray(syncQueue)) syncQueue = [];
                     }
+                    // 只保留屬於目前 dashboard 揮拍紀錄的項目（選擇紀錄應與 dashboard 一致）
+                    const validIds = serverSessionsList.length > 0
+                        ? new Set(serverSessionsList.map(p => p.split("/").pop()))
+                        : new Set([...importedSessions.keys()].map(k => (k.includes("/") ? k.split("/").pop() : k)));
+                    syncQueue = syncQueue.filter(r => validIds.has(r.id));
                 } catch (e) { }
 
-                // Prevent duplicate consecutive entries based on ID & overall score to avoid spam
-                if (syncQueue.length === 0 ||
-                    syncQueue[0].id !== syncData.id ||
-                    syncQueue[0].overall !== syncData.overall) {
+                // 同 id 則更新既有紀錄；否則加入新紀錄。cap：server 模式用揮拍數，匯入模式用目前匯入數
+                const cap = serverSessionsList.length > 0 ? serverSessionsList.length : Math.max(importedSessions.size, 1);
+                const idx = syncQueue.findIndex(r => r.id === syncData.id);
+                if (idx >= 0) {
+                    syncQueue[idx] = syncData;
+                } else {
                     syncQueue.unshift(syncData);
-                    if (syncQueue.length > maxHistory) {
-                        syncQueue.pop();
-                    }
-                    localStorage.setItem("TENNIS_ANALYSIS_SYNC", JSON.stringify(syncQueue));
-                    console.log("[2D] Updated TENNIS_ANALYSIS_SYNC queue:", syncQueue.length, "items");
+                    while (syncQueue.length > cap) syncQueue.pop();
                 }
+                localStorage.setItem("TENNIS_ANALYSIS_SYNC", JSON.stringify(syncQueue));
+                if (syncQueue.length > 0) console.log("[2D] Updated TENNIS_ANALYSIS_SYNC:", syncQueue.length, "items");
             } catch (err) {
                 console.warn("[2D] Failed to sync to localStorage:", err);
             }
@@ -1481,13 +1718,7 @@
             }
 
             // Construct a record object matching tennis_rating_ui_feedback_v3 structure
-            // Detail page expects 0-10 scale, so convert from 0-1 by multiplying by 10
-            const similarity = data.expert_distance !== undefined
-                ? ((1 / (1 + data.expert_distance)) * 100).toFixed(1) + "%"
-                : null;
-            const cz = stats.contact_zone?.flags || {};
-            const czOk = [cz.lateral_in_range, cz.height_in_range, cz.depth_in_range].filter(Boolean).length;
-            const ContactZone = (czOk / 3) * 10;
+            // Detail page expects 0-10 scale
             const syncRecord = {
                 id: "ANALYSIS_RESULT",
                 hand: data.hand || "right",
@@ -1497,77 +1728,214 @@
                 ForwardSwing: (stats.forwardswing_confidence || 0) * 10,
                 HitballSwing: (stats.hitballswing_confidence || 0) * 10,
                 FollowThrough: (stats.followthrough_confidence || 0) * 10,
-                ContactZone: ContactZone,
-                BodyWeight: overall / 10,
-                HitTiming: overall / 10,
-                RacketFace: overall / 10,
-                overall: overall / 10,
+                ContactZone: contactZoneConf * 10,
+                BodyWeight: (stats.center_of_mass_confidence ?? 0) * 10,
+                HitTiming: contactZoneConf * 10,
+                RacketFace: (stats.racket_face_confidence ?? 0) * 10,
+                overall: Number((weightedSum / weightSum).toFixed(1)),
                 advice: fullAdvice,
                 combined_advice: data.combined_advice || "",
                 analyses: data.analyses || {},
                 statistics: data.statistics || {},
                 // 動作識別（參考 2D Action Recognition）
-                action_type: data.action_type || null,
-                similarity: similarity
+                action_type: data.action_type || null
             };
 
             localStorage.setItem('tennisAnalysisData', JSON.stringify(syncRecord));
             document.getElementById('btnDetailReport').style.display = 'inline-block';
         }
 
-        function goToDetail() {
-            // Open the feedback page in the same window or new tab
+        async function goToDetail() {
+            // 開啟前先預載入資料夾內所有揮拍的分析資料，確保詳細報告顯示完整
+            await ensureComprehensiveReportData();
+            // 儲存目前 dashboard 狀態，供「返回 Dashboard」時還原（避免回到初始的 3 sessions）
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const folderPrefix = urlParams.get('folder') || (typeof localStorage !== 'undefined' ? localStorage.getItem('LATEST_TRAJECTORY_FOLDER') : '') || '';
+                let sessionPaths = serverSessionsList.length > 0
+                    ? serverSessionsList
+                    : [...importedSessions.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+                if (sessionPaths.length > 0 && folderPrefix) {
+                    sessionPaths = sessionPaths.map(p => (p.includes('/') ? p : folderPrefix + '/' + p));
+                }
+                let savedCurrent = currentSessionPath;
+                if (savedCurrent && folderPrefix && !savedCurrent.includes('/')) {
+                    savedCurrent = folderPrefix + '/' + savedCurrent;
+                }
+                if (sessionPaths.length > 0 && savedCurrent) {
+                    const state = {
+                        sessionPaths,
+                        currentSessionPath: savedCurrent,
+                        folder: folderPrefix || (savedCurrent.includes('/') ? savedCurrent.split('/').slice(0, -1).join('/') : ''),
+                        timestamp: Date.now()
+                    };
+                    sessionStorage.setItem('DASHBOARD_STATE_BEFORE_DETAIL', JSON.stringify(state));
+                    sessionStorage.setItem('DASHBOARD_RETURN_URL', window.location.href);
+                }
+            } catch (e) { console.warn('[2D] 儲存 dashboard 狀態失敗:', e); }
             window.location.href = '../tennis_rating_ui_feedback_v3.html';
         }
 
+        // 三球綜合報告：至少三筆揮拍紀錄才能開啟
+        async function goToComprehensiveReport() {
+            const count = serverSessionsList.length > 0 ? serverSessionsList.length : importedSessions.size;
+            if (count < 3) {
+                showToast('至少要有三筆揮拍紀錄');
+                return;
+            }
+            await ensureComprehensiveReportData();
+            window.open('../tennis_comprehensive_report.html', '_blank');
+        }
+
+        async function ensureComprehensiveReportData() {
+            let sessions = serverSessionsList && serverSessionsList.length > 0 ? serverSessionsList : [];
+            if (sessions.length === 0 && importedSessions.size > 0) {
+                const fp = (new URLSearchParams(window.location.search)).get('folder') ||
+                    (typeof localStorage !== 'undefined' ? localStorage.getItem('LATEST_TRAJECTORY_FOLDER') : '') || '';
+                sessions = [...importedSessions.keys()]
+                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                    .map(k => (k.includes('/') ? k : (fp ? fp + '/' + k : k)));
+            }
+            if (sessions.length === 0) return;
+            loadingOverlay.style.display = 'flex';
+            const syncQueue = [];
+            try {
+                for (const sessionPath of sessions) {
+                    const sid = sessionPath.split("/").pop();
+                    const jsonDir = `trajectory/${sessionPath}`;
+                    const jsonRes = await fetch(`/getjson?dir=${encodeURIComponent(jsonDir)}`);
+                    if (!jsonRes.ok) continue;
+                    const jsonFiles = await jsonRes.json();
+                    if (!Array.isArray(jsonFiles) || !jsonFiles.length) continue;
+                    const integratedName = jsonFiles.find(n => n.toLowerCase().endsWith("_integrated_analysis.json"));
+                    const gptName = jsonFiles.find(n => n.toLowerCase().endsWith("_gpt_feedback.json"));
+                    if (!integratedName) continue;
+                    const intRes = await fetch(`/${jsonDir}/${integratedName}`);
+                    if (!intRes.ok) continue;
+                    let intText = await intRes.text();
+                    intText = intText.replace(/:\s*NaN/g, ": null");
+                    const data = JSON.parse(intText);
+                    let fullAdvice = "尚無詳細建議";
+                    if (gptName) {
+                        try {
+                            const gptRes = await fetch(`/${jsonDir}/${gptName}`);
+                            if (gptRes.ok) {
+                                const gptText = (await gptRes.text()).replace(/:\s*NaN/g, ": null");
+                                const gptData = JSON.parse(gptText);
+                                if (gptData && gptData.suggestion) fullAdvice = gptData.suggestion;
+                            }
+                        } catch (e) {}
+                    }
+                    if (!fullAdvice || fullAdvice === "尚無詳細建議") {
+                        if (data.combined_advice) fullAdvice = data.combined_advice;
+                    }
+                    const stats = data.statistics || {};
+                    const analyses = data.analyses || {};
+                    const toScore = (c, insuff) => insuff ? null : Number(((c || 0) * 10).toFixed(1));
+                    const cz = stats.contact_zone?.flags || {};
+                    const czOk = [cz.lateral_in_range, cz.height_in_range, cz.depth_in_range].filter(Boolean).length;
+                    const ContactZone = (czOk / 3) * 10;
+                    const insuff = (adv) => isInsufficient(adv);
+                    const WEIGHTS_E = { Head: 1.0, Backswing: 1.0, ForwardSwing: 1.0, HitballSwing: 1.5, FollowThrough: 1.0, BodyWeight: 1.0, HitTiming: 1.2, RacketFace: 1.2 };
+                    const scoresE = {
+                        Head: insuff(analyses.head_stability_advice) ? null : (stats.head_stability_confidence || 0) * 10,
+                        Backswing: insuff(analyses.backswing_advice) ? null : (stats.backswing_confidence || 0) * 10,
+                        ForwardSwing: insuff(analyses.forwardswing_advice) ? null : (stats.forwardswing_confidence || 0) * 10,
+                        HitballSwing: insuff(analyses.hitballswing_advice) ? null : (stats.hitballswing_confidence || 0) * 10,
+                        FollowThrough: insuff(analyses.followthrough_advice) ? null : (stats.followthrough_confidence || 0) * 10,
+                        BodyWeight: insuff(analyses.center_of_mass_advice) ? null : (stats.center_of_mass_confidence ?? 0) * 10,
+                        HitTiming: ContactZone,
+                        RacketFace: insuff(analyses.racket_face_advice) ? null : (stats.racket_face_confidence ?? 0) * 10
+                    };
+                    let swE = 0, sxE = 0;
+                    for (const [k, w] of Object.entries(WEIGHTS_E)) {
+                        const v = scoresE[k];
+                        if (v != null && !isNaN(v)) { sxE += v * w; swE += w; }
+                    }
+                    const overall = swE > 0 ? Number((sxE / swE).toFixed(1)) : 0;
+                    const syncData = {
+                        id: sid,
+                        video: 0,
+                        hand: data.hand || "right",
+                        overall,
+                        Backswing: toScore(stats.backswing_confidence, insuff(analyses.backswing_advice)),
+                        ForwardSwing: toScore(stats.forwardswing_confidence, insuff(analyses.forwardswing_advice)),
+                        HitballSwing: toScore(stats.hitballswing_confidence, insuff(analyses.hitballswing_advice)),
+                        FollowThrough: toScore(stats.followthrough_confidence, insuff(analyses.followthrough_advice)),
+                        Head: toScore(stats.head_stability_confidence, insuff(analyses.head_stability_advice)),
+                        ContactZone,
+                        BodyWeight: toScore(stats.center_of_mass_confidence, insuff(analyses.center_of_mass_advice)),
+                        HitTiming: ContactZone,
+                        RacketFace: toScore(stats.racket_face_confidence, insuff(analyses.racket_face_advice)),
+                        advice: fullAdvice,
+                        combined_advice: fullAdvice,
+                        analyses: data.analyses || {},
+                        statistics: data.statistics || {},
+                        action_type: data.action_type || null,
+                        timestamp: Date.now()
+                    };
+                    syncQueue.push(syncData);
+                }
+                syncQueue.sort((a, b) => (a.id || "").localeCompare(b.id || "", undefined, { numeric: true }));
+                localStorage.setItem("TENNIS_ANALYSIS_SYNC", JSON.stringify(syncQueue));
+                console.log("[2D] 三球綜合報告：已預載", syncQueue.length, "筆揮拍資料");
+            } catch (e) {
+                console.warn("[2D] 預載綜合報告資料失敗:", e);
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
         // Update Card & Bind Click Event for Modal
-        function updateCard(uiId, feedbackKey, confidence, metricHint = "") {
+        // isInsufficient: 專家數據不足時不顯示分數，只顯示橘色小字
+        function updateCard(uiId, feedbackKey, confidence, metricHint = "", isInsufficient = false) {
+            const elScore = document.getElementById(`m${uiId}`);
+            const elBar = document.getElementById(`b${uiId}`);
+            const tag = document.getElementById(`t${uiId}`);
+            const card = elScore?.closest('.metric-card');
+
+            if (isInsufficient) {
+                if (elScore) elScore.innerText = "--";
+                let hintEl = elScore?.parentElement.querySelector('.metric-hint');
+                if (metricHint && metricHint.trim()) {
+                    if (!hintEl) {
+                        hintEl = document.createElement('div');
+                        hintEl.className = 'metric-hint insufficient';
+                        elScore.parentElement.appendChild(hintEl);
+                    } else {
+                        hintEl.className = 'metric-hint insufficient';
+                    }
+                    hintEl.textContent = metricHint;
+                    hintEl.style.display = 'block';
+                } else if (hintEl) hintEl.style.display = 'none';
+                if (tag) { tag.innerText = "--"; tag.style.color = "var(--text-secondary)"; tag.style.border = "1px solid var(--ring-color)"; tag.style.background = "transparent"; }
+                if (elBar) { elBar.style.width = "0%"; elBar.style.background = "transparent"; }
+                if (card) { card.style.cursor = 'default'; card.onclick = null; }
+                return;
+            }
+
             const score = Math.round((confidence || 0) * 100);
             let band = "Low";
             let color = "var(--accent-red)";
-
             if (score >= 85) { band = "High"; color = "var(--accent-green)"; }
             else if (score >= 70) { band = "Medium"; color = "var(--accent-yellow)"; }
 
-            // Update UI
-            const elScore = document.getElementById(`m${uiId}`);
             if (elScore) {
                 elScore.innerText = score + " / 100";
-
-                // Add or update metric hint
                 let hintEl = elScore.parentElement.querySelector('.metric-hint');
                 if (metricHint && metricHint.trim()) {
                     if (!hintEl) {
                         hintEl = document.createElement('div');
                         hintEl.className = 'metric-hint';
                         elScore.parentElement.appendChild(hintEl);
-                    }
+                    } else hintEl.classList.remove('insufficient');
                     hintEl.textContent = metricHint;
                     hintEl.style.display = 'block';
-                } else if (hintEl) {
-                    hintEl.style.display = 'none';
-                }
-            } else {
-                console.warn(`Element m${uiId} not found`);
+                } else if (hintEl) hintEl.style.display = 'none';
             }
-
-            const tag = document.getElementById(`t${uiId}`);
-            if (tag) {
-                tag.innerText = band;
-            } else {
-                console.warn(`Element t${uiId} not found`);
-            }
-            tag.style.color = color;
-            tag.style.border = `1px solid ${color}`;
-            tag.style.background = `rgba(0,0,0,0.3)`;
-
-            document.getElementById(`b${uiId}`).style.width = score + "%";
-            document.getElementById(`b${uiId}`).style.background = color;
-
-            // Bind Click for Modal
-            const card = document.getElementById(`m${uiId}`).closest('.metric-card');
-            card.style.cursor = 'pointer';
-            card.onclick = () => openModal(feedbackKey, score, band);
+            if (tag) { tag.innerText = band; tag.style.color = color; tag.style.border = `1px solid ${color}`; tag.style.background = `rgba(0,0,0,0.3)`; }
+            if (elBar) { elBar.style.width = score + "%"; elBar.style.background = color; }
+            if (card) { card.style.cursor = 'pointer'; card.onclick = () => openModal(feedbackKey, score, band); }
         }
 
         // --- Modal Logic ---
@@ -1622,10 +1990,10 @@
             radarChart = new Chart(ctx, {
                 type: 'radar',
                 data: {
-                    labels: ['拉拍', '向前出拍', '擊球轉身', '完整收拍', '頭部穩定'],
+                    labels: ['拉拍', '向前出拍', '擊球轉身', '完整收拍', '頭部穩定', '擊球點區域', '重心', '拍面角度'],
                     datasets: [{
                         label: '動作評分',
-                        data: [0, 0, 0, 0, 0],
+                        data: [0, 0, 0, 0, 0, 0, 0, 0],
                         backgroundColor: 'rgba(255, 170, 0, 0.2)',
                         borderColor: '#ffaa00',
                         pointBackgroundColor: '#ffaa00',
@@ -1830,8 +2198,21 @@
             } catch (e) {
                 console.warn("讀取 LATEST_TRAJECTORY_SESSION 失敗:", e);
             }
+            const folderFromStorage = localStorage.getItem('LATEST_TRAJECTORY_FOLDER') || (sessionPath || sessionsList[0] || '').split('/')[0];
+            if (folderFromStorage) {
+                try {
+                    const subRes = await fetch('/getSubfolders?folder=' + encodeURIComponent(folderFromStorage));
+                    if (subRes.ok) {
+                        const subfolders = await subRes.json();
+                        if (subfolders && subfolders.length > 0) {
+                            sessionsList = subfolders.map(sub => folderFromStorage + '/' + sub);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("[2D] getSubfolders 失敗:", e);
+                }
+            }
             if (!sessionPath && !sessionsList.length) {
-                // 如果 localStorage 沒有資料，主動去向伺服器要資料夾列表
                 try {
                     const res = await fetch('/getFolders');
                     if (res.ok) {
@@ -1859,7 +2240,6 @@
                 } catch (e) {
                     console.warn("無法取得伺服器資料夾:", e);
                 }
-
                 if (!sessionPath && !sessionsList.length) return false;
             }
             if (sessionsList.length === 0 && sessionPath) sessionsList = [sessionPath];
@@ -1867,6 +2247,8 @@
             // 若有 SESSIONS 陣列，用其填入下拉；否則用單一 sessionPath
             if (sessionsList.length > 0) {
                 serverSessionsList = sessionsList;
+                updateComprehensiveReportButtonState();
+                try { localStorage.removeItem("TENNIS_ANALYSIS_SYNC"); } catch (e) {}
                 sessionSelect.innerHTML =
                     `<option value="">選擇揮拍紀錄（資料夾）</option>` +
                     serverSessionsList.map((p) =>
@@ -1954,13 +2336,121 @@
             }
         }
 
-        // --- Restore State on Load (Session Persistence + 3D Session Auto-Import) ---
-        window.addEventListener('DOMContentLoaded', async () => {
+        // --- Restore State on Load ---
+        // 優先：從詳細報告返回 → URL 參數 → 3D localStorage → 快取
+        async function runDashboardInit() {
             try {
-                // 先嘗試從 3D 頁面共享的 session 自動載入
-                const autoImported = await tryAutoImportFromServerSession();
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlFolder = urlParams.get('folder');
+                const urlSession = urlParams.get('session');
+                const baseFolderFallback = (typeof localStorage !== 'undefined' ? localStorage.getItem('LATEST_TRAJECTORY_FOLDER') : null) || '';
 
-                // 僅在「未」從 3D 自動載入成功時，才還原本頁面的快取（避免覆蓋 3D 帶入的資料）
+                // 0) 從詳細報告返回：還原離開前的揮拍紀錄狀態（含「匯入揮拍資料夾」僅選單一 trajectory 的情況）
+                const savedStateRaw = sessionStorage.getItem('DASHBOARD_STATE_BEFORE_DETAIL');
+                if (savedStateRaw) {
+                    try {
+                        const saved = JSON.parse(savedStateRaw);
+                        const TTL_MS = 5 * 60 * 1000;
+                        const ts = saved.timestamp;
+                        const ttlOk = typeof ts === 'number' ? (Date.now() - ts) < TTL_MS : true;
+                        if (saved.sessionPaths?.length > 0 && saved.currentSessionPath && ttlOk) {
+                            sessionStorage.removeItem('DASHBOARD_STATE_BEFORE_DETAIL');
+                            const baseFolder = urlFolder || baseFolderFallback || saved.folder || '';
+                            serverSessionsList = saved.sessionPaths.map(p =>
+                                p.includes('/') ? p : (baseFolder ? baseFolder + '/' + p : p)
+                            );
+                            currentSessionPath = saved.currentSessionPath.includes('/')
+                                ? saved.currentSessionPath
+                                : (baseFolder ? baseFolder + '/' + saved.currentSessionPath : saved.currentSessionPath);
+                            updateComprehensiveReportButtonState();
+                            sessionSelect.innerHTML =
+                                `<option value="">選擇揮拍紀錄（資料夾）</option>` +
+                                serverSessionsList.map((p) =>
+                                    `<option value="${encodeURIComponent(p)}">${p}</option>`
+                                ).join('');
+                            sessionSelect.disabled = false;
+                            clearImportBtn.disabled = false;
+                            mp4Select.classList.add('hidden');
+                            jsonSelect.classList.add('hidden');
+                            sessionSelect.value = encodeURIComponent(currentSessionPath);
+                            const loaded = await loadFromServerSession(currentSessionPath);
+                            if (loaded) {
+                                const playWhenReady = () => { videoPlayer.play().catch(() => {}); };
+                                if (videoPlayer.readyState >= 2) playWhenReady();
+                                else videoPlayer.addEventListener('loadeddata', playWhenReady, { once: true });
+                                console.log('✅ [2D] 從詳細報告返回，已還原揮拍紀錄:', currentSessionPath);
+                            }
+                            return;
+                        }
+                    } catch (e) { console.warn('[2D] 還原 DASHBOARD_STATE_BEFORE_DETAIL 失敗:', e); }
+                    try { sessionStorage.removeItem('DASHBOARD_STATE_BEFORE_DETAIL'); } catch (e) {}
+                }
+
+                // 1) URL 參數 ?folder= & ?session= & ?sessions=（從 3D Analysis Report 帶入）
+                if (urlFolder) {
+                    let sessionsList = [];
+                    const sessionsParam = urlParams.get('sessions');
+                    if (sessionsParam) {
+                        try {
+                            sessionsList = JSON.parse(decodeURIComponent(sessionsParam));
+                            if (!Array.isArray(sessionsList)) sessionsList = [];
+                        } catch (e) {
+                            console.warn('[2D] sessions 參數解析失敗:', e);
+                        }
+                    }
+                    if (sessionsList.length === 0) {
+                        try {
+                            const subRes = await fetch('/getSubfolders?folder=' + encodeURIComponent(urlFolder));
+                            if (subRes.ok) {
+                                const subfolders = await subRes.json();
+                                if (subfolders && subfolders.length > 0) {
+                                    sessionsList = subfolders.map(sub => urlFolder + '/' + sub);
+                                } else {
+                                    sessionsList = [urlFolder];
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('[2D] getSubfolders 失敗:', e);
+                        }
+                    }
+                    if (sessionsList.length > 0) {
+                        serverSessionsList = sessionsList;
+                        updateComprehensiveReportButtonState();
+                        try { localStorage.removeItem("TENNIS_ANALYSIS_SYNC"); } catch (e) {}
+                        sessionSelect.innerHTML =
+                            `<option value="">選擇揮拍紀錄（資料夾）</option>` +
+                            serverSessionsList.map((p) =>
+                                `<option value="${encodeURIComponent(p)}">${p}</option>`
+                            ).join('');
+                        sessionSelect.disabled = false;
+                        clearImportBtn.disabled = false;
+                        mp4Select.classList.add('hidden');
+                        jsonSelect.classList.add('hidden');
+                        const toLoad = urlSession && serverSessionsList.includes(urlSession)
+                            ? urlSession
+                            : serverSessionsList[0];
+                        currentSessionPath = toLoad;
+                        sessionSelect.value = encodeURIComponent(toLoad);
+                        const loaded = await loadFromServerSession(toLoad);
+                        if (loaded) {
+                            const playWhenReady = () => { videoPlayer.play().catch(() => {}); };
+                            if (videoPlayer.readyState >= 2) playWhenReady();
+                            else videoPlayer.addEventListener('loadeddata', playWhenReady, { once: true });
+                            console.log('✅ [2D] 從 URL 參數帶入並載入:', toLoad);
+                        }
+                        return;
+                    }
+                }
+
+                // 2) fallback：從 3D localStorage 自動載入
+                const autoImported = await tryAutoImportFromServerSession();
+                if (autoImported) {
+                    const playWhenReady = () => { videoPlayer.play().catch(() => {}); };
+                    if (videoPlayer.readyState >= 2) playWhenReady();
+                    else videoPlayer.addEventListener('loadeddata', playWhenReady, { once: true });
+                }
+
+                // 3) 未從 3D 載入時，還原本頁面快取
                 if (!autoImported) {
                     const cached = sessionStorage.getItem('TENNIS_DASHBOARD_CACHE');
                     if (cached) {
@@ -1976,8 +2466,19 @@
             } catch (e) {
                 console.warn("⚠️ Failed to restore session state or auto-import:", e);
             }
-        });
+        }
 
+        // 確保在 DOM 就緒時執行；若已載入則立即執行；且支援從詳細報告返回（含 bfcache）
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', runDashboardInit);
+        } else {
+            runDashboardInit();
+        }
+        window.addEventListener('pageshow', (ev) => {
+            if (ev.persisted && sessionStorage.getItem('DASHBOARD_STATE_BEFORE_DETAIL')) {
+                runDashboardInit();
+            }
+        });
     </script>
 </body>
 

@@ -337,7 +337,7 @@ if __name__ == "__main__":
     ])
 
     # 參數設定
-    knn_dataset = 'knn_dataset.json'
+    knn_dataset = 'knn_dataset_new.json'
     
     # 載入模型
     yolo_pose_model = YOLO('model/yolov8n-pose.pt')

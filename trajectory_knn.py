@@ -127,7 +127,7 @@ def analyze_trajectory(knn_dataset, input_3d_json, n_neighbors=1):
 
 
 if __name__ == "__main__":
-    knn_dataset = "knn_dataset.json"
+    knn_dataset = "knn_dataset_new.json"
     input_file = "trajectory__1(3D_trajectory_smoothed).json"
 
     results, nearest, expert_dist = analyze_trajectory(knn_dataset, input_file, n_neighbors=3)
