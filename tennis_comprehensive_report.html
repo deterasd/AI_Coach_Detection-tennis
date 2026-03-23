@@ -557,6 +557,48 @@
       border-radius: 4px;
     }
 
+    /* 簡易版：壓縮至一張 A4 */
+    .report-simple .a4-page {
+      padding: 8mm 12mm;
+      min-height: 297mm;
+      max-height: 297mm;
+      overflow: hidden;
+    }
+    .report-simple header {
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+    }
+    .report-simple h1 { font-size: 24px; }
+    .report-simple .sub-brand { font-size: 12px; margin-bottom: 4px; }
+    .report-simple .subtitle { font-size: 11px; }
+    .report-simple .summary-bar {
+      padding: 6px 12px;
+      margin-bottom: 4px;
+    }
+    .report-simple .summary-label { font-size: 11px; }
+    .report-simple .summary-score { font-size: 22px; }
+    .report-simple .metrics-container { gap: 6px; margin-bottom: 4px; }
+    .report-simple .ball-card {
+      padding: 8px;
+    }
+    .report-simple .ball-card h3 { font-size: 11px; margin-bottom: 4px; }
+    .report-simple .stat-row { margin-bottom: 4px; padding-bottom: 4px; }
+    .report-simple .stat-header { font-size: 9px; }
+    .report-simple .stat-label, .report-simple .stat-val { font-size: 10px; }
+    .report-simple .pill-val { font-size: 14px; }
+    .report-simple .pill-label { font-size: 9px; }
+    .report-simple .advice-section { margin-bottom: 4px; }
+    .report-simple .advice-section h2 { font-size: 12px; margin-bottom: 4px; }
+    .report-simple .advice-box { padding: 8px 12px; font-size: 11px; }
+    .report-simple .advice-summary { margin-bottom: 8px; font-size: 11px; }
+    .report-simple .advice-ball-section { margin-bottom: 10px; padding-bottom: 10px; }
+    .report-simple .advice-ball-title { font-size: 11px; margin-bottom: 4px; }
+    .report-simple .advice-suggestion { padding: 6px 10px; margin-bottom: 6px; font-size: 11px; }
+    .report-simple .advice-metric { margin-bottom: 6px; }
+    .report-simple .advice-metric-title { font-size: 10px; margin-bottom: 2px; }
+    .report-simple .advice-metric-content { font-size: 10px; padding-left: 8px; }
+    .report-simple #reportContent { gap: 6px; }
+
     @media print {
       @page {
         size: A4 portrait;
@@ -812,6 +854,15 @@
       .ball-card {
         page-break-inside: avoid;
       }
+
+      /* 簡易版列印：強制單頁 A4 */
+      body.report-simple .a4-page {
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+      }
     }
 
     #noDataMsg {
@@ -844,6 +895,7 @@
       <input id="participantInput" type="text" data-i18n-placeholder="participantPlaceholder" placeholder="輸入姓名"
         style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:99px;padding:8px 16px;color:var(--text);font-size:14px;font-family:var(--font-main);outline:none;width:140px;" />
     </div>
+    <button class="btn" id="reportModeToggle">簡易版</button>
     <button class="btn btn-primary" onclick="window.print()" data-i18n="print">
       列印 A4 報告
     </button>
@@ -907,6 +959,10 @@
     const elAvgScore = document.getElementById("avgScore");
     const elOverallAdvice = document.getElementById("overallAdvice");
     const elPriorityAdvice = document.getElementById("priorityAdvice");
+    const elReportModeToggle = document.getElementById("reportModeToggle");
+
+    let reportModeSimple = false; // false=完整版, true=簡易版
+    let cachedTargetData = [];
 
     // Translations Dictionary
     const i18n = {
@@ -916,6 +972,8 @@
         close: "關閉",
         theme: "切換亮暗色",
         print: "列印 A4 報告",
+        reportModeFull: "完整版",
+        reportModeSimple: "簡易版",
         langBtn: "English",
         title: "AI 網球教練",
         reportDate: "分析報告產出時間：",
@@ -942,6 +1000,7 @@
         noSpecialAdvice: "無特別建議",
         noImprovement: "無改善建議",
         priorityTitle: "以下為每球分數最低的三項，建議優先加強：\n\n",
+        priorityTitleSimple: "以下為每球分數最低的一項，建議優先加強：\n\n",
         priorityItem: "► 第 {0} 優先改善：【{1}】\n  ↳ 目前平均掌握度：{2} / 100 分{3}\n  💡 個別建議：{4}\n\n",
         alertMark: " ⚠️ (亟需改善)",
         metric_Head: "頭部視線穩定",
@@ -967,6 +1026,8 @@
         close: "Close",
         theme: "Toggle Theme",
         print: "Print A4 Report",
+        reportModeFull: "Full",
+        reportModeSimple: "Simple",
         langBtn: "中文",
         title: "AI TENNIS COACH",
         reportDate: "Report Generated: ",
@@ -993,6 +1054,7 @@
         noSpecialAdvice: "No specific advice",
         noImprovement: "No improvements suggested",
         priorityTitle: "Below are the three lowest-scoring items per shot. Focus on improving these first:\n\n",
+        priorityTitleSimple: "Below is the lowest-scoring item per shot. Focus on improving this first:\n\n",
         priorityItem: "► Priority {0}: [{1}]\n  ↳ Current Average Mastery: {2} / 100 PTS{3}\n  💡 Coach's Tip: {4}\n\n",
         alertMark: " ⚠️ (Needs Improvement)",
         metric_Head: "Head & Vision Stability",
@@ -1067,6 +1129,7 @@
       }
       elLangToggle.innerText = i18n[currentLang].langBtn;
       document.documentElement.lang = currentLang === "zh" ? "zh-TW" : "en";
+      updateReportModeUI();
 
       // Re-render JS content (cards, advice, priority)
       loadData();
@@ -1250,8 +1313,25 @@
       return blocks.join('');
     }
 
-    async function extractAdvice(records) {
+    async function extractAdvice(records, simpleMode = false) {
       if (!records || records.length === 0) return t('noAdvice');
+
+      if (simpleMode) {
+        let html = '';
+        for (let i = 0; i < records.length; i++) {
+          const rec = records[i];
+          const suggestion = rec.advice || rec.suggestion || '';
+          let sugText = (suggestion && String(suggestion).trim()) ? suggestion.trim() : t('noSpecialAdvice');
+          if (currentLang === 'en' && /[\u4e00-\u9fa5]/.test(sugText)) {
+            sugText = await translateText(sugText, 'en');
+          } else if (currentLang === 'zh' && !/[\u4e00-\u9fa5]/.test(sugText)) {
+            sugText = await translateText(sugText, 'zh-TW');
+          }
+          const ballTitle = t('pointPrefix', i + 1).replace(/\n/g, '').trim();
+          html += `<div class="advice-ball-section"><div class="advice-ball-title">${escapeHtml(ballTitle)}</div><div class="advice-suggestion">${escapeHtml(sugText)}</div></div>`;
+        }
+        return html;
+      }
 
       let bestIndex = 0;
       let bestScore = -1;
@@ -1319,10 +1399,13 @@
       return (n > 0 && n <= 10) ? (n * 10).toFixed(1) : n.toFixed(1);
     }
 
-    async function extractPriority(records) {
+    async function extractPriority(records, simpleMode = false) {
       if (!records || records.length === 0) return t('noImprovement');
 
-      let html = `<div class="advice-summary">${escapeHtml(t('priorityTitle', records.length))}</div>`;
+      const titleKey = simpleMode ? 'priorityTitleSimple' : 'priorityTitle';
+      let html = `<div class="advice-summary">${escapeHtml(t(titleKey, records.length))}</div>`;
+
+      const takeCount = simpleMode ? 1 : 3;
 
       for (let i = 0; i < records.length; i++) {
         const rec = records[i];
@@ -1344,7 +1427,7 @@
           }
         }
         items.sort((a, b) => a.score - b.score);
-        const lowestThree = items.slice(0, 3);
+        const lowestThree = items.slice(0, takeCount);
 
         let ballHtml = '';
         lowestThree.forEach((item, idx) => {
@@ -1417,6 +1500,8 @@
       elReportDate.textContent = t('reportDate') + formatDate(new Date());
       elContent.style.display = "block";
 
+      cachedTargetData = targetData;
+
       // Render Cards
       elCardsContainer.innerHTML = targetData
         .map((rec, i) => createCard(rec, i))
@@ -1433,16 +1518,34 @@
       const elAvgScore = document.getElementById("avgScore");
       if (elAvgScore) elAvgScore.textContent = avgScore.toFixed(1);
 
-      // Render Advice (async)
+      await renderAdviceSections();
+    }
+
+    async function renderAdviceSections() {
+      if (cachedTargetData.length === 0) return;
       elOverallAdvice.textContent = t('loading');
       elPriorityAdvice.textContent = t('loading');
-
-      const adviceStr = await extractAdvice(targetData);
-      const priorityStr = await extractPriority(targetData);
-
+      const adviceStr = await extractAdvice(cachedTargetData, reportModeSimple);
+      const priorityStr = await extractPriority(cachedTargetData, reportModeSimple);
       elOverallAdvice.innerHTML = adviceStr;
       elPriorityAdvice.innerHTML = priorityStr;
     }
+
+    function updateReportModeUI() {
+      document.body.classList.toggle('report-simple', reportModeSimple);
+      if (elReportModeToggle) {
+        elReportModeToggle.textContent = reportModeSimple ? t('reportModeFull') : t('reportModeSimple');
+      }
+    }
+
+    if (elReportModeToggle) {
+      elReportModeToggle.addEventListener('click', async () => {
+        reportModeSimple = !reportModeSimple;
+        updateReportModeUI();
+        await renderAdviceSections();
+      });
+    }
+    updateReportModeUI();
     updateLanguage(); // This will render everything with correct lang because loadData() is at end
   </script>
 </body>
