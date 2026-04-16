@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTPU x Pickleball - AI 智慧執法戰情中心</title>
+    <style>
+        /* ================= 系統共用色彩與變數 ================= */
+        :root {
+            --bg-base: #07090f;
+            --bg-panel: #111827;
+            --bg-panel-light: #1f2937;
+            --accent-cyan: #00f2fe;
+            --accent-blue: #3b82f6;
+            --alert-red: #ef4444;
+            --alert-glow: rgba(239, 68, 68, 0.4);
+            --success-green: #10b981;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+            --grid-line: rgba(59, 130, 246, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* ================= 導覽列與外觀 ================= */
+        .header {
+            height: 60px;
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-badge {
+            background: var(--accent-blue);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-size: 0.8rem;
+        }
+
+        .sys-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+
+        .sys-status {
+            display: flex;
+            gap: 20px;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            font-family: monospace;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--success-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success-green);
+        }
+
+        /* ================= 佈局容器 ================= */
+        .dashboard-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .control-btn {
+            background: var(--bg-panel-light);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 14px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .control-btn:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--accent-blue);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 242, 254, 0.1);
+            border-left: 4px solid var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.1) inset;
+        }
+
+        .cam-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .cam-item {
+            background: #000;
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            display: flex;
+            justify-content: space-between;
+            border-radius: 4px;
+        }
+
+        .cam-active {
+            color: var(--success-green);
+        }
+
+        .main-view {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .viewport {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .viewport::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        .view-screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .view-screen.active {
+            display: block;
+            animation: screenOn 0.3s ease-out;
+        }
+
+        @keyframes screenOn {
+            0% {
+                opacity: 0;
+                transform: scale(0.98);
+                filter: brightness(2);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1);
+            }
+        }
+
+        /* ================= 共用場地 (2D) ================= */
+        .court-outer {
+            height: 90%;
+            aspect-ratio: 30 / 54;
+            background-color: #387b54;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #2b5c3f;
+            border-radius: 4px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8) inset;
+        }
+
+        .court-inner {
+            width: 80%;
+            height: 88%;
+            background-color: #2b5c8f;
+            border: 3px solid #fff;
+            position: relative;
+        }
+
+        .court-net {
+            position: absolute;
+            top: 50%;
+            left: -5%;
+            width: 110%;
+            height: 4px;
+            background: #ddd;
+            z-index: 10;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .nvz-top,
+        .nvz-bottom {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 15.9%;
+            background-color: rgba(43, 92, 143, 0.8);
+        }
+
+        .nvz-top {
+            bottom: 50%;
+            border-top: 2px solid #fff;
+        }
+
+        .nvz-bottom {
+            top: 50%;
+            border-bottom: 2px solid #fff;
+        }
+
+        .center-line-top,
+        .center-line-bottom {
+            position: absolute;
+            left: 50%;
+            width: 2px;
+            height: 34.1%;
+            background: #fff;
+            transform: translateX(-50%);
+        }
+
+        .center-line-top {
+            top: 0;
+        }
+
+        .center-line-bottom {
+            bottom: 0;
+        }
+
+        /* ================= 新增：攝影機架設地圖專用 ================= */
+        .cam-map-node {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background: rgba(17, 24, 39, 0.95);
+            border: 2px solid var(--accent-cyan);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--accent-cyan);
+            z-index: 25;
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cam-map-node:hover {
+            transform: translate(-50%, -50%) scale(1.3);
+            background: var(--accent-cyan);
+            box-shadow: 0 0 20px var(--accent-cyan);
+        }
+
+        .cam-map-label {
+            position: absolute;
+            top: -28px;
+            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            pointer-events: none;
+            font-family: monospace;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .cam-map-node:hover .cam-map-label {
+            opacity: 1;
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        /* 其餘模組樣式保持原樣 */
+        .ball-mark {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #eaff00;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            box-shadow: 0 0 15px #eaff00, 0 0 30px #eaff00;
+            transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .ball-mark::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: 2px solid #eaff00;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 1s infinite;
+        }
+
+        /* 模組2-6的樣式省略，與原版相同，避免版面過於冗長，請直接保留你原本的 CSS */
+        .kitchen-viewport {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            perspective: 1000px;
+            background: linear-gradient(to bottom, #0a0a0a 0%, #1a1a1a 100%);
+            overflow: hidden;
+        }
+
+        .kitchen-floor {
+            position: absolute;
+            bottom: -10%;
+            left: -20%;
+            width: 140%;
+            height: 80%;
+            background: #2b5c8f;
+            transform: rotateX(65deg);
+            transform-origin: bottom;
+            border: 4px solid #fff;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .kitchen-line {
+            position: absolute;
+            top: 40%;
+            width: 100%;
+            height: 15px;
+            background: #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+
+        .nvz-area-overlay {
+            position: absolute;
+            top: 40%;
+            width: 100%;
+            height: 60%;
+            background: rgba(239, 68, 68, 0.15);
+            border-top: 2px dashed rgba(255, 255, 255, 0.5);
+        }
+
+        .foot-skeleton {
+            position: absolute;
+            width: 60px;
+            height: 150px;
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+
+        .joint {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: var(--alert-red);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--alert-red);
+            transition: all 0.3s;
+        }
+
+        .heel {
+            top: 0;
+            left: 22px;
+        }
+
+        .toe {
+            bottom: 0;
+            left: 22px;
+        }
+
+        .bone {
+            position: absolute;
+            top: 8px;
+            left: 28px;
+            width: 4px;
+            height: 134px;
+            background: var(--alert-red);
+            transition: all 0.3s;
+            box-shadow: 0 0 10px var(--alert-red);
+        }
+
+        .serve-viewport {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #050508;
+            overflow: hidden;
+        }
+
+        .axis-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .waist-datum {
+            position: absolute;
+            top: 40%;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-cyan);
+            border-top: 1px dashed #fff;
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+
+        .datum-label {
+            position: absolute;
+            top: -22px;
+            right: 20px;
+            color: var(--accent-cyan);
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000;
+        }
+
+        .wrist-joint {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            z-index: 10;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px var(--accent-blue);
+        }
+
+        .paddle-group {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            transform-origin: 0 0;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5;
+        }
+
+        .paddle-shaft {
+            position: absolute;
+            top: 0;
+            left: -3px;
+            width: 6px;
+            height: 60px;
+            background: #ccc;
+            box-shadow: inset 0 0 5px #555;
+        }
+
+        .paddle-head-box {
+            position: absolute;
+            top: 60px;
+            left: -18px;
+            width: 36px;
+            height: 50px;
+            border: 2px solid #fff;
+            border-radius: 40% 40% 10% 10%;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .impact-ball {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #eaff00;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #eaff00, 0 0 30px #eaff00;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 15;
+            transform: translate(-50%, -50%);
+        }
+
+        .point-label {
+            position: absolute;
+            left: 20px;
+            top: -8px;
+            color: #fff;
+            font-family: monospace;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 6px;
+            border: 1px solid #555;
+            border-radius: 3px;
+        }
+
+        .force-vector {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            width: 3px;
+            height: 35px;
+            background: var(--alert-red);
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px var(--alert-red);
+            z-index: 20;
+        }
+
+        .force-vector::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: -4px;
+            border-left: 5.5px solid transparent;
+            border-right: 5.5px solid transparent;
+            border-bottom: 7px solid var(--alert-red);
+        }
+
+        .force-vector-label {
+            position: absolute;
+            top: -20px;
+            left: 15px;
+            color: var(--alert-red);
+            font-family: monospace;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            text-shadow: 0 0 5px #000;
+            border: 1px dashed var(--alert-red);
+            padding: 2px 4px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .trajectory-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 12;
+            pointer-events: none;
+        }
+
+        .path-line {
+            stroke: rgba(255, 255, 255, 0.5);
+            stroke-width: 2px;
+            stroke-dasharray: 6, 4;
+            display: none;
+        }
+
+        .path-error {
+            stroke: var(--alert-red);
+            stroke-width: 3px;
+            stroke-dasharray: 0;
+            display: none;
+        }
+
+        .tactics-node {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            font-family: monospace;
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: #000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hit-node {
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        .bounce-node {
+            width: 28px;
+            height: 28px;
+            background: rgba(0, 242, 254, 0.2);
+            border: 2px solid var(--accent-cyan);
+            border-radius: 50%;
+            color: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--accent-cyan) inset, 0 0 10px var(--accent-cyan);
+        }
+
+        .node-error {
+            background: var(--alert-red);
+            border: 2px solid #fff;
+            color: #fff;
+            box-shadow: 0 0 20px var(--alert-red);
+            animation: strobe 0.5s infinite alternate;
+            width: auto;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .node-label {
+            position: absolute;
+            top: -20px;
+            color: #fff;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 4px;
+            border: 1px solid #555;
+        }
+
+        .overlay-ui {
+            position: absolute;
+            z-index: 20;
+            padding: 20px;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .overlay-header {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .cam-label {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+
+        .alert-banner {
+            align-self: center;
+            padding: 10px 40px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            border: 2px solid;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s;
+        }
+
+        .alert-green {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-green);
+            border-color: var(--success-green);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .alert-red {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--alert-red);
+            border-color: var(--alert-red);
+            box-shadow: 0 0 30px var(--alert-glow);
+            animation: strobe 0.5s infinite alternate;
+        }
+
+        @keyframes strobe {
+            0% {
+                box-shadow: 0 0 10px var(--alert-glow);
+            }
+
+            100% {
+                box-shadow: 0 0 40px var(--alert-glow), inset 0 0 20px var(--alert-glow);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+
+        .scenario-control-box {
+            pointer-events: auto;
+            background: rgba(17, 24, 39, 0.85);
+            border: 1px solid var(--accent-cyan);
+            padding: 15px;
+            border-radius: 8px;
+            width: 280px;
+            align-self: flex-start;
+            margin-top: auto;
+            backdrop-filter: blur(5px);
+        }
+
+        .scenario-select {
+            width: 100%;
+            background: #000;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            cursor: pointer;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .scenario-select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .terminal {
+            height: 150px;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: #4ade80;
+            overflow-y: auto;
+        }
+
+        .log-time {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .log-error {
+            color: var(--alert-red);
+        }
+
+        .log-sys {
+            color: var(--accent-blue);
+        }
+
+        .telemetry-panel {
+            width: 300px;
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .data-card {
+            background: var(--bg-panel-light);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+
+        .data-val {
+            font-size: 1.8rem;
+            font-weight: bold;
+            font-family: monospace;
+            color: var(--accent-cyan);
+            margin-top: 5px;
+        }
+
+        .data-unit {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-cyan);
+            width: 98%;
+            transition: width 0.5s, background 0.5s;
+        }
+
+        .sc-player {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            z-index: 15;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: #000;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            cursor: default;
+        }
+
+        .sc-team-a {
+            background: #4ade80;
+            box-shadow: 0 0 10px #4ade80;
+        }
+
+        .sc-team-b {
+            background: #60a5fa;
+            box-shadow: 0 0 10px #60a5fa;
+        }
+
+        .sc-active-server {
+            background: #eaff00 !important;
+            box-shadow: 0 0 20px #eaff00, 0 0 40px rgba(234, 255, 0, 0.5) !important;
+            border-color: #fff !important;
+            animation: scServerPulse 1s infinite;
+            z-index: 20 !important;
+            color: #000 !important;
+        }
+
+        @keyframes scServerPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 15px #eaff00;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 35px #eaff00, 0 0 60px #eaff00;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+        }
+
+        .sc-action-btn {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border: 1px solid;
+            transition: all 0.2s;
+        }
+
+        .sc-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .sc-serve-btn {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .sc-recv-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .sc-reset-btn {
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .sc-reset-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        .sc-serve-zone {
+            position: absolute;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="logo-area">
+            <span class="logo-badge">NTPU x PIKLE</span>
+            <span class="sys-title">AI SMART REFEREE VISION SYSTEM</span>
+        </div>
+        <div class="sys-status">
+            <span><span class="status-indicator"></span> EDGE SERVER: ONLINE</span>
+            <span>MODEL: PB_POSE_V2.4</span>
+            <span id="clock">00:00:00</span>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div>
+                <div class="section-title">AI 判決模式 (Analysis Modes)</div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="control-btn active" onclick="switchMode('cam-map', this)">
+                        <span>🗺️ 攝影機架設配置</span> <span
+                            style="font-size: 0.7rem; color: var(--accent-cyan);">[CAM_MAP]</span>
+                    </button>
+                    <button class="control-btn" onclick="switchMode('inout', this)">
+                        <span>🎯 鷹眼落點判定</span> <span
+                            style="font-size: 0.7rem; color: var(--text-muted);">[IN/OUT]</span>
+                    </button>
+                    <button class="control-btn" onclick="switchMode('kitchen', this)">
+                        <span>🦶 廚房區犯規偵測</span> <span style="font-size: 0.7rem; color: var(--text-muted);">[NVZ
+                            FAULT]</span>
+                    </button>
+                    <button class="control-btn" onclick="switchMode('serve', this)">
+                        <span>📐 發球違例分析</span> <span style="font-size: 0.7rem; color: var(--text-muted);">[SERVE]</span>
+                    </button>
+                    <button class="control-btn" onclick="switchMode('tactics', this)">
+                        <span>📊 雙彈跳與站位檢核</span> <span
+                            style="font-size: 0.7rem; color: var(--text-muted);">[TACTICS]</span>
+                    </button>
+                    <button class="control-btn" onclick="switchMode('position', this)">
+                        <span>👤 站位防呆檢核</span> <span
+                            style="font-size: 0.7rem; color: var(--text-muted);">[POSITION]</span>
+                    </button>
+                    <button class="control-btn" onclick="switchMode('scoring', this)">
+                        <span>🏅 記分分派連動</span> <span
+                            style="font-size: 0.7rem; color: var(--text-muted);">[SCORING]</span>
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: auto;">
+                <div class="section-title">攝影機陣列同步狀態</div>
+                <div class="cam-grid">
+                    <div class="cam-item">CAM 01 <span class="cam-active">● 240Hz</span></div>
+                    <div class="cam-item">CAM 02 <span class="cam-active">● 240Hz</span></div>
+                    <div class="cam-item">CAM 03 <span class="cam-active">● 240Hz</span></div>
+                    <div class="cam-item">CAM 04 <span class="cam-active">● 240Hz</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-view">
+            <div class="viewport">
+
+                <div id="view-cam-map" class="view-screen active">
+                    <div class="court-outer">
+                        <div class="court-inner" style="background-color: #1a365d;">
+                            <div class="court-net"></div>
+                            <div class="nvz-top"></div>
+                            <div class="nvz-bottom"></div>
+                            <div class="center-line-top"></div>
+                            <div class="center-line-bottom"></div>
+
+                            <div class="cam-map-node" style="top: -6%; left: 50%;" onmouseover="showCamInfo(1)"
+                                onmouseout="resetCamInfo()">📷<span class="cam-map-label">CAM 1 (後方高角度)</span></div>
+                            <div class="cam-map-node" style="top: 106%; left: 50%;" onmouseover="showCamInfo(2)"
+                                onmouseout="resetCamInfo()">📷<span class="cam-map-label">CAM 2 (後方高角度)</span></div>
+                            <div class="cam-map-node" style="top: 50%; left: -10%;" onmouseover="showCamInfo(3)"
+                                onmouseout="resetCamInfo()">📷<span class="cam-map-label">CAM 3 (側邊視角)</span></div>
+                            <div class="cam-map-node" style="top: 50%; left: 110%;" onmouseover="showCamInfo(4)"
+                                onmouseout="resetCamInfo()">📷<span class="cam-map-label">CAM 4 (側邊視角)</span></div>
+                            <div id="map-cam-5" class="cam-map-node" style="top: 50%; left: 50%; display: none;"
+                                onmouseover="showCamInfo(5)" onmouseout="resetCamInfo()">📷<span
+                                    class="cam-map-label">CAM 5 (天花板鳥瞰)</span></div>
+                        </div>
+                    </div>
+                    <div class="overlay-ui">
+                        <div class="overlay-header">
+                            <span class="cam-label">SRC: SYS_CONFIG // HARDWARE_LAYOUT</span>
+                            <span class="cam-label" id="cam-map-status" style="color: var(--success-green);">LAYOUT: 4
+                                CAMERAS (PoC)</span>
+                        </div>
+                        <div class="alert-banner alert-green" id="cam-map-banner"
+                            style="font-size: 1rem; align-self: center; margin-top: 5%; text-transform: none; letter-spacing: 1px;">
+                            👉 請將游標移至圖面上的「攝影機圖示」以查看任務範圍
+                        </div>
+                        <div class="scenario-control-box">
+                            <div style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: bold;">[ 硬體佈署方案切換 ]
+                            </div>
+                            <select class="scenario-select" onchange="toggleCamSetup(this.value)">
+                                <option value="4" selected>4 台攝影機配置 (PoC 成本優化)</option>
+                                <option value="5">5 台攝影機配置 (高精準度覆蓋)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-inout" class="view-screen">
+                    <div class="court-outer">
+                        <div class="court-inner">
+                            <div class="court-net"></div>
+                            <div class="nvz-top"></div>
+                            <div class="nvz-bottom"></div>
+                            <div class="center-line-top"></div>
+                            <div class="center-line-bottom"></div>
+                            <div class="ball-mark" id="dynamic-ball" style="top: 98%; left: 50%;"></div>
+                        </div>
+                    </div>
+                    <div class="overlay-ui">
+                        <div class="overlay-header">
+                            <span class="cam-label">SRC: CAM-ARRAY // 2D TOP-DOWN MAPPING</span>
+                            <span class="cam-label" id="inout-status-tag" style="color: var(--accent-cyan);">TRACKING:
+                                ACTIVE</span>
+                        </div>
+                        <div class="alert-banner alert-green" id="inout-banner">IN / 底線壓線 (1.2cm)</div>
+                        <div class="scenario-control-box">
+                            <div style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: bold;">[ 落點情境載入器 ]
+                            </div>
+                            <select class="scenario-select" id="scenario-select" onchange="runScenario(this.value)">
+                                <option value="0">1. 底線壓線 (Baseline IN)</option>
+                                <option value="1">2. 邊線出界 (Sideline OUT)</option>
+                                <option value="2">3. 發球短球失誤 (Short Serve FAULT)</option>
+                                <option value="3">4. 對角線死角 (Corner IN)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-kitchen" class="view-screen">
+                    <div class="kitchen-viewport">
+                        <div class="kitchen-floor">
+                            <div class="kitchen-line"></div>
+                            <div class="nvz-area-overlay"></div>
+                        </div>
+                        <div class="foot-skeleton" id="player-foot">
+                            <div class="joint heel"></div>
+                            <div class="joint toe"></div>
+                            <div class="bone"></div>
+                        </div>
+                        <div class="overlay-ui">
+                            <div class="overlay-header">
+                                <span class="cam-label">SRC: CAM-02 [KITCHEN_SIDE] // POSE_EST</span>
+                                <span class="cam-label" id="kitchen-status-tag" style="color: var(--alert-red);">FAULT
+                                    DETECTED</span>
+                            </div>
+                            <div class="alert-banner alert-red" id="kitchen-banner">FOOT FAULT / 踩線截擊</div>
+                            <div class="scenario-control-box">
+                                <div style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: bold;">[
+                                    廚房區犯規情境載入 ]</div>
+                                <select class="scenario-select" id="kitchen-scenario-select"
+                                    onchange="runKitchenScenario(this.value)">
+                                    <option value="0">1. 截擊踩線 (Volley Fault)</option>
+                                    <option value="1">2. 正常廚房內擊球 (Legal NVZ Hit)</option>
+                                    <option value="2">3. 慣性衝入踩線 (Momentum Fault)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-serve" class="view-screen">
+                    <div class="serve-viewport">
+                        <div class="axis-grid"></div>
+                        <div class="datum-line waist-datum">
+                            <span class="datum-label">WAIST_DATUM_LINE (Z=0.95m)</span>
+                        </div>
+                        <div id="serve-wrist" class="wrist-joint" style="top: 32%; left: 40%;">
+                            <span class="point-label">WRIST_JOINT</span>
+                            <div id="serve-paddle-group" class="paddle-group" style="transform: rotate(-50deg);">
+                                <div class="paddle-shaft"></div>
+                                <div class="paddle-head-box">
+                                    <span class="point-label" style="top: 45px; left: -10px;">PADDLE_HEAD</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="serve-ball" class="impact-ball" style="top: 35%; left: 45%;">
+                            <span class="point-label" style="top: -20px; left: 20px;">IMPACT_POINT</span>
+                            <div id="force-vector" class="force-vector">
+                                <span class="force-vector-label">V0_y = +1.2 m/s (TOSS)</span>
+                            </div>
+                        </div>
+                        <div class="overlay-ui">
+                            <div class="overlay-header">
+                                <span class="cam-label">SRC: CAM-03 [BASELINE_SIDE] // KINEMATICS</span>
+                                <span class="cam-label" id="serve-status-tag"
+                                    style="color: var(--alert-red);">RULE_VIOLATION</span>
+                            </div>
+                            <div class="alert-banner alert-red" id="serve-banner">ILLEGAL / 擊球點高於腰部</div>
+                            <div class="scenario-control-box">
+                                <div style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: bold;">[ 發球動力學情境
+                                    ]</div>
+                                <select class="scenario-select" id="serve-scenario-select"
+                                    onchange="runServeScenario(this.value)">
+                                    <option value="0">1. 擊球點高於腰部 (Contact > Waist)</option>
+                                    <option value="1">2. 拍頭高於手腕 (Paddle > Wrist)</option>
+                                    <option value="2">3. 合法標準發球 (Legal Serve)</option>
+                                    <option value="3">4. 落地發球違例 (Illegal Drop Serve)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-tactics" class="view-screen">
+                    <div class="court-outer">
+                        <div class="court-inner">
+                            <div class="court-net"></div>
+                            <div class="nvz-top"></div>
+                            <div class="nvz-bottom"></div>
+                            <div class="center-line-top"></div>
+                            <div class="center-line-bottom"></div>
+
+                            <svg class="trajectory-layer" width="100%" height="100%">
+                                <line id="line-s1-b1" x1="75%" y1="95%" x2="25%" y2="25%" class="path-line" />
+                                <line id="line-b1-r1" x1="25%" y1="25%" x2="15%" y2="5%" class="path-line" />
+                                <line id="line-r1-b2" x1="15%" y1="5%" x2="25%" y2="85%" class="path-line" />
+                                <line id="line-b2-s2" x1="25%" y1="85%" x2="20%" y2="98%" class="path-line" />
+
+                                <line id="line-s1-r1-fault" x1="75%" y1="95%" x2="15%" y2="15%" class="path-error" />
+                                <line id="line-r1-s2-fault" x1="15%" y1="5%" x2="20%" y2="80%" class="path-error" />
+                            </svg>
+
+                            <div id="node-s1" class="tactics-node hit-node" style="top: 95%; left: 75%;">S1<span
+                                    class="node-label">Shot 1 (Serve)</span></div>
+                            <div id="node-b1" class="tactics-node bounce-node" style="top: 25%; left: 25%;">B1<span
+                                    class="node-label" style="top:25px;">Bounce 1</span></div>
+                            <div id="node-r1" class="tactics-node hit-node" style="top: 5%; left: 15%;">R1<span
+                                    class="node-label">Shot 2 (Return)</span></div>
+                            <div id="node-b2" class="tactics-node bounce-node" style="top: 85%; left: 25%;">B2<span
+                                    class="node-label" style="top:25px;">Bounce 2</span></div>
+                            <div id="node-s2" class="tactics-node hit-node" style="top: 98%; left: 20%;">S2<span
+                                    class="node-label">Shot 3</span></div>
+
+                            <div id="node-r1-fault" class="tactics-node hit-node node-error"
+                                style="top: 15%; left: 15%;">VOLLEY FAULT! (Shot 2)</div>
+                            <div id="node-s2-fault" class="tactics-node hit-node node-error"
+                                style="top: 80%; left: 20%;">VOLLEY FAULT! (Shot 3)</div>
+                        </div>
+                    </div>
+
+                    <div class="overlay-ui">
+                        <div class="overlay-header">
+                            <span class="cam-label">SRC: SYS_LOGIC // RALLY_TRACKER</span>
+                            <span class="cam-label" id="tactics-status-tag" style="color: var(--success-green);">RALLY
+                                ACTIVE</span>
+                        </div>
+                        <div class="alert-banner alert-green" id="tactics-banner" style="margin-top: 10%;">LEGAL /
+                            雙彈跳檢核通過</div>
+                        <div class="scenario-control-box">
+                            <div style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: bold;">[ 雙彈跳追蹤情境 ]
+                            </div>
+                            <select class="scenario-select" id="tactics-scenario-select"
+                                onchange="runTacticsScenario(this.value)">
+                                <option value="0">1. 合法雙彈跳 (Legal Two-Bounce)</option>
+                                <option value="1">2. 接發球提前截擊 (Shot 2 Volley Fault)</option>
+                                <option value="2">3. 第三拍提前截擊 (Shot 3 Volley Fault)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-position" class="view-screen">
+                    <div class="court-outer">
+                        <div class="court-inner" style="background-color: #1a365d;">
+                            <div class="court-net"></div>
+                            <div class="nvz-top"></div>
+                            <div class="nvz-bottom"></div>
+                            <div class="center-line-bottom"></div>
+                            <div id="legal-zone"
+                                style="position: absolute; bottom: 0; right: 0; width: 50%; height: 34.1%; background: rgba(0, 242, 254, 0.15); border: 2px dashed var(--accent-cyan); display: none;">
+                            </div>
+                            <div id="player-server" class="tactics-node hit-node"
+                                style="top: 90%; left: 75%; background: var(--accent-cyan); border: 2px solid #fff; display: flex;">
+                                S</div>
+                            <div id="player-partner" class="tactics-node hit-node"
+                                style="top: 90%; left: 25%; display: flex;">P</div>
+                        </div>
+                    </div>
+                    <div class="overlay-ui">
+                        <div class="overlay-header">
+                            <span class="cam-label">SRC: SYS_LOGIC // POSITION_CHECK</span>
+                            <span class="cam-label" id="pos-score-tag" style="color: var(--accent-cyan);">SCORE: 2 - 2
+                                (Server 1)</span>
+                        </div>
+                        <div class="alert-banner alert-green" id="pos-banner">READY / 站位正確</div>
+                        <div class="scenario-control-box">
+                            <div style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: bold;">[ 站位規則校驗 ]
+                            </div>
+                            <select class="scenario-select" onchange="runPositionScenario(this.value)">
+                                <option value="0">1. 偶數分 - 正確站位 (Right Side)</option>
+                                <option value="1">2. 偶數分 - 錯誤站位 (Server on Left)</option>
+                                <option value="2">3. 奇數分 - 正確站位 (Left Side)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-scoring" class="view-screen">
+                    <div class="court-outer" style="left: 63%;">
+                        <div class="court-inner" style="background-color: #162844;">
+                            <div class="court-net"></div>
+                            <div class="nvz-top"></div>
+                            <div class="nvz-bottom"></div>
+                            <div class="center-line-top"></div>
+                            <div class="center-line-bottom"></div>
+
+                            <div id="sc-zone" class="sc-serve-zone"
+                                style="bottom:0; left:50%; width:50%; height:34.1%; background:rgba(234,255,0,0.12); border:2px dashed #eaff00; display:none;">
+                            </div>
+                            <div id="sc-A1" class="sc-player sc-team-a" style="top:80%; left:25%;">A1</div>
+                            <div id="sc-A2" class="sc-player sc-team-a sc-active-server" style="top:80%; left:75%;">A2★
+                            </div>
+                            <div id="sc-B1" class="sc-player sc-team-b" style="top:20%; left:25%;">B1</div>
+                            <div id="sc-B2" class="sc-player sc-team-b" style="top:20%; left:75%;">B2</div>
+                        </div>
+                    </div>
+
+                    <div class="overlay-ui" style="justify-content: flex-start; gap: 8px;">
+                        <div class="overlay-header">
+                            <span class="cam-label">SRC: SYS_LOGIC // AUTO_SCORE_DISPATCH</span>
+                            <span class="cam-label" id="sc-header-tag" style="color: var(--accent-cyan);">SERVING: TEAM
+                                A | SERVER 2</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; pointer-events:none;">
+                            <span id="sc-label-a"
+                                style="font-size:0.72rem; font-family:monospace; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:10px; border:1px solid #eaff00; color:#eaff00; white-space:nowrap;">🟢
+                                TEAM A 📡 發球方</span>
+                            <span id="sc-label-b"
+                                style="font-size:0.72rem; font-family:monospace; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:10px; border:1px solid #60a5fa; color:#9ca3af; white-space:nowrap;">🔵
+                                TEAM B ⚡ 接球方</span>
+                        </div>
+                        <div id="sc-banner"
+                            style="align-self:flex-start; padding:6px 20px; font-size:0.85rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; border-radius:4px; border:2px solid var(--success-green); backdrop-filter:blur(4px); background:rgba(16,185,129,0.2); color:var(--success-green); box-shadow:0 0 15px rgba(16,185,129,0.3); white-space:nowrap;">
+                            TEAM A SERVES / 發球：A2（0-0-2）</div>
+                        <div
+                            style="align-self:flex-start; text-align:center; background:rgba(0,0,0,0.8); border:1px solid var(--accent-cyan); border-radius:6px; padding:4px 16px; pointer-events:none;">
+                            <div
+                                style="font-size:0.5rem; color:var(--text-muted); white-space:nowrap; letter-spacing:0.5px;">
+                                SCORE (A – B – SRV)</div>
+                            <div id="sc-score-display"
+                                style="font-family:monospace; font-size:1.2rem; font-weight:bold; color:var(--accent-cyan); white-space:nowrap; letter-spacing:2px;">
+                                0 - 0 - 2</div>
+                        </div>
+                        <div class="scenario-control-box" style="width: 310px; margin-top: auto;">
+                            <div style="font-size:0.8rem; color:var(--accent-cyan); font-weight:bold;">[ 自動記分分派連動 ]
+                            </div>
+                            <div style="font-size:0.68rem; color:var(--text-muted); margin:5px 0 10px;">🟡★ = 當前發球者
+                                &nbsp;|&nbsp; 🟢 Team A &nbsp;🔵 Team B</div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="sc-action-btn sc-serve-btn" onclick="scScore('serve')">🏆 發球方得分</button>
+                                <button class="sc-action-btn sc-recv-btn" onclick="scScore('recv')">❌ 接球方得分</button>
+                            </div>
+                            <button class="sc-reset-btn" onclick="scReset()">🔄 重置 (Reset to 0-0-2)</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="terminal" id="terminal-log">
+                <div><span class="log-time">[SYS]</span> 系統核心載入完成...</div>
+                <div><span class="log-time">[SYS]</span> NVIDIA TensorRT 引擎啟動...</div>
+                <div class="log-sys"><span class="log-time">[AI]</span> 姿態預估與軌跡追蹤模型 PB_VISION_V3.0 Ready.</div>
+            </div>
+        </main>
+
+        <aside class="telemetry-panel">
+            <div class="section-title">邊緣運算遙測 (Edge Telemetry)</div>
+            <div class="data-card">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">系統總延遲 (End-to-End)</div>
+                <div class="data-val" id="latency-val">12 <span class="data-unit">ms</span></div>
+            </div>
+            <div class="data-card">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">邊緣 GPU 負載 (RTX 4090)</div>
+                <div class="data-val" id="gpu-val">84 <span class="data-unit">%</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="gpu-bar" style="width: 84%;"></div>
+                </div>
+            </div>
+            <div class="data-card">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">AI 信心指數 (Confidence)</div>
+                <div class="data-val" id="conf-val" style="color: var(--success-green);">99.2 <span
+                        class="data-unit">%</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="conf-bar" style="width: 99.2%; background: var(--success-green);">
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('en-US', { hour12: false }) + '.' + now.getMilliseconds().toString().padStart(3, '0').slice(0, 2);
+        }, 50);
+
+        setInterval(() => {
+            document.getElementById('gpu-val').innerHTML = (80 + Math.random() * 10).toFixed(1) + ' <span class="data-unit">%</span>';
+            document.getElementById('latency-val').innerHTML = (10 + Math.random() * 4).toFixed(1) + ' <span class="data-unit">ms</span>';
+        }, 1000);
+
+        function updateUI(targetEl, banner, data, prop1, prop2, logPrefix) {
+            const terminal = document.getElementById('terminal-log');
+            const confVal = document.getElementById('conf-val');
+            const confBar = document.getElementById('conf-bar');
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+            if (targetEl && prop1 && prop2) {
+                targetEl.style[prop1] = data[prop1];
+                targetEl.style[prop2] = data[prop2];
+                targetEl.style.background = data.status === 'IN' ? '#eaff00' : '#ff1744';
+                targetEl.style.boxShadow = data.status === 'IN' ? '0 0 15px #eaff00, 0 0 30px #eaff00' : '0 0 15px #ff1744, 0 0 30px #ff1744';
+            }
+
+            banner.className = `alert-banner ${data.colorClass}`;
+            banner.innerText = data.text;
+
+            let displayColor = (data.status === 'IN' || data.status === 'LEGAL') ? 'var(--success-green)' : 'var(--alert-red)';
+            confVal.innerHTML = `${data.conf} <span class="data-unit">%</span>`;
+            confVal.style.color = displayColor;
+            confBar.style.width = `${data.conf}%`;
+            confBar.style.background = displayColor;
+
+            let logHtml = `<div class="${(data.status === 'FAULT' || data.status === 'OUT' || data.status === 'VIOLATION') ? 'log-error' : ''}"><span class="log-time">[${timeStr}]</span> ${logPrefix} ${data.log}</div>`;
+            terminal.insertAdjacentHTML('beforeend', logHtml);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // ================= 新增：攝影機地圖邏輯 =================
+        const camDescriptions = {
+            1: "【CAM 1 後方高角度】\n負責全局視野。主要抓取選手整體移動軌跡，作為「自動計分」與不合法擊球的基礎影像。",
+            2: "【CAM 2 後方高角度】\n負責全局視野。主要抓取選手整體移動軌跡，作為「自動計分」與不合法擊球的基礎影像。",
+            3: "【CAM 3 側邊視角】\n核心判定鏡頭。精準捕捉邊線/底線落點（鷹眼判定），並分析發球瞬間手臂與拍頭高度。",
+            4: "【CAM 4 側邊視角】\n核心判定鏡頭。精準捕捉邊線/底線落點（鷹眼判定），並分析發球瞬間手臂與拍頭高度。",
+            5: "【CAM 5 天花板鳥瞰】\n上帝視角。能最精準計算雙彈跳落地次數，並清晰標定雙腳是否踩入廚房區（可選配）。"
+        };
+
+        function showCamInfo(id) {
+            const banner = document.getElementById('cam-map-banner');
+            banner.innerText = camDescriptions[id];
+            banner.className = "alert-banner alert-green";
+            banner.style.borderColor = "var(--accent-cyan)";
+            banner.style.color = "var(--accent-cyan)";
+            banner.style.background = "rgba(0, 242, 254, 0.1)";
+            banner.style.boxShadow = "0 0 15px rgba(0, 242, 254, 0.3)";
+        }
+
+        function resetCamInfo() {
+            const banner = document.getElementById('cam-map-banner');
+            banner.innerText = "👉 請將游標移至圖面上的「攝影機圖示」以查看任務範圍";
+            banner.className = "alert-banner alert-green";
+            banner.style.borderColor = "var(--success-green)";
+            banner.style.color = "var(--success-green)";
+            banner.style.background = "rgba(16, 185, 129, 0.2)";
+            banner.style.boxShadow = "0 0 20px rgba(16, 185, 129, 0.4)";
+        }
+
+        function toggleCamSetup(val) {
+            const cam5 = document.getElementById('map-cam-5');
+            const status = document.getElementById('cam-map-status');
+            const terminal = document.getElementById('terminal-log');
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+            if (val === '4') {
+                cam5.style.display = 'none';
+                status.innerText = 'LAYOUT: 4 CAMERAS (PoC)';
+                status.style.color = 'var(--success-green)';
+                terminal.insertAdjacentHTML('beforeend', `<div class="log-sys"><span class="log-time">[${timeStr}]</span> [SYS_CONFIG] 切換為 4 台攝影機配置 (PoC 成本優化)。</div>`);
+            } else {
+                cam5.style.display = 'flex';
+                status.innerText = 'LAYOUT: 5 CAMERAS (FULL)';
+                status.style.color = 'var(--accent-cyan)';
+                terminal.insertAdjacentHTML('beforeend', `<div class="log-sys"><span class="log-time">[${timeStr}]</span> [SYS_CONFIG] 切換為 5 台攝影機配置 (啟動天花板高精度鳥瞰)。</div>`);
+            }
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // ================= 其他原有模組邏輯 =================
+        const inoutScenarios = [
+            { top: '98%', left: '50%', status: 'IN', text: 'IN / 底線壓線 (1.2cm)', conf: 99.2, colorClass: 'alert-green', log: '預測落點 X:3.05m Y:13.38m -> 壓線 IN' },
+            { top: '75%', left: '-2%', status: 'OUT', text: 'OUT / 邊線出界 (-4.5cm)', conf: 98.5, colorClass: 'alert-red', log: '預測落點 X:-0.04m Y:10.12m -> 邊線 OUT' },
+            { top: '40%', left: '25%', status: 'FAULT', text: 'FAULT / 發球短球 (落入NVZ)', conf: 99.8, colorClass: 'alert-red', log: '預測落點 X:1.52m Y:5.40m -> 發球落點違規 (NVZ)' },
+            { top: '96%', left: '96%', status: 'IN', text: 'IN / 對角線死角 (安全)', conf: 97.4, colorClass: 'alert-green', log: '預測落點 X:5.85m Y:13.10m -> 完美界內 IN' }
+        ];
+
+        function runScenario(index) {
+            const data = inoutScenarios[index];
+            document.getElementById('inout-status-tag').innerText = data.status === 'IN' ? 'TRACKING: ACTIVE' : 'OUT_OF_BOUNDS';
+            document.getElementById('inout-status-tag').style.color = data.status === 'IN' ? 'var(--accent-cyan)' : 'var(--alert-red)';
+            updateUI(document.getElementById('dynamic-ball'), document.getElementById('inout-banner'), data, 'top', 'left', '[3D_TRAJECTORY]');
+        }
+
+        const kitchenScenarios = [
+            { footTop: '18%', status: 'FAULT', text: 'FOOT FAULT / 踩線截擊', conf: 96.5, colorClass: 'alert-red', colorCode: '#ef4444', log: '偵測到截擊動作，且腳部骨架與 NVZ 線重疊' },
+            { footTop: '55%', status: 'LEGAL', text: 'LEGAL / 球彈起後擊球', conf: 99.1, colorClass: 'alert-green', colorCode: '#10b981', log: '球已接觸地面，允許進入廚房區' },
+            { footTop: '32%', status: 'FAULT', text: 'MOMENTUM / 慣性違例', conf: 94.2, colorClass: 'alert-red', colorCode: '#ef4444', log: '擊球後身體失去平衡觸碰廚房區' }
+        ];
+
+        function runKitchenScenario(index) {
+            const data = kitchenScenarios[index];
+            const foot = document.getElementById('player-foot');
+            foot.style.top = data.footTop;
+            foot.querySelectorAll('.joint, .bone').forEach(el => {
+                el.style.background = data.colorCode;
+                if (el.classList.contains('joint') || el.classList.contains('bone')) { el.style.boxShadow = `0 0 15px ${data.colorCode}`; }
+            });
+            document.getElementById('kitchen-status-tag').innerText = data.status === 'FAULT' ? 'FAULT DETECTED' : 'LEGAL PLAY';
+            document.getElementById('kitchen-status-tag').style.color = data.colorCode;
+            updateUI(null, document.getElementById('kitchen-banner'), data, null, null, '[NVZ_ANALYSIS]');
+        }
+
+        const serveScenarios = [
+            { wristTop: '32%', rotation: '-50deg', ballTop: '35%', ballLeft: '45%', status: 'VIOLATION', text: 'ILLEGAL / 擊球點高於腰部', conf: 98.4, colorClass: 'alert-red', colorCode: '#ef4444', log: 'Z_CONTACT (1.05m) > Z_WAIST (0.95m) -> 發球高度違例', showForce: false },
+            { wristTop: '55%', rotation: '-140deg', ballTop: '46%', ballLeft: '48%', status: 'VIOLATION', text: 'ILLEGAL / 拍頭高於手腕', conf: 97.8, colorClass: 'alert-red', colorCode: '#ef4444', log: 'PADDLE_HEAD_Z > WRIST_Z -> 拍頭角度違例 (未呈下垂狀態)', showForce: false },
+            { wristTop: '50%', rotation: '-45deg', ballTop: '65%', ballLeft: '48%', status: 'LEGAL', text: 'LEGAL / 合法標準發球', conf: 99.5, colorClass: 'alert-green', colorCode: '#10b981', log: '擊球動力學檢核通過 (Contact < Waist & Paddle < Wrist)', showForce: false },
+            { wristTop: '65%', rotation: '-20deg', ballTop: '45%', ballLeft: '50%', status: 'VIOLATION', text: 'ILLEGAL / 落地發球附加外力', conf: 96.2, colorClass: 'alert-red', colorCode: '#ef4444', log: '物件追蹤: 釋放瞬間 V0_y = +1.2 m/s (偵測到上拋動作) -> 落地發球違例', showForce: true }
+        ];
+
+        function runServeScenario(index) {
+            const data = serveScenarios[index];
+            document.getElementById('serve-wrist').style.top = data.wristTop;
+            document.getElementById('serve-paddle-group').style.transform = `rotate(${data.rotation})`;
+            document.getElementById('serve-ball').style.top = data.ballTop;
+            document.getElementById('serve-ball').style.left = data.ballLeft;
+            document.getElementById('force-vector').style.display = data.showForce ? 'block' : 'none';
+            document.querySelectorAll('#view-serve .point-label').forEach(p => p.style.color = data.colorCode);
+            document.getElementById('serve-status-tag').innerText = data.status === 'VIOLATION' ? 'RULE_VIOLATION' : 'LEGAL_SERVE';
+            document.getElementById('serve-status-tag').style.color = data.colorCode;
+            updateUI(null, document.getElementById('serve-banner'), data, null, null, '[KINEMATICS]');
+        }
+
+        const tacticsScenarios = [
+            {
+                status: 'LEGAL', text: 'LEGAL / 雙彈跳檢核通過', conf: 99.8, colorClass: 'alert-green', colorCode: '#10b981', log: 'S1 -> Bounce 1 -> S2 -> Bounce 2 -> S3: 完整彈跳，回合繼續。',
+                show: ['node-s1', 'line-s1-b1', 'node-b1', 'line-b1-r1', 'node-r1', 'line-r1-b2', 'node-b2', 'line-b2-s2', 'node-s2']
+            },
+            {
+                status: 'VIOLATION', text: 'FAULT / 接發球提前截擊', conf: 98.5, colorClass: 'alert-red', colorCode: '#ef4444', log: 'Shot 2 (Return) 偵測到截擊 (遺漏 Bounce 1) -> 違反雙彈跳規則！',
+                show: ['node-s1', 'line-s1-r1-fault', 'node-r1-fault']
+            },
+            {
+                status: 'VIOLATION', text: 'FAULT / 第三拍提前截擊', conf: 97.2, colorClass: 'alert-red', colorCode: '#ef4444', log: 'Shot 3 偵測到截擊 (遺漏 Bounce 2) -> 違反雙彈跳規則！',
+                show: ['node-s1', 'line-s1-b1', 'node-b1', 'line-b1-r1', 'node-r1', 'line-r1-s2-fault', 'node-s2-fault']
+            }
+        ];
+
+        function runTacticsScenario(index) {
+            const data = tacticsScenarios[index];
+            const allElements = ['node-s1', 'line-s1-b1', 'node-b1', 'line-b1-r1', 'node-r1', 'line-r1-b2', 'node-b2', 'line-b2-s2', 'node-s2', 'line-s1-r1-fault', 'node-r1-fault', 'line-r1-s2-fault', 'node-s2-fault'];
+            allElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.display = 'none'; }
+            });
+            data.show.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.display = el.tagName === 'line' ? 'block' : 'flex'; }
+            });
+            document.getElementById('tactics-status-tag').innerText = data.status === 'VIOLATION' ? 'RALLY HALTED' : 'RALLY ACTIVE';
+            document.getElementById('tactics-status-tag').style.color = data.colorCode;
+            updateUI(null, document.getElementById('tactics-banner'), data, null, null, '[RALLY_TRACKER]');
+        }
+
+        const posScenarios = [
+            { serverLeft: '75%', zoneLeft: '50%', score: '2 - 2', legal: true, log: '偶數分 (2)，發球者位於右側，通過校驗。' },
+            { serverLeft: '25%', zoneLeft: '50%', score: '2 - 2', legal: false, log: '警告：偶數分應在右側發球，偵測到發球者位於左側！' },
+            { serverLeft: '25%', zoneLeft: '0%', score: '3 - 2', legal: true, log: '奇數分 (3)，發球者位於左側，通過校驗。' }
+        ];
+
+        function runPositionScenario(index) {
+            const data = posScenarios[index];
+            const server = document.getElementById('player-server');
+            const zone = document.getElementById('legal-zone');
+            const banner = document.getElementById('pos-banner');
+            server.style.left = data.serverLeft;
+            zone.style.left = data.zoneLeft;
+            zone.style.display = 'block';
+            document.getElementById('pos-score-tag').innerText = `SCORE: ${data.score} (Server 1)`;
+            if (data.legal) {
+                banner.innerText = "READY / 站位正確";
+                banner.className = "alert-banner alert-green";
+                updateUI(null, banner, { status: 'LEGAL', text: banner.innerText, conf: 99.9, colorClass: 'alert-green', log: data.log }, null, null, '[POS_CHECK]');
+            } else {
+                banner.innerText = "WRONG POSITION / 站位錯誤";
+                banner.className = "alert-banner alert-red";
+                updateUI(null, banner, { status: 'FAULT', text: banner.innerText, conf: 99.9, colorClass: 'alert-red', log: data.log }, null, null, '[POS_CHECK]');
+            }
+        }
+
+        // 開局 0-0-2：偶數分 → 必須從右側發球。A2 是 Server 2 但位地在右側（第一發球者特規）
+        let sc = { sA: 0, sB: 0, srv: 'A', sNum: 2, fSrv: true, pA: { A1: 'l', A2: 'r' }, pB: { B1: 'l', B2: 'r' }, srvId: 'A2' };
+
+        function scGetPartner(id) { return { A1: 'A2', A2: 'A1', B1: 'B2', B2: 'B1' }[id]; }
+        function scServerForTeam(team) {
+            const score = team === 'A' ? sc.sA : sc.sB;
+            const pos = team === 'A' ? sc.pA : sc.pB;
+            const needRight = (score % 2 === 0);
+            if (team === 'A') return needRight ? (pos.A1 === 'r' ? 'A1' : 'A2') : (pos.A1 === 'l' ? 'A1' : 'A2');
+            else return needRight ? (pos.B1 === 'l' ? 'B1' : 'B2') : (pos.B1 === 'r' ? 'B1' : 'B2');
+        }
+
+        function scScore(outcome) {
+            let logMsg = '';
+            if (outcome === 'serve') {
+                if (sc.srv === 'A') {
+                    sc.sA++;
+                    [sc.pA.A1, sc.pA.A2] = [sc.pA.A2, sc.pA.A1];
+                } else {
+                    sc.sB++;
+                    [sc.pB.B1, sc.pB.B2] = [sc.pB.B2, sc.pB.B1];
+                }
+                logMsg = `✅ ${sc.srvId} 得分！雙人換邊。比分 → ${sc.sA}-${sc.sB}-${sc.sNum}，${sc.srvId} 繼續發球。`;
+            } else {
+                if (sc.fSrv || sc.sNum === 2) {
+                    sc.fSrv = false;
+                    sc.srv = sc.srv === 'A' ? 'B' : 'A';
+                    sc.sNum = 1;
+                    sc.srvId = scServerForTeam(sc.srv);
+                    logMsg = `🔄 換發！(Side-out) → Team ${sc.srv} 發球，Server 1: ${sc.srvId}，比分 ${sc.sA}-${sc.sB}-${sc.sNum}`;
+                } else {
+                    const prev = sc.srvId;
+                    sc.sNum = 2;
+                    sc.srvId = scGetPartner(sc.srvId);
+                    logMsg = `⚠️ ${prev} 失去發球權 → Server 2: ${sc.srvId} 接續發球（位置不變），比分 ${sc.sA}-${sc.sB}-${sc.sNum}`;
+                }
+            }
+            scUpdateUI(logMsg);
+        }
+
+        function scReset() {
+            // 重置回開局幣態：A2 在右側發球（0-0-2 偶數分規則）
+            sc = { sA: 0, sB: 0, srv: 'A', sNum: 2, fSrv: true, pA: { A1: 'l', A2: 'r' }, pB: { B1: 'l', B2: 'r' }, srvId: 'A2' };
+            scUpdateUI('🔄 系統重置 → 0-0-2（Team A 第一局特規，僅 Server 2 發球）');
+        }
+
+        function scUpdateUI(logMsg) {
+            const left = { r: '75%', l: '25%' };
+            document.getElementById('sc-A1').style.left = left[sc.pA.A1];
+            document.getElementById('sc-A2').style.left = left[sc.pA.A2];
+            document.getElementById('sc-B1').style.left = left[sc.pB.B1];
+            document.getElementById('sc-B2').style.left = left[sc.pB.B2];
+
+            ['A1', 'A2', 'B1', 'B2'].forEach(pid => {
+                const el = document.getElementById('sc-' + pid);
+                el.classList.remove('sc-active-server');
+                el.innerText = pid + (pid === sc.srvId ? '★' : '');
+            });
+            document.getElementById('sc-' + sc.srvId).classList.add('sc-active-server');
+
+            document.getElementById('sc-score-display').innerText = `${sc.sA} - ${sc.sB} - ${sc.sNum}`;
+            document.getElementById('sc-header-tag').innerText = `SERVING: TEAM ${sc.srv} | SERVER ${sc.sNum}`;
+
+            const zone = document.getElementById('sc-zone');
+            const srvPos = sc.srv === 'A' ? sc.pA[sc.srvId] : sc.pB[sc.srvId];
+            zone.style.display = 'block';
+            if (sc.srv === 'A') { zone.style.top = 'auto'; zone.style.bottom = '0'; }
+            else { zone.style.bottom = 'auto'; zone.style.top = '0'; }
+            zone.style.left = srvPos === 'r' ? '50%' : '0';
+            zone.style.width = '50%'; zone.style.height = '34.1%';
+
+            const aServ = sc.srv === 'A';
+            const la = document.getElementById('sc-label-a');
+            const lb = document.getElementById('sc-label-b');
+            la.style.color = aServ ? '#eaff00' : '#9ca3af';
+            la.style.borderColor = aServ ? '#eaff00' : '#4ade80';
+            la.innerHTML = `🟢 TEAM A ${aServ ? '<b>📡 發球方</b>' : '⚡ 接球方'}`;
+            lb.style.color = !aServ ? '#eaff00' : '#9ca3af';
+            lb.style.borderColor = !aServ ? '#eaff00' : '#60a5fa';
+            lb.innerHTML = `🔵 TEAM B ${!aServ ? '<b>📡 發球方</b>' : '⚡ 接球方'}`;
+
+            const banner = document.getElementById('sc-banner');
+            banner.innerText = `TEAM ${sc.srv} SERVES / 發球：${sc.srvId}（Server ${sc.sNum}）`;
+            banner.style.color = 'var(--success-green)';
+            banner.style.borderColor = 'var(--success-green)';
+            banner.style.background = 'rgba(16,185,129,0.2)';
+            banner.style.boxShadow = '0 0 15px rgba(16,185,129,0.3)';
+
+            const terminal = document.getElementById('terminal-log');
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+            terminal.insertAdjacentHTML('beforeend', `<div class="log-sys"><span class="log-time">[${timeStr}]</span> [SCORE_DISPATCH] ${logMsg}</div>`);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // --- 主選單切換邏輯 ---
+        function switchMode(mode, btnElement) {
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.querySelector('span:last-child').style.color = 'var(--text-muted)';
+            });
+            btnElement.classList.add('active');
+            btnElement.querySelector('span:last-child').style.color = 'var(--accent-cyan)';
+
+            document.querySelectorAll('.view-screen').forEach(screen => screen.classList.remove('active'));
+            document.getElementById('view-' + mode).classList.add('active');
+
+            if (mode === 'cam-map') { /* No immediate action needed */ }
+            else if (mode === 'inout') { runScenario(document.getElementById('scenario-select').value); }
+            else if (mode === 'kitchen') { runKitchenScenario(document.getElementById('kitchen-scenario-select').value); }
+            else if (mode === 'serve') { runServeScenario(document.getElementById('serve-scenario-select').value); }
+            else if (mode === 'tactics') { runTacticsScenario(document.getElementById('tactics-scenario-select').value); }
+            else if (mode === 'position') { runPositionScenario(0); }
+            else if (mode === 'scoring') { scReset(); }
+        }
+    </script>
+</body>
+
+</html>
